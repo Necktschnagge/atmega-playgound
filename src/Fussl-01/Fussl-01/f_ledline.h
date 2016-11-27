@@ -17,6 +17,11 @@
 		Port A:		bit 0:	data bit
 					bit 1:	clock bit
 					bit 2:	latch-clock bit
+					
+	effective macros:
+	#ifdef WEAK_ERROR the weak errors thrown from inside of this library are displayed using the error() function.
+		read the description of led::error() for additional information.
+	Otherwise such Errors are ignored and program goes on without any sensibly kind of busy waiting.
                                                                         */
 /************************************************************************/
 
@@ -29,21 +34,21 @@ namespace led {
 	
 	constexpr char DOT = 0x80;
 	
-	void init(const uint8_t lineLength);
+	void init(uint8_t lineLength);
 		/* make PORT A ready for IO usage and clear the led line */
-		/* set an intern variable to the linelength given ar argument */
+		/* set an intern variable to the line length given as argument */
 	
 	void latch();
 		/* send a latch clock signal */
 	
-	void pushBitIntern(const bool bit);
+	void pushBitIntern(bool bit);
 		/* deprecated for user */
-		/* set data bit and send a shift register clock signal (and do NOT update the coherent memory) */
+		/* set data bit and send a shift register clock signal (and do NOT update the coherent memory _LEDLINE_) */
 	
-	void pushBit(const bool bit);
+	void pushBit(bool bit);
 		/* push a bit to output stream (coherent) */
 	
-	void pushByte(const uint8_t bitcode);
+	void pushByte(uint8_t bitcode);
 		/* push 8 bit to the output stream. MSB is pushed first, (coherent) */
 	
 	void push64(uint64_t bitcode);
@@ -66,33 +71,49 @@ namespace led {
 		/* change the dot of the sign and return whether the sign has a dot @after */
 	
 	uint8_t signCode(char sign);
-		/* channel coding: look up the sign code in the EEPROM and return the bit code for LED output (supports implicit dotting) */
-	
+		//### update description in cpp and copy paste here
+		
 	void printSign(char sign);//for user
 		/* (visible) print a sign to the end of the led output */
 	
 	void printDigit(uint8_t digit);//for user
 		/* print a digit {0~9} (visible) to the end of the led output */
-		/* DO NOT CALL WITH AN INTEGER GREATER THAN 9 (will cause a weak error) !!!!!*/
+		/* DO NOT CALL WITH AN INTEGER GREATER THAN 9 (will cause a weak error #ifdef WEAK_ERROR: error code 2) !!!!!*/
 	
-	void printInt(int16_t integer);//for user
+	uint8_t printInt(int64_t integer, bool checkLineLength = false);//for user
 		/* print an integer to the end of the led output (of course with "-" if negative) */
-		
+		/* returns the amount of digits (minus is also counted as one digit) which were visibly pushed to the led line. */
+		/* if the printed int is longer than the LINELENGTH (set with init()) and (checkLineLength) and #ifdef WEAK_ERROR
+			error(3) is called and displays 'E003' after the integer was printed */
+	
+	// <<<<< add a printInt for uint64_t
+				
+	inline uint8_t printIntOVChecked (int64_t integer){
+		/* see description of printInt() */
+		return printInt(integer, true);
+	}
+	
 	void printSignDottable(char sign, bool dot);//for user
 		/* push a sign (visible) to the led output with explicit dotting (implicit dot will be overwritten) */
+		/* overrides the implicit dot of the sign. Notice if the sign has an real implicit dot, bool dot will invert dot to 0 */
+	
+	void printSignDottableExplicit(char sign, bool dot);//for user
+		/* push a sign (visible) to the led output with real explicit dotting */
+		/* creates the code to push into the led line first and overrides the dot like given afterwards. */
+		/* a dot is printed <=> bool dot == true */
 	
 	void printString(const char* string);//for user
 		/* print a string to the led output (also supports implicit dotting ) */
 	
-	void clear(void);//for user
+	void clear();//for user
 		/* clear the LED line */
 	
 	void LFPrintString(const char* string);//for user
-		/* print the given string and as much as needed space signs before to push the previous string away */
+		/* print the given string and (at least) as much as needed space signs before to push the previous string away */
 	
 	void printDotsOnly(uint8_t dotCode); /* print only the dots by the given binary code and leave everything else unchanged */
 	
-	void error(const uint16_t code);
+	void error(uint16_t code);
 		/* print an error code to the led output, format: ENNN (NNN .. error code) */
 		/* errors 0 .. 99 will cause a delay of a little time (busy waiting)*/
 		/* errors 100 .. 999 will stop the controller activity in an infinite loop */
