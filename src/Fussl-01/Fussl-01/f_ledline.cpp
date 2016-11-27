@@ -4,6 +4,14 @@
 	
 to do:
 	overview, doc strings, check visibilities
+	
+effective macros:
+	#ifdef WEAK_ERROR:
+		printDigit() throws error if argument invalid (no digit)
+
+error description:
+	code: calling function(s): meta: meaning:
+	2: printDigit(): enabled be #define  WEAK_ERROR: argument invalid (no digit) 
 	                                                                     */
 /************************************************************************/
 
@@ -31,35 +39,29 @@ void led::init(const uint8_t lineLength){
 }
 
 void led::latch(){
-	/* send a latch clock signal */
 	PORTA = PORTA ^ 0b00000100;
 	PORTA = PORTA ^ 0b00000100;
 }
 
 void led::pushBitIntern(const bool bit){
-	/* deprecated for user */
-	/* set data bit and send a shift register clock signal (and do NOT update the coherent memory _LEDLINE_) */
 	PORTA = (PORTA & 0b11111110) | bit;
 	PORTA = PORTA ^ 0b00000010;
 	PORTA = PORTA ^ 0b00000010;
 }
 
 void led::pushBit(const bool bit){
-	/* push a bit to output stream (coherent) */
 	_LEDLINE_ = (_LEDLINE_<<1) + bit;
 	led::pushBitIntern(bit);
 }
 
 void led::pushByte(const uint8_t bitcode){
-	/* push 8 bit to the output stream. MSB is pushed first, (coherent) */
 	_LEDLINE_ = (_LEDLINE_<<8) + bitcode;
 	for(int8_t shift = 7; shift >= 0; --shift){
 		led::pushBitIntern(bitcode & (1<<shift));
 	}
 }
 
-void led::push64(uint64_t bitcode){
-	/* push 64 bit to the output stream. MSB is pushed first (coherent) */
+void led::push64(const uint64_t bitcode){
 	_LEDLINE_ = bitcode;
 	for(int8_t shift = 63; shift >= 0; --shift){
 		led::pushBitIntern(bitcode & (1<<shift));
@@ -67,40 +69,36 @@ void led::push64(uint64_t bitcode){
 }
 
 void led::pushMemory(){
-	/* push the memory of the output stream VISIBLE to the output stream */
 	led::push64(_LEDLINE_);
 	led::latch();
 }
 
-void led::pushByteVisible(uint8_t bitcode){
-	/* push a byte to the led output stream and update the latch */
-	/* see ledPushByte() (MSB first) */
+void led::pushByteVisible(const uint8_t bitcode){
 	led::pushByte(bitcode);
 	led::latch();
 }
 
-bool led::isDotted(char sign){
-	/* returns whether the sign contains an implicit dot or not */
+bool led::isDotted(const char sign){
 	return (sign & 0b10000000);
 }
 
-void led::setDot(char* sign, bool dot){
-	/* override the implicit dot of the sign with the explicit given dot */
+void led::setDot(char* const sign, const bool dot){
 	*sign = (*sign & 0b01111111) | (dot<<7);
 }
 
-bool led::changeDot(char* sign){
-	/* change the dot of the sign and return whether the sign has a dot @after */
+bool led::changeDot(char* const sign){
 	*sign ^= 1<<7;
 	return led::isDotted(*sign); 
 }
 
-uint8_t led::signCode(char sign){
-	/* channel coding: look up the sign code in the PROGMEM and return the bit code for LED output (supports implicit dotting) */
+uint8_t led::signCode(const char sign){
+	/* channel coding: look up the sign code in the PROGMEM
+		and return the bit code for LED output (supports implicit dotting) */
 	/* implicit dotting:
 	*	char sign with MSB == 0 will normally be a character without a dot.
 		if MSB ==1 an additional dot is printed
-		Only in case you print e.g. a '?' or a ';' there will be a dot even if with MSB == 0. Actually signs with 'real implicit' dot will have no dot if MSB == 1
+		Only in case you print e.g. a '?' or a ';' there will be a dot even if with MSB == 0.
+		Actually signs with 'real implicit' dot like '?' will have no dot if MSB == 1
 		
 		equivalent description
 		Every sign of the character set has its own 'real implicit' dot status {with dot | without dot}.
@@ -109,11 +107,24 @@ uint8_t led::signCode(char sign){
 		
 		nomenclature:
 		 a char sign is basically a code with an >>implicit dot<< (the MSB)
-		 the 'real implicit dot' is stored in the look-up table and means the dot of an question mark or an semicolon for example
+		 the 'real implicit dot' is stored in the look-up table
+		 and means the dot of an question mark or an semicolon for example
+		 an explicit dot is a dot, you type as argument when calling a function
+		 and it will override the implicit as well as the real implicit dot.
+		 
+		 current sign coding:
+		 
+			10 won't be a 'new line'. Instead a space code is returned.
+			
+			any other sign < 33 will be returned as a unique standard coding,
+			where all bits are set HIGH except the dot bit in case isDotted(sign) <=> sign has an implicit dot.
+			
+			//### write a good docu for this function... 
+			make a table please with signs
 	*/
 	
 	uint16_t code = sign & 0b01111111;
-	
+									//		0		1	2		3	4		5	6	
 									//		!		"	#		$	%		&	' '		(	)		*	+		,	-		.	/		0	1		2	3		4	5		6	7		8	9		:	;		<	=		>	?		@
 	const uint8_t codeTable[] PROGMEM = {   0xC8, 0x0A, 0x7F, 0x6E, 0x99, 0x3F, 0x00, 0x16, 0x4C, 0x2B, 0x49, 0x40, 0x01, 0x80, 0x19, 0x7E, 0x48, 0x3D, 0x6D, 0x4B, 0x67, 0x77, 0x4C, 0x7F, 0x6F, 0x81, 0xC0, 0x39, 0x21, 0x63, 0x9D, 0x5D,
 		
@@ -124,7 +135,7 @@ uint8_t led::signCode(char sign){
 										0x36, 0x43, 0x6C, 0x0E, 0x20, 0x08, 0x27, 0x5A, 0x2D, 0x75, 0x0F};
 		
 	if (code == 10){
-		/* do smth in order to make a line feed */
+		/* do something in order to make a line feed */
 		return 0x00; // <<<<< the newline char is currently a space sign, please change the function signature / provide an additional function
 	}
 	
@@ -144,58 +155,67 @@ uint8_t led::signCode(char sign){
 	return static_cast<uint8_t>( pgm_read_byte(&codeTable[code])) ^ (isDotted(sign) * DOTSIGN);
 }
 
-void led::printSign(char sign){//for user
-	/* (visible) print a sign to the end of the led output */
+void led::printSign(const char sign){
 	led::pushByteVisible(led::signCode(sign));
+	// <<<< here we should fix the problem of a new line sign.
 }
 
-void led::printDigit(uint8_t digit){//for user
-	/* print a digit {0~9} (visible) to the end of the led output */
-	/* DO NOT CALL WITH AN INTEGER GREATER THAN 9 (will cause a weak error) !!!!!*/
-	if (digit/10){
-		led::error(2);
-	}
+void led::printDigit(const uint8_t digit){
+	#ifdef WEAK_ERROR
+		if (digit/10){
+			led::error(2);
+		}
+	#endif
 	led::printSign(48 + digit);
 }
 
-void led::printInt(int16_t integer){//for user
-	/* print an integer to the end of the led output (of course with "-" if negative) */
-	if (integer < 0){
+uint8_t led::printInt(const int64_t integer, const bool checkLineLength){
+	#ifdef WEAK_ERROR
+		if (checkLineLength){
+			uint8_t length = printInt(integer, false);
+			if (length > LINELENGTH){
+				error(3);// ## check which errors codes are free and set one here, add to the description of function, and header of h and cpp file
+			}
+			return length;
+		}
+	#endif
+	uint8_t digits = (integer<0);
+	if (digits){
 		led::printSign('-');
 	}
-	uint8_t fractional = (abs(integer)) % 10;
+	uint8_t fractional = (abs(integer)) % 10; // abs() from stdlib.h
 	if (abs(integer/10)){
-		led::printInt(abs(integer/10));
+		digits += led::printInt(abs(integer/10));
 	}
 	led::printDigit(fractional);
+	return digits + 1;
 }
 
-void led::printSignDottable(char sign, bool dot){//for user
-	/* push a sign (visible) to the led output with explicit dotting (implicit dot will be overwritten) */
+void led::printSignDottable(char sign, const bool dot){
 	led::setDot(&sign,dot);
 	led::printSign(sign);
 }
 
-void led::printString(const char* string){//for user
-	/* print a string to the led output (also supports implicit dotting ) */
+void led::printSignDottableExplicit(char sign, const bool dot){
+	led::pushByteVisible(  (led::signCode(sign) & (~led::DOT))    |    (dot * led::DOT)  );
+}
+
+void led::printString(const char * const string){
 	uint8_t i {0};
-	while (*(string+i)!='\0'){
-		led::printSign(*(string+i));
+	while (string[i]!='\0'){
+		led::printSign(string[i]);
 		++i;
 	}
 }
 
-void led::clear(){//for user
-	/* clear the LED line */
+void led::clear(){
 	for(uint8_t i = 0; i<LINELENGTH; ++i){
 		led::pushByte(0);
 	}
 	led::latch();
 }
 
-void led::LFPrintString(const char* const string){//for user
-	/* print the given string and as much as needed space signs before to push the previous string away */
-	
+void led::LFPrintString(const char* const string){
 	//////////////////////////////////////////////////////////////////////////
 	/*char* ptr = string;
 	while (*string!='\0'){
@@ -211,6 +231,7 @@ void led::LFPrintString(const char* const string){//for user
 	
 	//we dont have more than one line in our controller
 	// for our controller we want to be flash memory friendly and not fast so we do:
+	// <<< change this back some day
 	led::clear();
 	led::printString(string);
 }
@@ -224,16 +245,16 @@ void led::printDotsOnly(const uint8_t dotCode){//<<<<<< this function isnt ready
 }
 
 void led::error(const uint16_t code){
-	
 	//static_assert(LINELENGTH>=4,"The ledError() needs at least 4 led elements!");  <<<<<<<< config c++11
 	
-	
-	uint8_t SREG_temporal = SREG; // save interrupts
+	uint8_t SREG_temporal = SREG; // save interrupt state
 	cli();
 	led::clear();
 	led::printSign('E');
 	hardware::delay(3000);
 	// led::pushByteVisible(0x00); to push a space between 'E' and code
+	if (code < 100) led::printDigit(0);
+	if (code < 10 ) led::printDigit(0);
 	led::printInt(code);
 	hardware::delay(60000);// add some fancy blinking <<<<<<<<
 	if (code > 99){
@@ -242,4 +263,5 @@ void led::error(const uint16_t code){
 		}
 	}
 	SREG = SREG_temporal; // activate interrupts
+	// <<< is watchdog turned of with cli()?? what behavior do you prefer?
 }
