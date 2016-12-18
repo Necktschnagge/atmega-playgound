@@ -2,12 +2,13 @@
  * f_ledline.h
  *
  * Created: 23.08.2016 17:32:54
- *  Author: F-NET-ADMIN
+ *  Author: Maximilian Starke
  */ 
 
 
 /************************************************************************/
-/* first of all you need to run the init() function to make sure
+/*
+   first of all you need to run the init() function to make sure
    outputs are enabled and safe.
    init() sets the output pins and pushes an empy string through the led line.
    
@@ -22,8 +23,16 @@
 	#ifdef WEAK_ERROR the weak errors thrown from inside of this library are displayed using the error() function.
 		read the description of led::error() for additional information.
 	Otherwise such Errors are ignored and program goes on without any sensibly kind of busy waiting.
-                                                                        */
+ */
 /************************************************************************/
+
+/*	reservation of error codes:
+		error code		:		calling function		:		error content					:		conditions
+		----------------------------------------------------------------------------------------------------------
+			2			:		led::printDigit()		:	no digit {0~9} given				: #ifdef WEAK_ERROR
+			3			:		led::printInt()			:	integer is longer than lineLength	: #ifdef WEAK_ERROR
+
+*/
 
 #ifndef F_LEDLINE_H
 #define F_LEDLINE_H
@@ -41,12 +50,16 @@ namespace led {
 	void latch();
 		/* send a latch clock signal */
 	
+	void clock();
+		/* should not be used by extern programmer*/
+		/* send a clock signal */
+	
 	void pushBitIntern(bool bit);
 		/* deprecated for user */
 		/* set data bit and send a shift register clock signal (and do NOT update the coherent memory _LEDLINE_) */
 	
 	void pushBit(bool bit);
-		/* push a bit to output stream (coherent) */
+		/* push a bit to output stream (coherent to internal memory _LEDLINE_) */
 	
 	void pushByte(uint8_t bitcode);
 		/* push 8 bit to the output stream. MSB is pushed first, (coherent) */
@@ -71,7 +84,8 @@ namespace led {
 		/* change the dot of the sign and return whether the sign has a dot @after */
 	
 	uint8_t signCode(char sign);
-		//### update description in cpp and copy paste here
+		/* in general: returns the byte code to push into the led line to display given character */
+		//<<<<< update description in cpp and copy paste here: the code table must be ready, than please do this
 		
 	void printSign(char sign);//for user
 		/* (visible) print a sign to the end of the led output */
