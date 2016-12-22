@@ -13,22 +13,23 @@ namespace input {
 	uint8_t gchange;
 	event_container_t inputEvents;
 }
-
-int8_t input::getEvent(){ 
+/*
+int8_t input::getEventOld(){ 
 	bool multiEvent{false};								// to mark if there were more than one button state changes
 	constexpr uint8_t _NO_BUTTON_CHANGED_INTERN_ {5};
 	uint8_t button  = {_NO_BUTTON_CHANGED_INTERN_};			// the 'else' value which means there was no event
 	
 	for(uint8_t i = 0; i < 5; ++i){ // iterate through all positions where a button is saved in the global gchange
 		if ((1<<i) & gchange){
-			if (multiEvent) return getEvent_MULTI_CHANGE;
+			if (multiEvent) return MULTI_CHANGE;
 			button = i;
 			multiEvent = true;
 		}
 	}
-	if (button == _NO_BUTTON_CHANGED_INTERN_) return getEvent_NO_CHANGE;
+	if (button == _NO_BUTTON_CHANGED_INTERN_) return NO_CHANGE;
 	return 2*button + !!(gchange & gbutton);
 }
+
 
 void input::fetchEvents(){
 	uint8_t button = 0b00011111 & ((~PINA)>>3); // because input pin signals are negative logic:		HIGH == button released			LOW == button pressed 
@@ -46,7 +47,7 @@ void input::fetchEvents(){
 	}
 }
 
-void input::enableEvent(uint8_t buttonEvent, void (*procedure)()){
+void input::enableEventOld(uint8_t buttonEvent, void (*procedure)()){
 	if ( buttonEvent >= 10){
 		//## throw error;
 		return;
@@ -61,8 +62,84 @@ void input::disableEvents(){
 		inputEvents.buttonEvent[button][BUTTON_DOWN].enable = false;
 	}
 }
+*/
+/* refactored input stuff */
+
+bool input::readInput(){
+	uint8_t button = 0b00011111 & ((~PINA)>>3); // because input pin signals are negative logic:		HIGH == button released			LOW == button pressed
+	gchange = gbutton ^ button; // In Previous Line: <<<<< check whether there come ZEROs in when shifting
+	gbutton = button;
+	return static_cast<bool>(gchange);
+}
+
+bool input::exec(bool all /* = false */){
+	bool result = false;
+	for(int8_t i = 4; i>=0; --i){
+		if (gchange & (1<<i)){
+			if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable){
+				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].proc != nullptr){
+					inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].proc();
+				}
+				if (!all) return true;
+				result = true;
+			}
+		}
+	}
+	return result;
+}
+
+void input::setEvent(uint8_t eventId, void (*procedure)(), bool enabled /* = true */){
+	if ( eventId >= 10 ){
+		// throw error ####
+		return;
+	}
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = enabled;
+	inputEvents.buttonEvent[eventId/2][eventId%2].proc = procedure;
+}
+
+const input::event_t& input::getEvent(uint8_t eventId){
+	if ( eventId >= 10 ){
+		// throw error ####
+		eventId = 0;
+	}
+	return inputEvents.buttonEvent[eventId/2][eventId%2];
+}
+
+void input::enableEvent(uint8_t eventId){
+	if ( eventId >= 10 ){
+		// throw error ####
+		return;
+	}
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = true;
+}
+
+void input::disableEvent(uint8_t eventId){
+	if ( eventId >= 10 ){
+		// throw error ####
+		return;
+	}
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = false;
+}
 
 
+uint8_t input::getEventCode(){
+	bool existingEvent{false};								// to mark if there were more than one button state changes
+	constexpr uint8_t _NO_BUTTON_CHANGED_INTERN_ {5};
+	uint8_t button {_NO_BUTTON_CHANGED_INTERN_};			// the 'else' value which means there was no event
+	constexpr uint8_t COUNT_BUTTONS {5};
+		
+	static_assert(_NO_BUTTON_CHANGED_INTERN_ >= COUNT_BUTTONS, "error in programming logic: no_button seems to be a button representation too");
+		
+	for(uint8_t i = 0; i < COUNT_BUTTONS; ++i){ // iterate through all positions where a button is saved in the global gchange
+		if ((1<<i) & gchange){
+			if (existingEvent) return MULTI_CHANGE;
+			button = i;
+			existingEvent = true;
+		}
+	}
+	if (button == _NO_BUTTON_CHANGED_INTERN_) return NO_CHANGE;
+	return 2*button + !!(gchange & gbutton);
+}
 
 /****************************************************************************************************************************************************************************************************/
 
@@ -78,12 +155,12 @@ namespace ItemSelector {
 void ItemSelector::enableButtons(){
 	using namespace input;
 	disableEvent(makeEvent(button_okay,BUTTON_UP));
-	enableEvent(makeEvent(button_okay,BUTTON_DOWN),ItemSelector::okay_down);
+	setEvent(makeEvent(button_okay,BUTTON_DOWN),ItemSelector::okay_down);
 	disableEvent(makeEvent(button_next,BUTTON_UP));
-	enableEvent(makeEvent(button_next,BUTTON_DOWN),ItemSelector::next);
+	setEvent(makeEvent(button_next,BUTTON_DOWN),ItemSelector::next);
 	if (button_prev != NO_BUTTON){
 		disableEvent(makeEvent(button_prev,BUTTON_UP));
-		enableEvent(makeEvent(button_prev,BUTTON_DOWN),ItemSelector::previous);
+		setEvent(makeEvent(button_prev,BUTTON_DOWN),ItemSelector::previous);
 	}
 }
 
@@ -113,7 +190,7 @@ void ItemSelector::okay_down(){
 	setButtonsFree();
 	led::printDotsOnly(0xFF);
 	hardware::delay(300);
-	enableEvent(makeEvent(button_okay,BUTTON_UP),okay_up);
+	setEvent(makeEvent(button_okay,BUTTON_UP),okay_up);
 }
 
 void ItemSelector::okay_up(){

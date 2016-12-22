@@ -80,7 +80,7 @@ namespace arch {
 	
 	uint16_t EEPAddressHelper_(uint8_t program, uint8_t instruction, const bool& counting = false);
 		/* deprecated for user and high-level-programmer */
-		/* combined calculating of:
+		/* cinombined calculating of:
 					EEPROM program address (given program ID, instruction of program)		(iff counting==false)
 					program counting	(up to 255)											(iff counting)
 																														*/
