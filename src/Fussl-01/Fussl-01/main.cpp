@@ -54,6 +54,33 @@ int main(void){
 	// please check the board frequency of quartz and redefine fcpu in hardware.cpp
 	// define dot position in ledline.cpp -> please find out it's hardware configuration
 	
+	// our code sequence for the first release:
+			arch::init();
+			while (1){
+				for(uint16_t speed_by_delay = 2000; speed_by_delay > 599; speed_by_delay-=200){
+					arch::pushLineVisible(0b0);
+					hardware::delay(speed_by_delay);
+					arch::pushLineVisible(0b100000001);
+					hardware::delay(speed_by_delay);
+					arch::pushLineVisible(0b110000011);
+					hardware::delay(speed_by_delay);
+					arch::pushLineVisible(0b111000111);
+					hardware::delay(speed_by_delay);
+					arch::pushLineVisible(0b111101111);
+					hardware::delay(speed_by_delay);
+					arch::pushLineVisible(0b111111111);
+					hardware::delay(speed_by_delay);
+				}
+				arch::pushLineVisible(0);
+				hardware::delay(2000);
+				for(uint8_t i = 0; i<= 12; ++i){
+					arch::pushLineVisible(1<<i);
+					hardware::delay(1300);
+				}
+			}
+	
+	
+	
 	/* test code */
 	test::led_t::run();
 	
