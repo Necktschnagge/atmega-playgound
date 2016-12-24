@@ -55,6 +55,14 @@ int main(void){
 	// define dot position in ledline.cpp -> please find out it's hardware configuration
 	
 	// our code sequence for the first release:
+			DDRC |= 0b00000111;// LATCH BIT ::: CLOCK BIT ::: DATA BIT
+			PORTC &= 0b11111000;
+			for (uint8_t a= 0; a <10; ++a){
+			hardware::delay(2000);
+			PORTC = 1;
+			hardware::delay(2000);
+			PORTC = 0;
+			}
 			arch::init();
 			while (1){
 				for(uint16_t speed_by_delay = 2000; speed_by_delay > 599; speed_by_delay-=200){

@@ -19,7 +19,7 @@
 void hardware::delay(uint16_t ms){
 	/* busy delay in ms */
 	// <<<<<< refactor and check the function of delay
-	for(uint16_t i = 0; i<ms; i+=100){
+	for(uint16_t i = 0; i<ms; i+=10){
 		_delay_ms(10);
 	}
 }
