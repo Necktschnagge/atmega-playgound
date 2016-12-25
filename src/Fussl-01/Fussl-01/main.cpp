@@ -101,11 +101,11 @@ int main(void){
 	arch::init();
 	led::clear();
 	
-	ArcProgramItemManager programItemManager;
-	programItemManager.init(nullptr,after_selecting,true);
-	ItemSelector::initialisation(2,0,1,&programItemManager);
-	ItemSelector::run();
-	while (1){
-		arch::controller();
-	}
+	//ArcProgramItemManager programItemManager;
+	//programItemManager.init(nullptr,after_selecting,true);
+	//ItemSelector::init(2,0,1,&programItemManager);
+	//ItemSelector::run();
+	//while (1){
+		//arch::controller();
+	//}
 }

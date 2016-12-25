@@ -12,6 +12,11 @@
 #include "f_arch.h"
 #include "f_hardware.h"
 
+class Callable {
+	public:
+	virtual void operator()() = 0;
+};
+
 namespace input {
 	/* input is like a static object (for java people) which holds the information
 	which buttons are pressed or released and what changed from last look up*/
@@ -32,11 +37,17 @@ namespace input {
 	
 	constexpr int8_t MULTI_CHANGE {-1}; //  more than one button changed it's state
 	constexpr int8_t NO_CHANGE {10};  // no button changed it's state
-
+	
+	typedef union callback_u* pcallback_t;
+	typedef union callback_u {
+		void (*callbackProcedure)();		// enabled by 1
+		Callable* callbackObject;		// enabled by 2
+		} callback_t;
+	
 	typedef struct event_s* pevent_t; // struct to hold a pointer to a function and an enable flag
 	typedef struct event_s {
-		void (*proc)();
-		bool enable;
+		callback_t callbackReference;
+		int8_t enable;
 		} event_t;
 	
 	// struct to hold an event array (one event_t for each single-event)	
@@ -151,29 +162,33 @@ namespace input {
 		
 	inline bool rexAll(){	return rex(true); }
 	
-	void setEvent(uint8_t eventId, void (*procedure)(), bool enabled = true);
+	void setEvent(uint8_t eventId, Callable * callback, bool enabled = true);
+	void setEvent(uint8_t eventId, void (*callbackProcedure)(), bool enabled = true);
 	
-	inline void setEvent(uint8_t button, bool up_or_down, void (*procedure)(), bool enabled = true){
-		setEvent(makeEvent(button,up_or_down), procedure, enabled);
+	template <typename T>
+	inline void setEvent(uint8_t button, bool up_or_down, T callback, bool enabled = true){
+		setEvent(makeEvent(button,up_or_down), callback, enabled);
 	}
 		/* set all event handlers the same function */
-	inline void setEvent(void (*procedure)(), bool enabled = true){
-		for (uint8_t i = 0; i<10; ++i) setEvent(i, procedure, enabled);
+	template <typename T>
+	inline void setEvent(T callback, bool enabled = true){
+		for (uint8_t i = 0; i<10; ++i) setEvent(i, callback, enabled);
 	}
 	
 		/* it is not recommended to use this function. You should hold your state in your own prg logic*/
-	const event_t& getEvent(uint8_t eventId);
+	//const event_t& getEvent(uint8_t eventId);
 	
 		/* it is not recommended to use this function. You should hold your state in your own prg logic*/
-	inline const event_t& getEvent(uint8_t button, bool up_or_down){
+	/*inline const event_t& getEvent(uint8_t button, bool up_or_down){
 		return getEvent(makeEvent(button,up_or_down));
-	}
+	}*/
 		/* it is not recommended to use this function. You should hold your state in your own prg logic*/
-	inline bool isEnabled(uint8_t eventId){
+	/*inline bool isEnabled(uint8_t eventId){
 		return getEvent(eventId).enable;
-	}
+	}*/
 	
-	void enableEvent(uint8_t eventId);
+	bool enableEvent(uint8_t eventId);
+		// returns true if it could enable, otherwise false
 	
 	void disableEvent(uint8_t eventId);
 	
@@ -185,38 +200,99 @@ namespace input {
 		for (uint8_t id = 0; id<10; ++id) enableEvent(id);
 	}
 	
-	inline void enableEventsAll(void (*replacingProcedure)()){
-		setEvent(replacingProcedure, true);
+	template <typename T>
+	inline void enableEventsAll(T callback){
+		setEvent(callback, true);
 	}
 	
 	uint8_t getEventCode();
 	
 }
-
+#ifdef debugxl
 /*********************************************************************************************************************************************************************************************************************/
 class ItemManager;
 
-namespace ItemSelector {
+class ItemSelector {
 	
-	constexpr uint8_t NO_BUTTON {255};
+	/*
+	here the problem of getting non-OOP and OOP together occurs:
+	we need a callback function that we give to input. But Memberfunction cannot be used as callback function.
+	*/
+	public:
 	
-	extern ItemManager* itemManager; // version 1.1 try to change to a reference c++ like <<<<<<<<<
-	extern uint8_t button_okay;
-	extern uint8_t button_next;
-	extern uint8_t button_prev;
+	static constexpr uint8_t NO_BUTTON {255};
+		
+	
+	
+	private:
+	class OkayCall : public Callable {
+		private:
+			ItemSelector* itemSelector;
+			
+		public:
+			OkayCall(ItemSelector* itemSelector){
+				this->itemSelector = itemSelector;
+			}
+			virtual void operator()() override {
+				itemSelector->okay_down();
+			}
+	};
+	
+	class NextCall : public Callable {
+		private:
+		ItemSelector* itemSelector;
+		
+		public:
+		NextCall(ItemSelector* itemSelector){
+			this->itemSelector = itemSelector;
+		}
+		virtual void operator()() override {
+			itemSelector->next();
+		}
+	};
+	
+	class PreviousCall : public Callable {
+		private:
+		ItemSelector* itemSelector;
+		
+		public:
+		PreviousCall(ItemSelector* itemSelector){
+			this->itemSelector = itemSelector;
+		}
+		virtual void operator()() override {
+			itemSelector->previous();
+		}
+	};
+	
+	OkayCall okayCall {this};
+	NextCall nextCall {this};
+	PreviousCall previousCall {this};
+	
+	ItemManager* itemManager {nullptr} ;
+	uint8_t button_okay;
+	uint8_t button_next;
+	uint8_t button_prev;
+	
+	uint8_t ok_pressed;
 	
 	void enableButtons(); /* enable button events (for internal use only) */
 	
 	void setButtonsFree(); /* disable the NEXT, PREVIOUS & OKAY methods associated to the buttons (for internal use only) */
 	
-	void initialisation(uint8_t button_okay, uint8_t button_next, uint8_t button_prev, ItemManager* itemManager); /* init variables, the ItemManager* is just a pointer to an ItemManager. You have to care about construction, destruction yourself */
+	public:
+	
+	ItemSelector(){};
+	
+	void init(uint8_t button_okay, uint8_t button_next, uint8_t button_prev, ItemManager* itemManager); /* init variables, the ItemManager* is just a pointer to an ItemManager. You have to care about construction, destruction yourself */
+	// checkout bevaviour button = 7;
 	
 	inline void finalize(){ /* disable button events (for using programmer) */
 		setButtonsFree();
 	}
-		
+
+	
 	void okay_down(); /* the 'first' okay button event method */
-	void okay_up(); /* the 'second' okay button event method, it also finalize()s the semi-singleton-object */
+	//void okay_up(); /* the 'second' okay button event method, it also finalize()s the semi-singleton-object */
 	
 	void next(); /* the next-button - event method */
 	void previous(); /* the previous-button - event method */
@@ -225,7 +301,7 @@ namespace ItemSelector {
 
 	bool run(); /* method for the user programmer to call to start the selecting engine */
 		/* returns false only if there is no item given and no valid cancel_procedure */
-}
+};
 
 
 
@@ -377,3 +453,5 @@ class ArcProgramItemManager final : public ItemManager {
 
 
 #endif /* F_GUI_H_ */
+
+#endif /* debugxl */
