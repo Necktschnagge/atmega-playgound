@@ -76,9 +76,14 @@ bool input::exec(bool all /* = false */){
 	bool result = false;
 	for(int8_t i = 4; i>=0; --i){
 		if (gchange & (1<<i)){
-			if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable){
-				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].proc != nullptr){
-					inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].proc();
+			if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable > 0){
+				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable == 1){
+					if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackProcedure != nullptr){
+						inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackProcedure();
+					}
+				}
+				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable == 2){
+					(*(inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackObject))();
 				}
 				if (!all) return true;
 				result = true;
@@ -88,15 +93,25 @@ bool input::exec(bool all /* = false */){
 	return result;
 }
 
-void input::setEvent(uint8_t eventId, void (*procedure)(), bool enabled /* = true */){
+void input::setEvent(uint8_t eventId, Callable* callback, bool enabled /* = true */){
 	if ( eventId >= 10 ){
 		// throw error ####
 		return;
 	}
-	inputEvents.buttonEvent[eventId/2][eventId%2].enable = enabled;
-	inputEvents.buttonEvent[eventId/2][eventId%2].proc = procedure;
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * (2*enabled - 1) ;
+	inputEvents.buttonEvent[eventId/2][eventId%2].callbackReference.callbackObject = callback;
 }
 
+void input::setEvent(uint8_t eventId, void (*callbackProcedure)(), bool enabled /* = true */){
+	if ( eventId >= 10 ){
+		// throw error ####
+		return;
+	}
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * enabled -1;
+	inputEvents.buttonEvent[eventId/2][eventId%2].callbackReference.callbackProcedure = callbackProcedure;
+}
+
+/* this should not be used. make your own prg logic
 const input::event_t& input::getEvent(uint8_t eventId){
 	if ( eventId >= 10 ){
 		// throw error ####
@@ -104,13 +119,15 @@ const input::event_t& input::getEvent(uint8_t eventId){
 	}
 	return inputEvents.buttonEvent[eventId/2][eventId%2];
 }
+*/
 
-void input::enableEvent(uint8_t eventId){
+bool input::enableEvent(uint8_t eventId){
 	if ( eventId >= 10 ){
 		// throw error ####
-		return;
+		return false;
 	}
-	inputEvents.buttonEvent[eventId/2][eventId%2].enable = true;
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = abs(inputEvents.buttonEvent[eventId/2][eventId%2].enable);
+	return inputEvents.buttonEvent[eventId/2][eventId%2].enable;
 }
 
 void input::disableEvent(uint8_t eventId){
@@ -118,7 +135,7 @@ void input::disableEvent(uint8_t eventId){
 		// throw error ####
 		return;
 	}
-	inputEvents.buttonEvent[eventId/2][eventId%2].enable = false;
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = - abs(inputEvents.buttonEvent[eventId/2][eventId%2].enable);
 }
 
 
@@ -142,25 +159,16 @@ uint8_t input::getEventCode(){
 }
 
 /****************************************************************************************************************************************************************************************************/
-
-namespace ItemSelector {
-	
-	ItemManager* itemManager = nullptr;
-	
-	uint8_t button_okay = NO_BUTTON;							// number (0~4) of the button to occupy. Out of range arguments will cause unknown behavior
-	uint8_t button_next = NO_BUTTON;
-	uint8_t button_prev = NO_BUTTON;
-}
-
+#ifdef debugxl
 void ItemSelector::enableButtons(){
 	using namespace input;
 	disableEvent(makeEvent(button_okay,BUTTON_UP));
-	setEvent(makeEvent(button_okay,BUTTON_DOWN),ItemSelector::okay_down);
+	setEvent(makeEvent(button_okay,BUTTON_DOWN),&okayCall);
 	disableEvent(makeEvent(button_next,BUTTON_UP));
-	setEvent(makeEvent(button_next,BUTTON_DOWN),ItemSelector::next);
+	setEvent(makeEvent(button_next,BUTTON_DOWN),&nextCall);
 	if (button_prev != NO_BUTTON){
 		disableEvent(makeEvent(button_prev,BUTTON_UP));
-		setEvent(makeEvent(button_prev,BUTTON_DOWN),ItemSelector::previous);
+		setEvent(makeEvent(button_prev,BUTTON_DOWN),&previousCall);
 	}
 }
 
@@ -176,28 +184,33 @@ void ItemSelector::setButtonsFree(){
 	}
 }
 
-void ItemSelector::initialisation(uint8_t button_okay, uint8_t button_next, uint8_t button_prev, ItemManager* itemManager){
+void ItemSelector::init(uint8_t button_okay, uint8_t button_next, uint8_t button_prev, ItemManager* itemManager){
 	ItemSelector::button_okay = button_okay;
 	ItemSelector::button_next = button_next;
 	ItemSelector::button_prev = button_prev;
-	/*
-	ItemSelector::itemManager = itemManager;*/
+	ItemSelector::itemManager = itemManager;
+	ok_pressed = 0;
 }
 
 
 void ItemSelector::okay_down(){
-	using namespace input;
-	setButtonsFree();
-	led::printDotsOnly(0xFF);
-	hardware::delay(300);
-	setEvent(makeEvent(button_okay,BUTTON_UP),okay_up);
+	if (ok_pressed = 0){
+		setButtonsFree();
+		led::printDotsOnly(0xFF);
+		hardware::delay(300);
+		input::setEvent(input::makeEvent(button_okay,input::BUTTON_UP),&ItemSelector::okayCall);
+		ok_pressed = 1;
+	} else {
+		led::printDotsOnly(0x00);
+		itemManager->runItemProcedure();
+		finalize();	
+	}
 }
 
-void ItemSelector::okay_up(){
-	led::printDotsOnly(0x00);
-	itemManager->runItemProcedure();
-	finalize();
-}
+//
+//void ItemSelector::okay_up(){
+	//
+//}
 
 
 void ItemSelector::next(){
@@ -278,3 +291,5 @@ void ArcProgramItemManager::runItemProcedureInternal() {
 		finalProcedure();
 	}
 }
+
+#endif
