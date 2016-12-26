@@ -83,7 +83,7 @@ bool input::exec(bool all /* = false */){
 					}
 				}
 				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable == 2){
-					(*(inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackObject))();
+					inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackObject->operator ()();
 				}
 				if (!all) return true;
 				result = true;
@@ -93,16 +93,19 @@ bool input::exec(bool all /* = false */){
 	return result;
 }
 
-void input::setEvent(uint8_t eventId, Callable* callback, bool enabled /* = true */){
+void input::setEvent(int8_t eventId, Callable* callback, bool enabled /* = true */){
 	if ( eventId >= 10 ){
 		// throw error ####
+		// also case <0 has to be handled.
+		// with constexpr ALL_EVENTS as eventID we should call a for loop
+		// can we put both  versions of this functionk into one by questing the type-param T???
 		return;
 	}
 	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * (2*enabled - 1) ;
 	inputEvents.buttonEvent[eventId/2][eventId%2].callbackReference.callbackObject = callback;
 }
 
-void input::setEvent(uint8_t eventId, void (*callbackProcedure)(), bool enabled /* = true */){
+void input::setEvent(int8_t eventId, void (*callbackProcedure)(), bool enabled /* = true */){
 	if ( eventId >= 10 ){
 		// throw error ####
 		return;
@@ -159,9 +162,9 @@ uint8_t input::getEventCode(){
 }
 
 /****************************************************************************************************************************************************************************************************/
-#ifdef debugxl
-void ItemSelector::enableButtons(){
+void ItemSelector::occupyButtons(){
 	using namespace input;
+	ok_pressed = 0;
 	disableEvent(makeEvent(button_okay,BUTTON_UP));
 	setEvent(makeEvent(button_okay,BUTTON_DOWN),&okayCall);
 	disableEvent(makeEvent(button_next,BUTTON_UP));
@@ -172,74 +175,58 @@ void ItemSelector::enableButtons(){
 	}
 }
 
-void ItemSelector::setButtonsFree(){
+void ItemSelector::freeButtons(){
 	using namespace input;
 	disableEvent(makeEvent(button_okay,BUTTON_DOWN));
 	disableEvent(makeEvent(button_okay,BUTTON_UP));
 	disableEvent(makeEvent(button_next,BUTTON_DOWN));
-	disableEvent(makeEvent(button_next,BUTTON_UP));
+	// disableEvent(makeEvent(button_next,BUTTON_UP)); not needed
 	if (button_prev != NO_BUTTON){
 		disableEvent(makeEvent(button_prev,BUTTON_DOWN));
-		disableEvent(makeEvent(button_prev,BUTTON_UP));
+		// disableEvent(makeEvent(button_prev,BUTTON_UP)); not needed
 	}
 }
 
-void ItemSelector::init(uint8_t button_okay, uint8_t button_next, uint8_t button_prev, ItemManager* itemManager){
+void ItemSelector::init(ItemManager* itemManager, uint8_t button_okay, uint8_t button_next, uint8_t button_prev){
+	ItemSelector::itemManager = itemManager;
 	ItemSelector::button_okay = button_okay;
 	ItemSelector::button_next = button_next;
 	ItemSelector::button_prev = button_prev;
-	ItemSelector::itemManager = itemManager;
-	ok_pressed = 0;
 }
 
-
-void ItemSelector::okay_down(){
-	if (ok_pressed = 0){
-		setButtonsFree();
+void ItemSelector::OkayCall::operator ()() const {
+	using namespace input;
+	if (host->ok_pressed == 0){
+		host->freeButtons();
 		led::printDotsOnly(0xFF);
 		hardware::delay(300);
-		input::setEvent(input::makeEvent(button_okay,input::BUTTON_UP),&ItemSelector::okayCall);
-		ok_pressed = 1;
-	} else {
+		setEvent(makeEvent(host->button_okay,BUTTON_UP),&host->okayCall);
+		host->ok_pressed = 1;
+		} else {
 		led::printDotsOnly(0x00);
-		itemManager->runItemProcedure();
-		finalize();	
+		host->itemManager->runItemProcedure();
+		host->finalize();
 	}
-}
-
-//
-//void ItemSelector::okay_up(){
-	//
-//}
-
-
-void ItemSelector::next(){
-	++(*itemManager);
-	printItem();
-}
-
-void ItemSelector::previous(){
-	--(*itemManager);
-	printItem();
 }
 
 void ItemSelector::printItem(){
 	char label[9];
 	itemManager->getItemLabel(label);
 	label[8] = '\0';
-	led::LFPrintString(label);// this function should also exist with an secound parameter to set the string legth!!!#####
+	led::LFPrintString(label);// this function should also exist with an second parameter to set the string length!!!#####
 }
 
 bool ItemSelector::run(){
 	// no items:
 	if (itemManager->isEmpty()) return false; //<<<<<< throw error
-	enableButtons();
+	occupyButtons();
 	led::LFPrintString("SELECT");
-	hardware::delay(1000);
+	hardware::delay(1000);// <<< this also could be replaced.
 	printItem();
 	return true;
 }
 
+#ifdef debugxl
 
 
 
