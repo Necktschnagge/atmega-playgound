@@ -83,7 +83,7 @@ namespace input {
 	typedef union callback_u* pcallback_t;
 	typedef union callback_u {
 		void (*callbackProcedure)();		// enabled by 1
-		Callable* callbackObject;		// enabled by 2
+		Callable* callbackObject;			// enabled by 2
 		} callback_t;
 	
 	/*
@@ -91,91 +91,61 @@ namespace input {
 	Each stored event handler reference comes with an enable flag
 	case: an event handler is enabled (enable>0):
 		This flag tells whether a callback function or a callback object is used.
-	case: no event handler is enabled (enable <= 0);
+		enable == 1 : C-like function pointer
+		enable == 2	: Pointer to a Callable
+	case: no event handler is enabled (enable <= 0):
+		enable == 0 : means there is no valid callback.
+		enable == -1: there is a C-like function pointer callback, but disabled
+		enable == -2: there is a Callable* callback, but diabled
+	
+	Notice: In case enable<0 it is possible to just enable the stored callback reference.
+			in case enable == 0 this process is going to fail.
 	*/
 	
-	typedef struct event_s* pevent_t; // struct to hold a pointer to a function and an enable flag
+	typedef struct event_s* pevent_t;
 	typedef struct event_s {
 		callback_t callbackReference;
 		int8_t enable;
 		} event_t;
 	
-	// struct to hold an event array (one event_t for each single-event)	
 	typedef struct event_container_s* p_event_container_t; 
 	typedef struct event_container_s {
 		event_t buttonEvent[5][2];
-		// hidden things shadow events or maybe...
+		// hidden things shadow events or maybe...<<<<<< (is it necessary or senseful????)
 		} event_container_t;
 	
-	extern uint8_t gbutton; // current button state 
+	extern uint8_t gbutton; // current button state
 	extern uint8_t gchange; // current button changes (difference between gbutton and gbutton @ before)
 	extern event_container_t inputEvents; // events to be executed when someone calls exec
 	
-	inline void init(){ /* init input pins of controller and variables of this library */
-		DDRA  &= 0b00000111; // set all inputs (should be so before) <<<<< test via reading register
-		PORTA |= 0b11111000; // activate pull up resistors
-		gbutton = 0;
-		gchange = 0;
-		//disableEvents();###
-	}
+	/*	activate the input pins of the controller,
+		init the event array by setting all events disabled
+		*/
+	inline void init();
 	
-	inline int8_t makeEvent(uint8_t button, bool up_or_down){ /* return the int code of a given event */
+	//	returns the event id of the given event description
+	inline int8_t makeEvent(uint8_t button, bool up_or_down){
 		return 2*button+up_or_down;
 	}
 	
-	//int8_t getEventOld();/* returns a code of the last recognized event */
-		///* returns  (-1) if there were more than one button state changes		(getEvent_MULTI_CHANGE)	*/
-		///* returns  (10) if there was no event recognized						(getEvent_NO_CHANGE)	*/
-		///* returns  changed_button * 2 + (0 if released | 1 if pressed)				*/
-	//
-	//void fetchEvents(); /* update the gbutton and gchange, call event method in inpuEvents */
-	//
-	//
-	//void enableEventOld(uint8_t buttonEvent, void (*procedure)()); /* set a single button event */
-	//
-	//inline void guiInputEnableAll(void (*proc)()){ /* set all button events to the same handler function */
-		//for(uint8_t i = 0; i<10; ++i) enableEventOld(i,proc);
-	//}
+	/*	Update the stored values about the button configuration
 	
-	//inline void disableEventOld(uint8_t buttonEvent){ /* disable a single button event */
-	//	inputEvents.buttonEvent[buttonEvent/2][buttonEvent%2].enable = false;
-	//}
-	
-	//void disableEvents(); /* disable all button events */	
-	
-	/// refactor:::
-	/*
-	readInput()
-	exec();
-	execOne(); // executes only one event
-	execAll(); // executes all events
-	
-	rex()
-	rexOne(); // read and execute one event
-	rexAll(), // read and execute all events
-	
-	setEvent(event-id, procedure, enabled = true)
-	getEvent(event-id) returns the event_t structure
-	
-	isEnabled(event_id)
-	enableEvent(event-id) returns event from get event
-	disableEvent(event-id) 
-	
-	
-	
+		in details:
+		read the 5 button states
+		update gbutton (containing the button states at reading time)
+		update gchange (containing the difference between last button state and current)
+		returns true if and only if any button changed <=> gchange!=0
 	*/
-		/* read the 5 button states
-			update gbutton (containing the button states at reading time)
-			update gchange (containing the difference between last button state and current)
-			returns true if and only if any button changed <=> gchange!=0
-			*/
 	bool readInput();
 	
-		/*	if you set all = false (default):
+	/*	This function executes enabled and event handlers that match with the ocurred event(s)
+		For details, see this:
+		
+		if you set all = false (default):
 			case "true":
 				execute one and only one event handler method:
-				constraints: the executed event handler function ptr must be non-nullptr,
-				enable must be true, the event happened
+				constraints: (the executed event handler function ptr is non-nullptr ||
+				reference is a Callable*) && (enable must be "true") && (the event occurred)
 				
 				order: button 4 > button 3 > .. > button 0; event of higher button comes first.
 				returns true
@@ -184,35 +154,44 @@ namespace input {
 				there is no event function that can be executed (unsatisfied constraints)
 				no  function is called.
 				returns false
+			
 			be careful: if you hold and event with proc == nullptr, enabled == true and the event happened.
 			This event counts as the one event which was executed, despite no handler function is called at all.
-			
-			if you set all = true:
-				you should know exactly what you're doing if you use this.
-				exec will run the handler functions which have to be runned in the order as shown above.
-				returns true if there was at least one enabled event to run.
-				
-				using this case when you don't know what you can be dangerous
-				because e.g. one handler function might change the event handler container,
-				so different events are executed, not the original ones.
-		*/
-	bool exec(bool all = false);
 		
+		if you set all = true:
+			you should know exactly what you're doing if you use this.
+			exec will run the handler functions which have to be run in the order as shown above.
+			returns true if there was at least one enabled event which occurred.
+			
+			using this case when you don't know what you can be dangerous
+			because e.g. one handler function might change the event handler container,
+			so different events are executed, not the original ones.
+	*/
+	bool exec(bool all = false);
+	
+	//	exec(false);
+	//	see description of exec
 	inline bool execOne(){	return exec(false); }
 	
+	//	exec(true);
+	//	see description of exec
 	inline bool execAll(){	return exec(true); 	}
 	
-		/* readInput and exec(argument) */
-	inline bool rex(bool all = false){
-		readInput();
-		return exec(all);
-	}
+	//	macro to do:
+	//		readInput()
+	//		return exec( [your_argument] )
+	inline bool rex(bool all = false){	readInput();	return exec(all);	}
 	
+	//	rex(false);
+	//	see at rex...
 	inline bool rexOne(){	return rex(false); }
-		
+	
+	//	rex(true);
+	//	see at rex ...
 	inline bool rexAll(){	return rex(true); }
 	
-	void setEvent(int8_t eventId, Callable * callback, bool enabled = true);
+	//	set the reference to call at specified event
+	void setEvent(int8_t eventId, Callable* callback, bool enabled = true);
 	void setEvent(int8_t eventId, void (*callbackProcedure)(), bool enabled = true);
 	
 	template <typename T>
@@ -258,7 +237,10 @@ namespace input {
 	inline void enableEventsAll(T callback){
 		setEvent(callback, true);
 	}
-	
+	/*	returns the eventID of the single button event which occurred in case there was one single event captured
+		if more than one single event occurred, it returns MULTI_CHANGE
+		if there was no event, it returns NO_CHANGE
+		*/
 	uint8_t getEventCode();
 	
 }
