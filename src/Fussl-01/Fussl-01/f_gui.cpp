@@ -13,6 +13,15 @@ namespace input {
 	uint8_t gchange;
 	event_container_t inputEvents;
 }
+
+void input::init(){
+	DDRA  &= 0b00000111; // set all inputs (should be so before) <<<<< test via reading register
+	PORTA |= 0b11111000; // activate pull up resistors
+	gbutton = 0;
+	gchange = 0;
+	disableEventsAll();//## with an additional parameter which explicitely says that enable must = 0;
+}
+
 /*
 int8_t input::getEventOld(){ 
 	bool multiEvent{false};								// to mark if there were more than one button state changes
