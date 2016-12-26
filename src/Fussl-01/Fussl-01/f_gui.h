@@ -2,7 +2,7 @@
  * f_gui.h
  *
  * Created: 12.09.2016 10:25:26
- *  Author: F-NET-ADMIN
+ * Author: Maximilian Starke
  */ 
 
 
@@ -18,31 +18,81 @@ class Callable {
 };
 
 namespace input {
-	/* input is like a static object (for java people) which holds the information
+	/* input (for now) is like a static object (for java people) which holds the information
 	which buttons are pressed or released and what changed from last look up*/
+	/* it also stores callbacks in different forms for each single button event
+		that you can use to captivate events for your software */
 	
-	/*		buttons are considered like this:
-			
-			button4 is config menu button; (on the left)
-			button3 is global select button / paging button;
-			button2..0 feature-programmable control keys	
+	
+	/* Buttons:
+	In this version we have 5 hard coded buttons (button0, ... , button4).
+	
+	suggested meanings of the buttons are:
+	button		4		->	global config menu button
+				3		->	page select button
+				2..0	->	programmable buttons for each feature
+	Notice: This is only a suggestion. You don't need to accept this but programming consistently to these
+			suggestions, the controller might be more uniform to use
 	*/
-	
-	/* button number *2 + up_or_down = event_id
-	*/
-	
-	
 	constexpr bool BUTTON_DOWN {1};	// button pressed - event
 	constexpr bool BUTTON_UP {0};	// button released - event
+	/*		
+	Each button event has an unique id (eventID):
 	
-	constexpr int8_t MULTI_CHANGE {-1}; //  more than one button changed it's state
-	constexpr int8_t NO_CHANGE {10};  // no button changed it's state
+		eventID = [buttonNumber] * 2 + [button_state]
+			where button_state is BUTTON_DOWN if the button >was pressed< down and >is now< down, and BUTTON_UP otherwise
+			
+		buttonID is a value 0 .. 9
+		
+		we will talk about a "single button event" if we talk about the changing state of one single button
+	
+	The next values are used for special cases:
+	*/	
+	constexpr int8_t MULTI_CHANGE {-1};					// more than one button changed it's state
+	constexpr int8_t NO_CHANGE {10};					// no button changed it's state
+	constexpr int8_t MULTI_EVENT = MULTI_CHANGE;		// more than one single button event occurred
+	
+	/*
+	Event handles:
+	You need some callbacks to get your intended code executed when the related event occurred.
+	for callback references input supports two kinds of callbacks:
+		1.:	The (non object orientated) callback function pointer:
+					void (*callbackFunction)();
+					You can  give input a pointer to your void-terminated function to call on event.
+					The functions doesn't get any arguments when called.
+					(Hint: You can get additional information by using getEventCode() or gbutton, gchange)
+		2.:	The (object orientated) callback objects:
+					Callable* callbackObject;
+					You can give input a pointer to a object of a class
+					derived from Callable (defined in this library)
+					The (virtual) method operator() will be called when the event occurs.
+					operator() takes no arguments and returns in void such as in case (1)
+		
+		Notice: In C++ it is not possible to use a simple (C-like) callback function pointer in order to
+				point to a member function of some object. If you use class members you should use (2).
+				In other cases it might be better to use C-like function pointers to not pollute µC memory.
+				If you only want to point to static (class) methods there won't be any problem with using (1).
+				
+	You can always use only one of both kinds of callbacks for each single button event
+	but you can change this decision anytime you want.
+	Different buttons may have different kinds of callbacks at the same time.
+	
+	In order to this behavior callbacks are nested in a union to save bytes of RAM
+	*/
 	
 	typedef union callback_u* pcallback_t;
 	typedef union callback_u {
 		void (*callbackProcedure)();		// enabled by 1
 		Callable* callbackObject;		// enabled by 2
 		} callback_t;
+	
+	/*
+	
+	Each stored event handler reference comes with an enable flag
+	case: an event handler is enabled (enable>0):
+		This flag tells whether a callback function or a callback object is used.
+	case: no event handler is enabled (enable <= 0);
+	*/
 	
 	typedef struct event_s* pevent_t; // struct to hold a pointer to a function and an enable flag
 	typedef struct event_s {
@@ -221,7 +271,7 @@ class ItemSelector;
 class ItemManager {
 	
 	private:
-	inline bool onCancelItem(){ /* return wehther the selected item is the cancel item*/
+	inline bool onCancelItem(){ /* return whether the selected item is the cancel item*/
 		return (canCancel()) && (static_cast<uint8_t> (position) == mod()-1);
 	}
 	
@@ -359,6 +409,7 @@ class ItemSelector {
 	
 	void printItem(); /* print the current item label where position is pointing to */
 			///<<<<<< make this function virtual, create a new class for ledline-printing ItemSelectors
+			// you are not supposed to use this. Maybe it could be useful if you build a extern screen saver.
 
 	bool run(); /* method for the user programmer to call to start the selecting engine */
 		/* returns false only if there is no item given and no valid cancel_procedure */
