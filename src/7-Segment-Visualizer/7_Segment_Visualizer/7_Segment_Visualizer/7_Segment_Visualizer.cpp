@@ -98,7 +98,7 @@ std::ostream& operator<< (std::ostream& lop, const Frame& rop) {// draw the fram
 	lop << "<path d=\"m " << (rop.lineWidth / 2) << " " << (rop.lineWidth / 2) << "\" />"; // go south-east to start drawing the frame there;
 	lop << "<path d=\"h " << rop.frameGoRight() << " v " << rop.frameGoDown() <<
 		" h " << (-rop.frameGoRight()) <<
-		" z \" fill=\"transparent\" stoke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
+		" z \" fill=\"transparent\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
 	// draw the frame;
 	lop << "<path d=\"m " << (rop.padding - (rop.lineWidth / 2)) << " " << (rop.padding - (rop.lineWidth / 2)) << "\" />"; // move to upper left corner of segments;
 	lop << rop.segments; // draw the segments;
