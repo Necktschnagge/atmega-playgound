@@ -10,20 +10,33 @@
 #include <string>
 #include <algorithm>
 
+double xxx, yyy;
+
+void setPos(double x, double y) {
+	xxx = x;
+	yyy = y;
+}
+
+uint8_t code;
 
 class Segments {
 public:
-	static constexpr int segmentWidth = 20;
-	static constexpr int innerSideH = 80;
-	static constexpr int innerSideV = innerSideH;
-	static constexpr int cornerSpace = 3;
+	static constexpr double lineWidth = 2;
+	static constexpr double segmentWidth = 20;
+	static constexpr double innerSideH = 80;
+	static constexpr double innerSideV = innerSideH;
+	static constexpr double cornerSpace = 2;
 
+	static std::string color(uint8_t isBlack) {
+		if (isBlack) return std::string("black");
+		return std::string("white");
+	}
 
-	static constexpr int componentWidth() {
+	static constexpr double componentWidth() {
 		return 2 * segmentWidth + innerSideH;
 	}
 
-	static constexpr int componentHeight() {
+	static constexpr double componentHeight() {
 		return 3 * segmentWidth + 2 * innerSideV;
 	}
 
@@ -34,22 +47,97 @@ public:
 
 std::ostream& operator << (std::ostream& lop, const Segments& rop) {
 	// ## insert code
+
+	// segment 0:
+
+	lop << "<path d=\"M " << xxx + rop.cornerSpace + 2 * (rop.lineWidth / 2) << " " << yyy + (rop.componentHeight() / 2);
+	lop << " l " << (rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << -((rop.segmentWidth / 2) - 1 * (rop.lineWidth / 2));
+	lop << " h " << (rop.innerSideH - 2 * rop.cornerSpace);
+	lop << " l " << (rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << ((rop.segmentWidth / 2) - 1 * (rop.lineWidth / 2));
+	lop << " l " << -(rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << ((rop.segmentWidth / 2) - 1 * (rop.lineWidth / 2));
+	lop << " h " << -(rop.innerSideH - 2 * rop.cornerSpace /*- 2 * 2 * (rop.lineWidth / 2)*/);
+	lop << " l " << -(rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << -((rop.segmentWidth / 2) - 1 * (rop.lineWidth / 2));
+	lop << " z \" fill=\"" << rop.color(code & (1 << 0)) << "\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
+
+	// segment 1:
+
+	lop << "<path d=\"M " << xxx + (rop.lineWidth / 2) << " " << yyy + rop.cornerSpace + 2 * (rop.lineWidth / 2);
+	lop << " v " << (rop.componentHeight()/2) - 2 * rop.cornerSpace - 3.5 * (rop.lineWidth / 2);
+	lop << " l " << (rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << -((rop.segmentWidth / 2) - 1 * (rop.lineWidth / 2));
+	lop << " v " << (-(rop.innerSideV - 2 * rop.cornerSpace - 0.5 * (rop.lineWidth/2)));
+	lop << " l " << (-(rop.segmentWidth - 2 * (rop.lineWidth / 2))) << " " << -(rop.segmentWidth - 2 * (rop.lineWidth / 2));
+	lop << " z \" fill=\"" << rop.color(code & (1 << 1)) << "\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
+
+
+	// segment 2:
+	lop << "<path d=\"M " << xxx + rop.cornerSpace + 2 * (rop.lineWidth / 2) << " " << yyy + (rop.lineWidth / 2);
+	lop << " h " << rop.componentWidth() - 2 * rop.cornerSpace - 2 * 2 * (rop.lineWidth / 2);
+	lop << " l " << (-(rop.segmentWidth - 2 * (rop.lineWidth / 2))) << " " << (rop.segmentWidth - 2 * (rop.lineWidth / 2));
+	lop << " h " << (-(rop.innerSideH - 2 * rop.cornerSpace /*- 2 * (rop.lineWidth/2)*/));
+	lop << " l " << (-(rop.segmentWidth - 2 * (rop.lineWidth / 2))) << " " << -(rop.segmentWidth - 2 * (rop.lineWidth / 2));
+	lop << " z \" fill=\"" << rop.color(code & (1 << 2)) << "\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
+
+	// segment 3:
+
+	lop << "<path d=\"M " << xxx + rop.componentWidth() - (rop.lineWidth / 2) << " " << yyy + rop.cornerSpace + 2 * (rop.lineWidth / 2);
+	lop << " v " << (rop.componentHeight() / 2) - 2 * rop.cornerSpace - 3.5 * (rop.lineWidth / 2);
+	lop << " l " << -(rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << -((rop.segmentWidth / 2) - 1 * (rop.lineWidth / 2));
+	lop << " v " << (-(rop.innerSideV - 2 * rop.cornerSpace - 0.5 * (rop.lineWidth / 2)));
+	lop << " l " << (rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << -(rop.segmentWidth - 2 * (rop.lineWidth / 2));
+	lop << " z \" fill=\"" << rop.color(code & (1 << 3)) << "\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
+
+	// segment 4:
+
+	lop << "<path d=\"M " << xxx + (rop.lineWidth / 2) << " " << yyy + rop.componentHeight() - rop.cornerSpace - 2 * (rop.lineWidth / 2);
+	lop << " v " << -(rop.componentHeight() / 2) + 2 * rop.cornerSpace + 3.5 * (rop.lineWidth / 2);
+	lop << " l " << (rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << ((rop.segmentWidth / 2) - 1 * (rop.lineWidth / 2));
+	lop << " v " << (rop.innerSideV - 2 * rop.cornerSpace - 0.5 * (rop.lineWidth / 2));
+	lop << " l " << (-(rop.segmentWidth - 2 * (rop.lineWidth / 2))) << " " << (rop.segmentWidth - 2 * (rop.lineWidth / 2));
+	lop << " z \" fill=\"" << rop.color(code & (1 << 4)) << "\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
+
+	// segment 5:
+	lop << "<path d=\"M " << xxx + rop.cornerSpace + 2 * (rop.lineWidth / 2) << " " << yyy + rop.componentHeight() - (rop.lineWidth / 2);
+	lop << " h " << rop.componentWidth() - 2 * rop.cornerSpace - 2 * 2 * (rop.lineWidth / 2);
+	lop << " l " << (-(rop.segmentWidth - 2 * (rop.lineWidth / 2))) << " " << -(rop.segmentWidth - 2 * (rop.lineWidth / 2));
+	lop << " h " << (-(rop.innerSideH - 2 * rop.cornerSpace /*- 2 * (rop.lineWidth/2)*/));
+	lop << " l " << (-(rop.segmentWidth - 2 * (rop.lineWidth / 2))) << " " << (rop.segmentWidth - 2 * (rop.lineWidth / 2));
+	lop << " z \" fill=\"" << rop.color(code & (1 << 5)) << "\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
+
+	// segment 6:
+
+	lop << "<path d=\"M " << xxx + rop.componentWidth() - (rop.lineWidth / 2) << " " << yyy + rop.componentHeight() - rop.cornerSpace - 2 * (rop.lineWidth / 2);
+	lop << " v " << -((rop.componentHeight() / 2) - 2 * rop.cornerSpace - 3.5 * (rop.lineWidth / 2));
+	lop << " l " << -(rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << ((rop.segmentWidth / 2) - 1 * (rop.lineWidth / 2));
+	lop << " v " << (rop.innerSideV - 2 * rop.cornerSpace - 0.5 * (rop.lineWidth / 2));
+	lop << " l " << (rop.segmentWidth - 2 * (rop.lineWidth / 2)) << " " << (rop.segmentWidth - 2 * (rop.lineWidth / 2));
+	lop << " z \" fill=\"" << rop.color(code & (1 << 6)) << "\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
+
+
 	return lop;
 }
 
 class Circle {
 public:
-	static constexpr int leftPadding = 10;
-	static constexpr int topPadding = 190;
-	static constexpr int radius = 40;
-	static constexpr int lineWidth = 2;
+	static constexpr double leftPadding = 10;
+	static constexpr double topPadding = 190;
+	static constexpr double radius = 20;
+	static constexpr double lineWidth = 2;
 
-	static constexpr int componentWidth() {
-		return leftPadding + radius;
+	static std::string dotText() {
+		if (code & (1 << 7)) {
+			return std::string("black");
+		}
+		else {
+			return std::string("white");
+		}
 	}
 
-	static constexpr int componentHeight() {
-		return topPadding + radius;
+	static constexpr double componentWidth() {
+		return leftPadding + 2*radius;
+	}
+
+	static constexpr double componentHeight() {
+		return topPadding + 2*radius;
 	}
 
 	friend std::ostream& operator<< (std::ostream& lop, const Circle& rop);
@@ -58,9 +146,8 @@ public:
 
 
 std::ostream& operator<< (std::ostream& lop, const Circle& rop) {
-	lop << "<path d=\"m " << rop.leftPadding << " " << rop.topPadding << "\" />"; // move to upper right corner of inner "circle container";
-	lop << "<circle cx=\"" << (rop.radius / 2) << "\" cy=\"" << (rop.radius / 2) << "\" r=\"" << (rop.radius) << "\" fill=\"black\" />"; // drwaing the circle;
-	lop << "<path d=\"m " << -rop.leftPadding << " " << -rop.topPadding << "\" />"; // move to upper right corner of circle;
+	lop << "<circle cx=\"" << (xxx + rop.leftPadding + rop.radius) << "\" cy=\"" << (yyy + rop.topPadding + rop.radius) << "\" r=\"" << (rop.radius);
+	lop << "\" fill=\"" << rop.dotText() << "\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />"; // drwaing the circle;
 	return lop;
 }
 
@@ -68,25 +155,25 @@ std::ostream& operator<< (std::ostream& lop, const Circle& rop) {
 class Frame {
 public:
 
-	static constexpr int lineWidth = 2;
-	static constexpr int padding = 10;
+	static constexpr double lineWidth = 2;
+	static constexpr double padding = 10;
 
 	static constexpr Segments segments{};
 	static constexpr Circle circle{};
 
-	static constexpr int componentWidth() {
+	static constexpr double componentWidth() {
 		return 2 * padding + segments.componentWidth() + circle.componentWidth();
 	}
 
-	static constexpr int componentHeight() {
+	static constexpr double componentHeight() {
 		return 2 * padding + std::max(segments.componentHeight(), circle.componentHeight());
 	}
 
-	static constexpr int frameGoRight() {
+	static constexpr double frameGoRight() {
 		return componentWidth() - 2 * (lineWidth / 2);
 	}
 
-	static constexpr int frameGoDown() {
+	static constexpr double frameGoDown() {
 		return componentHeight() - 2 * (lineWidth / 2);
 	}
 
@@ -95,16 +182,17 @@ public:
 };
 
 std::ostream& operator<< (std::ostream& lop, const Frame& rop) {// draw the frame and the 2 components rigth from current cursor position and end at the same curos position
-	lop << "<path d=\"m " << (rop.lineWidth / 2) << " " << (rop.lineWidth / 2) << "\" />"; // go south-east to start drawing the frame there;
-	lop << "<path d=\"h " << rop.frameGoRight() << " v " << rop.frameGoDown() <<
+	lop << "<path d=\"M " << xxx+(rop.lineWidth / 2) << " " << yyy+(rop.lineWidth / 2); // go south-east to start drawing the frame there;
+	lop << " h " << rop.frameGoRight() << " v " << rop.frameGoDown() <<
 		" h " << (-rop.frameGoRight()) <<
-		" z \" fill=\"transparent\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />";
-	// draw the frame;
-	lop << "<path d=\"m " << (rop.padding - (rop.lineWidth / 2)) << " " << (rop.padding - (rop.lineWidth / 2)) << "\" />"; // move to upper left corner of segments;
+		" z \" fill=\"transparent\" stroke=\"black\" stroke-width=\"" << rop.lineWidth << "\" />"; // draw the frame;
+
+	setPos(xxx + rop.padding, yyy + rop.padding);
 	lop << rop.segments; // draw the segments;
-	lop << "<path d=\"m " << rop.segments.componentWidth() << " 0\" />"; // move to upper left corner of circle;
+	setPos(xxx + rop.segments.componentWidth(), yyy);
 	lop << rop.circle; // draw the circle;
-	lop << "<path d=\"m " << (-rop.segments.componentWidth() - rop.padding) << " " << (-rop.padding) << "\" />"; // move to upper left corner of frame;
+	setPos(xxx - rop.padding - rop.segments.componentWidth(), yyy - rop.padding);
+
 	return lop;
 }
 
@@ -131,6 +219,8 @@ void writefile() {
 	std::string eof{ "</svg>" };
 
 	output << header;
+	code = 0b01010111;
+	setPos(0, 0);
 	output << frame;
 	output << eof;
 	output.close();
