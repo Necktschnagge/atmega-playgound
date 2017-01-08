@@ -3,7 +3,8 @@
 
 #include "stdafx.h"
 
-
+#include <sstream>
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <stdint.h>
@@ -196,14 +197,31 @@ std::ostream& operator<< (std::ostream& lop, const Frame& rop) {// draw the fram
 	return lop;
 }
 
-void writefile() {
-	std::fstream output;
-	output.open("output.svg", std::ios::out);//## change name of file
+std::fstream& prepareFile(std::string filename) {
+	static std::fstream output;
+	output.open(filename + ".svg", std::ios::out);//## change name of file
+	
+	std::string header = R"xxx(<?xml version="1.0" standalone="no"?>)xxx";
+	return output;
+}
 
+void finalizeFile(std::fstream& stream) {
+	stream.close();
+}
+
+
+
+void writesvg(/*std::ostream& output, std::string filename, uint8_t signCode*/) {
+	std::fstream output;
+	output.open("out.svg", std::ios::out);//## change name of file
+	
 	constexpr Frame frame;
-	std::string header = R"xxx(<?xml version="1.0" standalone="no"?>
-				<svg width="
-		)xxx";
+	
+
+	//std::string header;
+
+	std::string header = R"xxx(<?xml version="1.0" standalone="no"?>)xxx";
+	header += R"xxx( <svg width=")xxx";
 	header += std::to_string(frame.componentWidth());
 	header += R"xxx(
 			" height="
@@ -212,14 +230,10 @@ void writefile() {
 	header += R"xxx(
 			" version="1.1" xmlns="http://www.w3.org/2000/svg">
 		)xxx";
-	header += R"xxx(
-			<path d="M 0 0" />
-		)xxx"; // set cursor position at the beginning;
-
 	std::string eof{ "</svg>" };
 
 	output << header;
-	code = 0b01010111;
+	code = 0b01001100; //signCode;
 	setPos(0, 0);
 	output << frame;
 	output << eof;
@@ -227,9 +241,18 @@ void writefile() {
 }
 
 
-int main()
-{	
-	writefile();
-    return 0;
+int main(){
+
+	writesvg();
+	//std::fstream& stream = prepareFile("output");
+	/*
+	for (uint16_t i = 0; i < 256; ++i) {
+		std::stringstream mystream;
+		mystream << std::setfill('0') << std::setw(2) << std::hex << i;
+		std::string result(mystream.str());
+		//writesvg(std::to_string(i), i);####
+	}
+	*/
+	return 0;
 }
 
