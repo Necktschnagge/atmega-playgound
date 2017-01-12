@@ -1,2 +1,6 @@
 # debug directory
 [Dd]ebug/
+
+# other stuff
+*.suo
+*.VC.db
