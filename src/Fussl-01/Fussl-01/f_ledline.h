@@ -45,12 +45,14 @@
 		#error It seems like you use some unknown mutation of several compilers. Checkout f_ledline!
 	#else
 		#define NO_AVR
+		#pragma message("f_ledline: Yo are running Visual Studio with MS Compiler. Only a few part of f_ledline will be compiled for testing purpose.")
 	#endif
 
 #else // No MS compiler (Visual Studio)
 /* working on Atmel Studio with GNUC compiler */
 	#ifdef __GNUC__
 		//#undef NO_AVR // just don't define it.
+		#pragma message("f_ledline: Yo are running AVR Studio with GNUC. The whole f_ledline will be compiled.")
 	#else
 		#error Your compiler seems to be someone f_ledline does not know!
 	#endif
