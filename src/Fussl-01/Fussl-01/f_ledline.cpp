@@ -18,15 +18,14 @@ effective macros:
 		printDigit(), printInt()
 	                                                                     */
 /************************************************************************/
-#define CHARSET_TEST
 
 #include "f_ledline.h" 
 #include <stdlib.h> //needed for abs()
-#ifndef CHARSET_TEST
+#ifndef NO_AVR
 #include "f_hardware.h" // needed for hardware::delay() (busy waiting)
 #include <avr/interrupt.h> // needed for cli()
 #include <avr/pgmspace.h> // needed for pgm_read_byte, etc.
-#endif // !CHARSET_TEST
+#endif // !NO_AVR
 
 
 constexpr uint8_t DOTPOSITION = 7; // dot bit
@@ -39,7 +38,7 @@ static uint64_t _LEDLINE_; // contains the current state which is displayed on t
 
 /* code table for led::signCode() */
 const static uint8_t codeTable[] 
-#ifndef CHARSET_TEST
+#ifndef NO_AVR
 PROGMEM
 #endif
 										//		0		1	2		3	4		5	6		7	8		9	10		11	12		13	14		15	16		17	18		19	20		21	22		23	24		25	26		27	28		29	30		31
@@ -55,7 +54,7 @@ PROGMEM
 									//	[		\	]		^	_		`	{		|	}		~	[127]
 										0x36, 0x43, 0x6C, 0x0E, 0x20, 0x08, 0x27, 0x5A, 0x2D, 0x75, 0x0F};
 
-#ifndef CHARSET_TEST
+#ifndef NO_AVR
 void led::init(const uint8_t lineLength) {
 	DDRA = 0b00000111; // LATCH BIT ::: CLOCK BIT ::: DATA BIT
 	PORTA = 0b11111000;
@@ -107,7 +106,7 @@ void led::pushByteVisible(const uint8_t bitcode){
 	led::pushByte(bitcode);
 	led::latch();
 }
-#endif // !CHARSET_TEST
+#endif // !NO_AVR
 
 bool led::isDotted(const char sign){
 	return (sign & 0b10000000);
@@ -220,17 +219,17 @@ uint8_t led::signCode(const char sign){
 	}
 	code -=33;
 
-#ifndef CHARSET_TEST
+#ifndef NO_AVR
 	return static_cast<uint8_t>( pgm_read_byte(&(codeTable[code]))) ^ (isDotted(sign) * DOTSIGN);
 		// when trusting the explanation on http://www.nongnu.org/avr-libc/user-manual/pgmspace.html this should work properly
 #else
 	return static_cast<uint8_t>(codeTable[code] ^ (isDotted(sign) * DOTSIGN));
 
-#endif // !CHARSET_TEST
+#endif // !NO_AVR
 
 }
 
-#ifndef CHARSET_TEST
+#ifndef NO_AVR
 void led::printSign(const char sign){
 	led::pushByteVisible(led::signCode(sign));
 	// <<<< here we should fix the problem of a new line sign.
@@ -342,4 +341,4 @@ void led::error(const uint16_t code) {
 	SREG = SREG_temporal; // activate interrupts
 						  // <<< is watchdog turned of with cli()?? what behavior do you prefer?
 }
-#endif // !CHARSET_TEST
+#endif // !NO_AVR

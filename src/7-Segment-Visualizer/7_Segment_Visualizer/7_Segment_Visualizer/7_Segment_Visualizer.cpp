@@ -10,10 +10,7 @@
 #include <stdint.h>
 #include <string>
 #include <algorithm>
-
-#define CHARSET_TEST
 #include "../../../Fussl-01/Fussl-01/f_ledline.h"
-//#include "f_ledline.h"
 
 double xxx, yyy;
 

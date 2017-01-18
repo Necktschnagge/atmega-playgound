@@ -34,8 +34,27 @@
 
 */
 
+
 #ifndef F_LEDLINE_H
 #define F_LEDLINE_H
+
+/* We need to distinguish for which target we are compiling. So just do it by switching the compiler. */
+#ifdef _MSC_VER
+/* working on Visual Studio with MS C++ compiler */
+	#ifdef __GNUC__
+		#error It seems like you use some unknown mutation of several compilers. Checkout f_ledline!
+	#else
+		#define NO_AVR
+	#endif
+
+#else // No MS compiler (Visual Studio)
+/* working on Atmel Studio with GNUC compiler */
+	#ifdef __GNUC__
+		//#undef NO_AVR // just don't define it.
+	#else
+		#error Your compiler seems to be someone f_ledline does not know!
+	#endif
+#endif
 
 #include <stdint.h>
 
@@ -43,7 +62,7 @@ namespace led {
 	
 	constexpr char DOT = 0x80 - 0x100;
 	
-#ifndef CHARSET_TEST
+#ifndef NO_AVR
 	void init(uint8_t lineLength);
 		/* make PORT A ready for IO usage and clear the led line */
 		/* set an intern variable to the line length given as argument */
@@ -74,7 +93,7 @@ namespace led {
 	void pushByteVisible(uint8_t bitcode);
 		/* push a byte to the led output stream and update the latch */
 		/* see ledPushByte() (MSB first) */
-#endif // !CHARSET_TEST
+#endif // !NO_AVR
 
 	bool isDotted(char sign);
 		/* returns whether the sign contains an implicit dot or not */
@@ -89,7 +108,7 @@ namespace led {
 		/* in general: returns the byte code to push into the led line to display given character */
 		//<<<<< update description in cpp and copy paste here: the code table must be ready, than please do this
 
-#ifndef CHARSET_TEST
+#ifndef NO_AVR
 	void printSign(char sign);//for user
 		/* (visible) print a sign to the end of the led output */
 	
@@ -134,7 +153,7 @@ namespace led {
 		/* print an error code to the led output, format: ENNN (NNN .. error code) */
 		/* errors 0 .. 99 will cause a delay of a little time (busy waiting)*/
 		/* errors 100 .. 999 will stop the controller activity in an infinite loop */
-#endif // !CHARSET_TEST
+#endif // !NO_AVR
 }
 		
 #endif /* F_LEDLINE_H */
