@@ -11,11 +11,19 @@
 #include <string>
 #include <algorithm>
 
+#define CHARSET_TEST
+#include "../../../Fussl-01/Fussl-01/f_ledline.h"
+//#include "f_ledline.h"
+
 double xxx, yyy;
 
 void setPos(double x, double y) {
 	xxx = x;
 	yyy = y;
+}
+
+inline void chPos(double dx, double dy) {
+	setPos(xxx + dx, yyy + dy);
 }
 
 uint8_t code;
@@ -45,7 +53,7 @@ public:
 
 		/* returns the x-dimension of all 7 bars together */
 	static constexpr double component_width() {
-		return 2 * segmentWidth + innerSideH;
+		return 2 * segmentWidth + innerSideH; // ###debug 40 + 80 = 120
 	}
 
 		/* returns the y-dimension of all 7 bars together */
@@ -140,7 +148,7 @@ public:
 		}
 	}
 
-	static constexpr double component_width() {
+	static constexpr double component_width() { // ##denug 10 + 40 = 50 
 		return leftPadding + 2*radius;
 	}
 
@@ -171,7 +179,7 @@ public:
 	static constexpr Circle circle{};
 
 	static constexpr double component_width() {
-		return 2 * padding + segments.component_width() + circle.component_width();
+		return 2 * padding + segments.component_width() + circle.component_width(); //## debug 2 *10 + 120 + 50
 	}
 
 	static constexpr double component_height() {
@@ -211,10 +219,14 @@ public:
 	// line width of the frame around the label
 	static constexpr double lineWidth = 2;
 	// white space neede for text
-	static constexpr double textSpace = 10;
+	static constexpr double textSpace = 30;
 
 	static constexpr Frame frame{};
 
+	std::string labelText;
+
+	LabledFrame(std::string labelText) : labelText(labelText) {}
+	
 	static constexpr double component_width() {
 		return frame.component_width();
 	}
@@ -237,24 +249,36 @@ public:
 
 std::ostream& operator<< (std::ostream& lop, const LabledFrame& rop) {
 	lop << rop.frame;
-	lop << R"( <path d=" M )" << (rop.lineWidth / 2) << " " << rop.frameToBeginPosition();
+	// Label Frame
+	lop << R"( <path d=" M )" << xxx+(rop.lineWidth / 2) << " " << yyy+rop.frameToBeginPosition();
 	lop << " v " << rop.textSpace;
 	lop << " h " << rop.frameGoRight();
 	lop << " v " << -rop.textSpace;
-	lop << R"(" fill = "transparent" stroke = "black" stroke - width = ")" << rop.lineWidth << "\" />)";
-
+	lop << R"(" fill = "transparent" stroke = "black" stroke-width = ")" << rop.lineWidth << "\" />)";
+	// Label Text
+	lop << R"(	<text y=")" << std::to_string(yyy + rop.frame.component_height() + 20) << R"(" x=")" << xxx + 30;
+	lop << R"(" font-family="Verdana" font-size="20">)" << rop.labelText << "</text>)";
+	
 	return lop;
 }
 
 
 
-std::fstream& prepareFile(std::string filename) {
-	static std::fstream output;
-	output.open(filename + ".svg", std::ios::out);//## change name of file
+void prepareFile(std::fstream& stream, std::string filename) {
+	//static std::fstream output;
+	stream.open(filename + ".svg", std::ios::out);//## change name of file
 	
 	std::string header = R"xxx(<?xml version="1.0" standalone="no"?>)xxx";
-	output << header;
-	return output;
+	header += R"xxx( <svg width=")xxx";
+	header += std::to_string(190 * 11 + 30);
+	header += R"xxx(
+			" height="
+		)xxx";
+	header += std::to_string(280 * 30 + 30);
+	header += R"xxx(
+			" version="1.1" xmlns="http://www.w3.org/2000/svg">
+		)xxx";
+	stream << header;
 }
 
 void finalizeFile(std::fstream& stream) {
@@ -265,30 +289,43 @@ void finalizeFile(std::fstream& stream) {
 
 void writesvg(/*std::ostream& output, std::string filename, uint8_t signCode*/) {
 	std::fstream output;
-	output.open("out.svg", std::ios::out);//## change name of file
+	prepareFile(output, "output");
+	//output.open("out.svg", std::ios::out);//## change name of file
 	
-	constexpr Frame frame;
+	const LabledFrame labFrame {"0x02345"};
+	//std::cout << labFrame.component_width() << std::endl << labFrame.component_height();
+
+
+	std::string header = "";
+
+	//std::string header = R"xxx(<?xml version="1.0" standalone="no"?>)xxx";
 	
-
-	//std::string header;
-
-	std::string header = R"xxx(<?xml version="1.0" standalone="no"?>)xxx";
-	header += R"xxx( <svg width=")xxx";
-	header += std::to_string(frame.component_width());
-	header += R"xxx(
-			" height="
-		)xxx";
-	header += std::to_string(frame.component_height());
-	header += R"xxx(
-			" version="1.1" xmlns="http://www.w3.org/2000/svg">
-		)xxx";
 	std::string eof{ "</svg>" };
 
 	output << header;
 	code = 0b01001100; //signCode;
-	setPos(0, 0);
-	output << frame;
-	output << R"(	<text y=")" << std::to_string(frame.component_height()+ 30 ) << R"(" x="30" font-family="Verdana" font-size="20"> 0x01 </text>)";
+	code = 0;
+
+	//output << R"xxx( <circle cx="205" cy="295" r="5" fill="red" />)xxx";
+
+	setPos(20, 20);
+	uint8_t x = led::signCode('a');
+	for (uint8_t row = 0; row < 26; ++row) {
+		for (uint8_t col = 0; col < 10; ++col) {
+			code = led::signCode(col + 10 * row);
+			output << LabledFrame{ std::to_string(col+10*row) };
+			chPos(labFrame.component_width() + 10, 0);
+		}
+		chPos(10 * -1 * (labFrame.component_width() + 10), labFrame.component_height() + 10);
+
+	}
+	/*
+	output << labFrame;
+	setPos(15, labFrame.component_height() + 15 + 5);
+	output << labFrame;
+	setPos(labFrame.component_width() + 15 + 5 , 15);
+	output << labFrame;
+	*/
 	output << eof;
 	output.close();
 }
@@ -297,6 +334,7 @@ void writesvg(/*std::ostream& output, std::string filename, uint8_t signCode*/) 
 int main(){
 
 	writesvg();
+	//std::cin.get();
 	return 0;
 }
 
