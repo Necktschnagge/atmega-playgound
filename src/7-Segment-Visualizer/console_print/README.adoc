@@ -9,5 +9,5 @@ It has, even if not necessary, no comments.
 
 == Disadvantages:
 
-You need to tap through by typing ENTER again and again.
-The shape of 7Segs is neither kind of pretty nor close to reality.
+- You need to tap through by typing ENTER again and again.
+- The shape of 7Segs is neither kind of pretty nor close to reality.
