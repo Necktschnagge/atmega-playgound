@@ -41,8 +41,9 @@
 
 namespace led {
 	
-	constexpr char DOT = 0x80;
+	constexpr char DOT = 0x80 - 0x100;
 	
+#ifndef CHARSET_TEST
 	void init(uint8_t lineLength);
 		/* make PORT A ready for IO usage and clear the led line */
 		/* set an intern variable to the line length given as argument */
@@ -73,7 +74,8 @@ namespace led {
 	void pushByteVisible(uint8_t bitcode);
 		/* push a byte to the led output stream and update the latch */
 		/* see ledPushByte() (MSB first) */
-	
+#endif // !CHARSET_TEST
+
 	bool isDotted(char sign);
 		/* returns whether the sign contains an implicit dot or not */
 	
@@ -86,7 +88,8 @@ namespace led {
 	uint8_t signCode(char sign);
 		/* in general: returns the byte code to push into the led line to display given character */
 		//<<<<< update description in cpp and copy paste here: the code table must be ready, than please do this
-		
+
+#ifndef CHARSET_TEST
 	void printSign(char sign);//for user
 		/* (visible) print a sign to the end of the led output */
 	
@@ -131,6 +134,7 @@ namespace led {
 		/* print an error code to the led output, format: ENNN (NNN .. error code) */
 		/* errors 0 .. 99 will cause a delay of a little time (busy waiting)*/
 		/* errors 100 .. 999 will stop the controller activity in an infinite loop */
+#endif // !CHARSET_TEST
 }
 		
 #endif /* F_LEDLINE_H */

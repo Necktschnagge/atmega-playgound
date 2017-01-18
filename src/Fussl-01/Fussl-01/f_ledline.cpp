@@ -18,13 +18,16 @@ effective macros:
 		printDigit(), printInt()
 	                                                                     */
 /************************************************************************/
-
+#define CHARSET_TEST
 
 #include "f_ledline.h" 
 #include <stdlib.h> //needed for abs()
+#ifndef CHARSET_TEST
 #include "f_hardware.h" // needed for hardware::delay() (busy waiting)
 #include <avr/interrupt.h> // needed for cli()
 #include <avr/pgmspace.h> // needed for pgm_read_byte, etc.
+#endif // !CHARSET_TEST
+
 
 constexpr uint8_t DOTPOSITION = 7; // dot bit
 constexpr uint8_t DOTSIGN = 1<<DOTPOSITION; // use pushByte to push an only-dot
@@ -35,9 +38,14 @@ static uint64_t _LEDLINE_; // contains the current state which is displayed on t
 							// functions that modify output have to update this value.
 
 /* code table for led::signCode() */
+const static uint8_t codeTable[] 
+#ifndef CHARSET_TEST
+PROGMEM
+#endif
 										//		0		1	2		3	4		5	6		7	8		9	10		11	12		13	14		15	16		17	18		19	20		21	22		23	24		25	26		27	28		29	30		31
 										//		!		"	#		$	%		&	'		(	)		*	+		,	-		.	/		0	1		2	3		4	5		6	7		8	9		:	;		<	=		>	?		@
-const static uint8_t codeTable[] PROGMEM = {   0xC8, 0x0A, 0x7F, 0x6E, 0x99, 0x3F, 0x00, 0x16, 0x4C, 0x2B, 0x49, 0x40, 0x01, 0x80, 0x19, 0x7E, 0x48, 0x3D, 0x6D, 0x4B, 0x67, 0x77, 0x4C, 0x7F, 0x6F, 0x81, 0xC0, 0x39, 0x21, 0x63, 0x9D, 0x5D,
+
+										= {   0xC8, 0x0A, 0x7F, 0x6E, 0x99, 0x3F, 0x00, 0x16, 0x4C, 0x2B, 0x49, 0x40, 0x01, 0x80, 0x19, 0x7E, 0x48, 0x3D, 0x6D, 0x4B, 0x67, 0x77, 0x4C, 0x7F, 0x6F, 0x81, 0xC0, 0x39, 0x21, 0x63, 0x9D, 0x5D,
 	
 									//	32		33	34		35	36		37	38		39	40		41	42		43	44		45	46		47	48		49	50		51	52		53	54		55	56		57
 									//	A		B	C		D	E		F	G		H	I		J	K		L	M		N	O		P	Q		R	S		T	U		V	W		X	Y		Z
@@ -47,8 +55,8 @@ const static uint8_t codeTable[] PROGMEM = {   0xC8, 0x0A, 0x7F, 0x6E, 0x99, 0x3
 									//	[		\	]		^	_		`	{		|	}		~	[127]
 										0x36, 0x43, 0x6C, 0x0E, 0x20, 0x08, 0x27, 0x5A, 0x2D, 0x75, 0x0F};
 
-
-void led::init(const uint8_t lineLength){
+#ifndef CHARSET_TEST
+void led::init(const uint8_t lineLength) {
 	DDRA = 0b00000111; // LATCH BIT ::: CLOCK BIT ::: DATA BIT
 	PORTA = 0b11111000;
 	_LEDLINE_ = 0; // comment: is not necessary
@@ -56,17 +64,17 @@ void led::init(const uint8_t lineLength){
 	LINELENGTH = lineLength;
 }
 
-void led::latch(){
+void led::latch() {
 	PORTA = PORTA ^ 0b00000100;
 	PORTA = PORTA ^ 0b00000100;
 }
 
-/*inline*/ void led::clock(){
+/*inline*/ void led::clock() {
 	PORTA = PORTA ^ 0b00000010;
 	PORTA = PORTA ^ 0b00000010;
 }
 
-void led::pushBitIntern(const bool bit){
+void led::pushBitIntern(const bool bit) {
 	PORTA = (PORTA & 0b11111110) | bit;
 	led::clock();
 }
@@ -86,7 +94,7 @@ void led::pushByte(const uint8_t bitcode){
 void led::push64(const uint64_t bitcode){
 	_LEDLINE_ = bitcode;
 	for(int8_t shift = 63; shift >= 0; --shift){
-		led::pushBitIntern(bitcode & (1<<shift));
+		led::pushBitIntern(bitcode & (1LL<<shift));
 	}
 }
 
@@ -99,6 +107,7 @@ void led::pushByteVisible(const uint8_t bitcode){
 	led::pushByte(bitcode);
 	led::latch();
 }
+#endif // !CHARSET_TEST
 
 bool led::isDotted(const char sign){
 	return (sign & 0b10000000);
@@ -210,10 +219,18 @@ uint8_t led::signCode(const char sign){
 		code -= 32;
 	}
 	code -=33;
+
+#ifndef CHARSET_TEST
 	return static_cast<uint8_t>( pgm_read_byte(&(codeTable[code]))) ^ (isDotted(sign) * DOTSIGN);
 		// when trusting the explanation on http://www.nongnu.org/avr-libc/user-manual/pgmspace.html this should work properly
+#else
+	return static_cast<uint8_t>(codeTable[code] ^ (isDotted(sign) * DOTSIGN));
+
+#endif // !CHARSET_TEST
+
 }
 
+#ifndef CHARSET_TEST
 void led::printSign(const char sign){
 	led::pushByteVisible(led::signCode(sign));
 	// <<<< here we should fix the problem of a new line sign.
@@ -303,10 +320,10 @@ void led::printDotsOnly(const uint8_t dotCode){//<<<<<< this function isnt ready
 	pushMemory();
 }
 
-void led::error(const uint16_t code){
+void led::error(const uint16_t code) {
 	//static_assert(LINELENGTH>=4,"The ledError() needs at least 4 led elements!");  <<<<<<<< config c++11
 	// one day we will put this all into a class. the assertion above should be part of the ctor <<<<<<<
-	
+
 	uint8_t SREG_temporal = SREG; // save interrupt state
 	cli();
 	led::clear();
@@ -314,14 +331,15 @@ void led::error(const uint16_t code){
 	hardware::delay(3000);
 	// led::pushByteVisible(0x00); to push a space between 'E' and code
 	if (code < 100) led::printDigit(0);
-	if (code < 10 ) led::printDigit(0);
+	if (code < 10) led::printDigit(0);
 	led::printInt(code, false);
 	hardware::delay(60000);// add some fancy blinking <<<<<<<< /// in some cases it wouldn't be useful to stop evben for 60s. make some flag for that in class later
-	if (code > 99){
+	if (code > 99) {
 		while (1) {
 			led::pushBitIntern(false);// this is only to avoid compiler optimization trashing this infinite loop
 		}
 	}
 	SREG = SREG_temporal; // activate interrupts
-	// <<< is watchdog turned of with cli()?? what behavior do you prefer?
+						  // <<< is watchdog turned of with cli()?? what behavior do you prefer?
 }
+#endif // !CHARSET_TEST
