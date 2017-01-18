@@ -9,3 +9,4 @@
 == Disadvantages:
 - You need to tap through by typing ENTER again and again.
 - The shape of 7Segs is neither kind of pretty nor close to reality.
+- This README is actually bigger than the source code.
