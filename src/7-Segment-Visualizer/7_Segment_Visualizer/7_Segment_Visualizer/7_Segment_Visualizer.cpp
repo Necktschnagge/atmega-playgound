@@ -309,22 +309,24 @@ void writesvg(/*std::ostream& output, std::string filename, uint8_t signCode*/) 
 	uint8_t x = led::signCode('a');
 	for (uint8_t row = 0; row < 26; ++row) {
 		for (uint8_t col = 0; col < 10; ++col) {
-			code = led::signCode(col + 10 * row);
-			output << LabledFrame{ std::to_string(col+10*row) };
+
+			uint8_t index = col + 10 * row;
+			char index_c = index;
+			code = led::signCode(index);
+			std::stringstream ss, ss2;
+			ss2 << index_c;
+			std::cout << ss2.str();
+			//std::cin.get();
+			ss << "0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(index);
+			std::string label = std::to_string(col + 10 * row) + " : " + ss.str() + " : " +std::string(ss2.str());
+			output << LabledFrame{ label };
 			chPos(labFrame.component_width() + 10, 0);
 		}
 		chPos(10 * -1 * (labFrame.component_width() + 10), labFrame.component_height() + 10);
 
 	}
-	/*
-	output << labFrame;
-	setPos(15, labFrame.component_height() + 15 + 5);
-	output << labFrame;
-	setPos(labFrame.component_width() + 15 + 5 , 15);
-	output << labFrame;
-	*/
 	output << eof;
-	output.close();
+	finalizeFile(output);
 }
 
 
