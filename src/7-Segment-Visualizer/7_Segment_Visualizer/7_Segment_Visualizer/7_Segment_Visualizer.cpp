@@ -284,41 +284,48 @@ void finalizeFile(std::fstream& stream) {
 
 
 
-void writesvg(/*std::ostream& output, std::string filename, uint8_t signCode*/) {
+void writesvg() {
 	std::fstream output;
 	prepareFile(output, "output");
-	//output.open("out.svg", std::ios::out);//## change name of file
 	
 	const LabledFrame labFrame {"0x02345"};
-	//std::cout << labFrame.component_width() << std::endl << labFrame.component_height();
-
-
-	std::string header = "";
-
-	//std::string header = R"xxx(<?xml version="1.0" standalone="no"?>)xxx";
-	
 	std::string eof{ "</svg>" };
 
-	output << header;
-	code = 0b01001100; //signCode;
 	code = 0;
 
-	//output << R"xxx( <circle cx="205" cy="295" r="5" fill="red" />)xxx";
-
 	setPos(20, 20);
-	uint8_t x = led::signCode('a');
+	//uint8_t x = led::signCode('a');
+	
 	for (uint8_t row = 0; row < 26; ++row) {
 		for (uint8_t col = 0; col < 10; ++col) {
-
 			uint8_t index = col + 10 * row;
+
+			uint8_t sindex = index;
+
+			sindex = sindex > 127 ? sindex - 128 : sindex;
+
+			char space[2];
+			space[0] = ' ';
+			////##############################################################   go on debugging  HERE !!!! ###############
+			if ((33 <= sindex) && (sindex!=38) && (sindex!=60) && (sindex < 100)) {
+				void * target = &(space[0]);
+				void * source = &sindex;
+				memcpy(target, source, 1);
+			}
+
+
+			space[1] = '\0';
 			char index_c = index;
+
 			code = led::signCode(index);
 			std::stringstream ss, ss2;
 			ss2 << index_c;
-			std::cout << ss2.str();
+			//std::cout << ss2.str();
 			//std::cin.get();
 			ss << "0x" << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(index);
-			std::string label = std::to_string(col + 10 * row) + " : " + ss.str() + " : " +std::string(ss2.str());
+			std::string label = std::to_string(col + 10 * row) + " : " + ss.str() + " : " +std::string(space);// +std::string(ss2.str());
+			//std::cout
+			//label = "abc";
 			output << LabledFrame{ label };
 			chPos(labFrame.component_width() + 10, 0);
 		}
@@ -331,7 +338,7 @@ void writesvg(/*std::ostream& output, std::string filename, uint8_t signCode*/) 
 
 
 int main(){
-
+	//std::cin.get();
 	writesvg();
 	//std::cin.get();
 	return 0;
