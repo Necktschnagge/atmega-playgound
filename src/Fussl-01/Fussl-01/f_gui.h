@@ -32,24 +32,25 @@ namespace input {
 				3		->	page select button
 				2..0	->	programmable buttons for each feature
 	Notice: This is only a suggestion. You don't need to accept this but programming consistently to these
-			suggestions, the controller might be more uniform to use
+			suggestions, the controller might be more uniform (means easier) to use
 	*/
 	constexpr bool BUTTON_DOWN {1};	// button pressed - event
 	constexpr bool BUTTON_UP {0};	// button released - event
+	
 	/*		
 	Each button event has an unique id (eventID):
 	
 		eventID = [buttonNumber] * 2 + [button_state]
-			where button_state is BUTTON_DOWN if the button >was pressed< down and >is now< down, and BUTTON_UP otherwise
+			where button_state is BUTTON_DOWN if the button >was pressed< down and >is now down<, and BUTTON_UP otherwise
 			
-		buttonID is a value 0 .. 9
+		eventID is a value 0 .. 9
 		
 		we will talk about a "single button event" if we talk about the changing state of one single button
 	
 	The next values are used for special cases:
 	*/	
-	constexpr int8_t MULTI_CHANGE {-1};					// more than one button changed it's state
-	constexpr int8_t NO_CHANGE {10};					// no button changed it's state
+	constexpr int8_t MULTI_CHANGE {10};					// more than one button changed it's state
+	constexpr int8_t NO_CHANGE {-1};					// no button changed it's state
 	constexpr int8_t MULTI_EVENT = MULTI_CHANGE;		// more than one single button event occurred
 	
 	/*
@@ -71,10 +72,10 @@ namespace input {
 		Notice: In C++ it is not possible to use a simple (C-like) callback function pointer in order to
 				point to a member function of some object. If you use class members you should use (2).
 				In other cases it might be better to use C-like function pointers to not pollute µC memory.
-				If you only want to point to static (class) methods there won't be any problem with using (1).
+				If you (only) want to point to static (class) methods there won't be any problem with using (1).
 				
 	You can always use only one of both kinds of callbacks for each single button event
-	but you can change this decision anytime you want.
+	but you can change each callback reference including its type of referring anytime you want.
 	Different buttons may have different kinds of callbacks at the same time.
 	
 	In order to this behavior callbacks are nested in a union to save bytes of RAM
@@ -87,7 +88,6 @@ namespace input {
 		} callback_t;
 	
 	/*
-	
 	Each stored event handler reference comes with an enable flag
 	case: an event handler is enabled (enable>0):
 		This flag tells whether a callback function or a callback object is used.
@@ -99,7 +99,7 @@ namespace input {
 		enable == -2: there is a Callable* callback, but diabled
 	
 	Notice: In case enable<0 it is possible to just enable the stored callback reference.
-			in case enable == 0 this process is going to fail.
+			in case enable == 0 this process will be going to fail.
 	*/
 	
 	typedef struct event_s* pevent_t;
@@ -108,18 +108,19 @@ namespace input {
 		int8_t enable;
 		} event_t;
 	
-	typedef struct event_container_s* p_event_container_t; 
-	typedef struct event_container_s {
+	class EventContainer {
+		public:
 		event_t buttonEvent[5][2];
 		// hidden things shadow events or maybe...<<<<<< (is it necessary or senseful????)
-		} event_container_t;
+		};
+	typedef EventContainer* PEventContainer;
 	
 	extern uint8_t gbutton; // current button state
 	extern uint8_t gchange; // current button changes (difference between gbutton and gbutton @ before)
-	extern event_container_t inputEvents; // events to be executed when someone calls exec
+	extern EventContainer inputEvents; // events to be executed when someone calls exec
 	
 	/*	activate the input pins of the controller,
-		init the event array by setting all events disabled
+		init the event array by deleting all events.
 		*/
 	inline void init();
 	
@@ -138,32 +139,41 @@ namespace input {
 	*/
 	bool readInput();
 	
-	/*	This function executes enabled and event handlers that match with the ocurred event(s)
+	/*	This function executes enabled event handlers that match with the occurred event(s).
+		"all" means exec all that occurred. "not all" means exec only one.
 		For details, see this:
 		
+		button order: button 4 > button 3 > .. > button 0; event of higher button comes first.
+
 		if you set all = false (default):
-			case "true":
+			case "true" is returned:
+				The first enabled and occurred event in button order will be treated and only this one.
+				
 				execute one and only one event handler method:
-				constraints: (the executed event handler function ptr is non-nullptr ||
-				reference is a Callable*) && (enable must be "true") && (the event occurred)
+					constraints: (the executed event handler function ptr is non-nullptr ||
+					reference is a non-nullptr Callable*) && (enable must be "true") && (the event occurred)
+				OR
+				treat an enabled but nullptr event:
+					nothing will be executed.
 				
-				order: button 4 > button 3 > .. > button 0; event of higher button comes first.
 				returns true
-				
-			case "false":
-				there is no event function that can be executed (unsatisfied constraints)
+								
+			case "false" is returned:
+				there is no enabled and occurred event (unsatisfied constraints)
 				no  function is called.
 				returns false
 			
-			be careful: if you hold and event with proc == nullptr, enabled == true and the event happened.
+			be careful: if you hold an event with proc == nullptr, enabled == true and the event happened:
 			This event counts as the one event which was executed, despite no handler function is called at all.
 		
 		if you set all = true:
+			!!!WARNING!!!
 			you should know exactly what you're doing if you use this.
 			exec will run the handler functions which have to be run in the order as shown above.
-			returns true if there was at least one enabled event which occurred.
+			returns true if there was at least one enabled event which occurred
+			(even if it was actually not executed because of nullptr).
 			
-			using this case when you don't know what you can be dangerous
+			using this case when you don't know what you do can be dangerous
 			because e.g. one handler function might change the event handler container,
 			so different events are executed, not the original ones.
 	*/
@@ -175,11 +185,14 @@ namespace input {
 	
 	//	exec(true);
 	//	see description of exec
+	//	using this function is not recommended.
 	inline bool execAll(){	return exec(true); 	}
 	
 	//	macro to do:
 	//		readInput()
 	//		return exec( [your_argument] )
+	//		rex(true) is not recommended.
+	//		see exec()
 	inline bool rex(bool all = false){	readInput();	return exec(all);	}
 	
 	//	rex(false);
@@ -188,46 +201,42 @@ namespace input {
 	
 	//	rex(true);
 	//	see at rex ...
+	//	using this function is not recommended.
 	inline bool rexAll(){	return rex(true); }
 	
-	//	set the reference to call at specified event
+	//	set callback reference (Callable*) and enable flag for given eventID
+	// with an illegal eventId it does nothing
 	void setEvent(int8_t eventId, Callable* callback, bool enabled = true);
+	
+	//	set callback reference (function*) and enable flag for given eventID
+	// with an illegal eventId it does nothing
 	void setEvent(int8_t eventId, void (*callbackProcedure)(), bool enabled = true);
 	
+	//	set callback reference and enable flag for given event description
 	template <typename T>
 	inline void setEvent(uint8_t button, bool up_or_down, T callback, bool enabled = true){
 		setEvent(makeEvent(button,up_or_down), callback, enabled);
 	}
-		/* set all event handlers the same function */
-		
-	/* this causes ambiguousness
 	
+	/* set all event handlers the same function */
+	/* this causes ambiguousness */ //##check this description, I renamed this from setEvent to ..all
 	template <typename T>
-	inline void setEvent(T callback, bool enabled = true){
+	inline void setEventsAll(T callback, bool enabled = true){
 		for (uint8_t i = 0; i<10; ++i) setEvent(i, callback, enabled);
 	}
-	*/
-	
-		/* it is not recommended to use this function. You should hold your state in your own prg logic*/
-	//const event_t& getEvent(uint8_t eventId);
-	
-		/* it is not recommended to use this function. You should hold your state in your own prg logic*/
-	/*inline const event_t& getEvent(uint8_t button, bool up_or_down){
-		return getEvent(makeEvent(button,up_or_down));
-	}*/
-		/* it is not recommended to use this function. You should hold your state in your own prg logic*/
-	/*inline bool isEnabled(uint8_t eventId){
-		return getEvent(eventId).enable;
-	}*/
 	
 	bool enableEvent(uint8_t eventId);
 		// returns true if it could enable, otherwise false
 	
-	void disableEvent(uint8_t eventId);
+	void disableEvent(uint8_t eventId, bool deleting = false);
 	
-	inline void disableEventsAll(){
-		for (uint8_t id = 0; id<10; ++id) disableEvent(id);
+	inline void disableEventsAll(bool deleting = false){
+		for (uint8_t id = 0; id<10; ++id) disableEvent(id, deleting);
 	}
+	
+	inline void deleteEvent(uint8_t eventId) {disableEvent(eventId);}
+	
+	inline void deleteEventsAll() {disableEventsAll(true);}
 	
 	inline void enableEventsAll(){
 		for (uint8_t id = 0; id<10; ++id) enableEvent(id);
