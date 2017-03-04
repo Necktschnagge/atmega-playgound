@@ -1,4 +1,4 @@
 # debug directory
 [Dd]ebug/
 Debug/
-Makefile
+*Makefile
