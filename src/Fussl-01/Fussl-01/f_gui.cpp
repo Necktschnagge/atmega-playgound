@@ -11,7 +11,7 @@
 namespace input {
 	uint8_t gbutton;
 	uint8_t gchange;
-	event_container_t inputEvents;
+	EventContainer inputEvents;
 }
 
 void input::init(){
@@ -19,62 +19,11 @@ void input::init(){
 	PORTA |= 0b11111000; // activate pull up resistors
 	gbutton = 0;
 	gchange = 0;
-	disableEventsAll();//## with an additional parameter which explicitely says that enable must = 0;
+	deleteEventsAll();
 }
-
-/*
-int8_t input::getEventOld(){ 
-	bool multiEvent{false};								// to mark if there were more than one button state changes
-	constexpr uint8_t _NO_BUTTON_CHANGED_INTERN_ {5};
-	uint8_t button  = {_NO_BUTTON_CHANGED_INTERN_};			// the 'else' value which means there was no event
-	
-	for(uint8_t i = 0; i < 5; ++i){ // iterate through all positions where a button is saved in the global gchange
-		if ((1<<i) & gchange){
-			if (multiEvent) return MULTI_CHANGE;
-			button = i;
-			multiEvent = true;
-		}
-	}
-	if (button == _NO_BUTTON_CHANGED_INTERN_) return NO_CHANGE;
-	return 2*button + !!(gchange & gbutton);
-}
-
-
-void input::fetchEvents(){
-	uint8_t button = 0b00011111 & ((~PINA)>>3); // because input pin signals are negative logic:		HIGH == button released			LOW == button pressed 
-	gchange = gbutton ^ button; // In Previous Line: <<<<< check whether there come ZEROs in when shifting
-	gbutton = button;
-
-	for(int8_t i = 4; i>=0; --i){
-		if (gchange & (1<<i)){	
-			if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable){
-				inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].proc();
-				// delay because of prelling <<<<<<<<<
-				hardware::delay(25);
-			}
-		}
-	}
-}
-
-void input::enableEventOld(uint8_t buttonEvent, void (*procedure)()){
-	if ( buttonEvent >= 10){
-		//## throw error;
-		return;
-	}
-	inputEvents.buttonEvent[buttonEvent/2][buttonEvent%2].enable = true;
-	inputEvents.buttonEvent[buttonEvent/2][buttonEvent%2].proc = procedure;
-}
-
-void input::disableEvents(){
-	for(uint8_t button = 0; button <5; ++button){
-		inputEvents.buttonEvent[button][BUTTON_UP].enable = false;
-		inputEvents.buttonEvent[button][BUTTON_DOWN].enable = false;
-	}
-}
-*/
-/* refactored input stuff */
 
 bool input::readInput(){
+
 	uint8_t button = 0b00011111 & ((~PINA)>>3); // because input pin signals are negative logic:		HIGH == button released			LOW == button pressed
 	gchange = gbutton ^ button; // In Previous Line: <<<<< check whether there come ZEROs in when shifting
 	gbutton = button;
@@ -92,7 +41,9 @@ bool input::exec(bool all /* = false */){
 					}
 				}
 				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable == 2){
-					inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackObject->operator ()();
+					if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackObject != nullptr){
+						inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackObject->operator ()();
+					}
 				}
 				if (!all) return true;
 				result = true;
@@ -103,11 +54,10 @@ bool input::exec(bool all /* = false */){
 }
 
 void input::setEvent(int8_t eventId, Callable* callback, bool enabled /* = true */){
-	if ( eventId >= 10 ){
+	if ( (eventId >= 10) || (eventId < 0) ){ // illegal eventId
 		// throw error ####
-		// also case <0 has to be handled.
 		// with constexpr ALL_EVENTS as eventID we should call a for loop
-		// can we put both  versions of this functionk into one by questing the type-param T???
+		// can we put both  versions of this function into one by questing the type-param T???
 		return;
 	}
 	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * (2*enabled - 1) ;
@@ -115,23 +65,13 @@ void input::setEvent(int8_t eventId, Callable* callback, bool enabled /* = true 
 }
 
 void input::setEvent(int8_t eventId, void (*callbackProcedure)(), bool enabled /* = true */){
-	if ( eventId >= 10 ){
+	if ( (eventId >= 10) || (eventId < 0) ){
 		// throw error ####
 		return;
 	}
 	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * enabled -1;
 	inputEvents.buttonEvent[eventId/2][eventId%2].callbackReference.callbackProcedure = callbackProcedure;
 }
-
-/* this should not be used. make your own prg logic
-const input::event_t& input::getEvent(uint8_t eventId){
-	if ( eventId >= 10 ){
-		// throw error ####
-		eventId = 0;
-	}
-	return inputEvents.buttonEvent[eventId/2][eventId%2];
-}
-*/
 
 bool input::enableEvent(uint8_t eventId){
 	if ( eventId >= 10 ){
@@ -142,7 +82,7 @@ bool input::enableEvent(uint8_t eventId){
 	return inputEvents.buttonEvent[eventId/2][eventId%2].enable;
 }
 
-void input::disableEvent(uint8_t eventId){
+void input::disableEvent(uint8_t eventId, bool deleting){
 	if ( eventId >= 10 ){
 		// throw error ####
 		return;
