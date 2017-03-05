@@ -2,11 +2,18 @@
  * f_gui.cpp
  *
  * Created: 12.09.2016 10:25:46
- *  Author: F-NET-ADMIN
+ *  Author: Maximilian Starke
+ *
+ *	FILE PROGRTESS STATE: see at f_gui.h
+ *
  */ 
 #include <stdlib.h>
 #include "f_gui.h"
 #include "f_ledline.h"
+
+/************************************************************************/
+/* namespace input                                                      */
+/************************************************************************/
 
 namespace input {
 	uint8_t gbutton;
@@ -55,9 +62,6 @@ bool input::exec(bool all /* = false */){
 
 void input::setEvent(int8_t eventId, Callable* callback, bool enabled /* = true */){
 	if ( (eventId >= 10) || (eventId < 0) ){ // illegal eventId
-		// throw error ####
-		// with constexpr ALL_EVENTS as eventID we should call a for loop
-		// can we put both  versions of this function into one by questing the type-param T???
 		return;
 	}
 	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * (2*enabled - 1) ;
@@ -66,38 +70,31 @@ void input::setEvent(int8_t eventId, Callable* callback, bool enabled /* = true 
 
 void input::setEvent(int8_t eventId, void (*callbackProcedure)(), bool enabled /* = true */){
 	if ( (eventId >= 10) || (eventId < 0) ){
-		// throw error ####
 		return;
 	}
 	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * enabled -1;
 	inputEvents.buttonEvent[eventId/2][eventId%2].callbackReference.callbackProcedure = callbackProcedure;
 }
 
-bool input::enableEvent(uint8_t eventId){
-	if ( eventId >= 10 ){
-		// throw error ####
+bool input::enableEvent(int8_t eventId){
+	if ( (eventId >= 10) || (eventId < 0) ){
 		return false;
 	}
 	inputEvents.buttonEvent[eventId/2][eventId%2].enable = abs(inputEvents.buttonEvent[eventId/2][eventId%2].enable);
 	return inputEvents.buttonEvent[eventId/2][eventId%2].enable;
 }
 
-void input::disableEvent(uint8_t eventId, bool deleting){
-	if ( eventId >= 10 ){
-		// throw error ####
+void input::disableEvent(int8_t eventId, bool deleting){
+	if ( (eventId >= 10) || (eventId < 0) ){
 		return;
 	}
-	inputEvents.buttonEvent[eventId/2][eventId%2].enable = - abs(inputEvents.buttonEvent[eventId/2][eventId%2].enable);
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = - abs(inputEvents.buttonEvent[eventId/2][eventId%2].enable) * (deleting == false);
 }
 
-
-uint8_t input::getEventCode(){
-	bool existingEvent{false};								// to mark if there were more than one button state changes
-	constexpr uint8_t _NO_BUTTON_CHANGED_INTERN_ {5};
-	uint8_t button {_NO_BUTTON_CHANGED_INTERN_};			// the 'else' value which means there was no event
+int8_t input::getEventCode(){
+	bool existingEvent{false};				// to mark if there was at least one button state change
 	constexpr uint8_t COUNT_BUTTONS {5};
-		
-	static_assert(_NO_BUTTON_CHANGED_INTERN_ >= COUNT_BUTTONS, "error in programming logic: no_button seems to be a button representation too");
+	uint8_t button {COUNT_BUTTONS};			// illegal value
 		
 	for(uint8_t i = 0; i < COUNT_BUTTONS; ++i){ // iterate through all positions where a button is saved in the global gchange
 		if ((1<<i) & gchange){
@@ -106,33 +103,76 @@ uint8_t input::getEventCode(){
 			existingEvent = true;
 		}
 	}
-	if (button == _NO_BUTTON_CHANGED_INTERN_) return NO_CHANGE;
+	if (!existingEvent) return NO_CHANGE;
 	return 2*button + !!(gchange & gbutton);
 }
 
-/****************************************************************************************************************************************************************************************************/
+/************************************************************************/
+/* ItemSelector                                                         */
+/************************************************************************/
+
+void ItemSelector::OkayCall::operator ()() const {
+	using namespace input;
+	if (host->ok_pressed == 0){
+		host->freeButtons();
+		led::printDotsOnly(0xFF);
+		hardware::delay(300);
+		setEvent(host->button_okay,BUTTON_UP,&host->okayCall);
+		host->ok_pressed = 1;
+		} else {
+		led::printDotsOnly(0x00);
+		host->itemManager->runItemProcedure();
+		host->finalize();
+	}
+}
+
+void ItemSelector::NextCall::operator ()() const {
+	++(*host->itemManager);
+	host->printItem();
+}
+
+void ItemSelector::PreviousCall::operator ()() const {
+	--(*host->itemManager);
+	host->printItem();
+}
+
+bool ItemSelector::isConfigValid(){
+	return
+		(button_okay < 5) &&
+		((button_next < 5) || (button_prev < 5)) &&
+			(
+				(button_next < 5) + (button_next == NO_BUTTON) + (button_prev < 5) + (button_prev == NO_BUTTON) == 2
+			) &&
+		(itemManager != nullptr)
+	;
+}
+
 void ItemSelector::occupyButtons(){
 	using namespace input;
 	ok_pressed = 0;
-	disableEvent(makeEvent(button_okay,BUTTON_UP));
-	setEvent(makeEvent(button_okay,BUTTON_DOWN),&okayCall);
-	disableEvent(makeEvent(button_next,BUTTON_UP));
-	setEvent(makeEvent(button_next,BUTTON_DOWN),&nextCall);
+	deleteEvent(makeEvent(button_okay,BUTTON_UP));
+	setEvent(button_okay,BUTTON_DOWN,&okayCall);
+	if (button_next != NO_BUTTON){
+		deleteEvent(makeEvent(button_next,BUTTON_UP));
+		setEvent(button_next,BUTTON_DOWN,&nextCall,true);
+	}
 	if (button_prev != NO_BUTTON){
-		disableEvent(makeEvent(button_prev,BUTTON_UP));
-		setEvent(makeEvent(button_prev,BUTTON_DOWN),&previousCall);
+		deleteEvent(makeEvent(button_prev,BUTTON_UP));
+		setEvent(button_prev,BUTTON_DOWN,&previousCall,true);
 	}
 }
 
 void ItemSelector::freeButtons(){
 	using namespace input;
-	disableEvent(makeEvent(button_okay,BUTTON_DOWN));
-	disableEvent(makeEvent(button_okay,BUTTON_UP));
-	disableEvent(makeEvent(button_next,BUTTON_DOWN));
-	// disableEvent(makeEvent(button_next,BUTTON_UP)); not needed
+	deleteEvent(makeEvent(button_okay,BUTTON_DOWN));
+	deleteEvent(makeEvent(button_okay,BUTTON_UP));
+	if (button_next != NO_BUTTON){
+		deleteEvent(makeEvent(button_next,BUTTON_DOWN));
+		//disableEvent(makeEvent(button_next,BUTTON_UP)); //not needed because it was disabled when occupying buttons
+	}
 	if (button_prev != NO_BUTTON){
-		disableEvent(makeEvent(button_prev,BUTTON_DOWN));
-		// disableEvent(makeEvent(button_prev,BUTTON_UP)); not needed
+		deleteEvent(makeEvent(button_prev,BUTTON_DOWN));
+		//disableEvent(makeEvent(button_prev,BUTTON_UP)); //not needed
 	}
 }
 
@@ -141,21 +181,7 @@ void ItemSelector::init(ItemManager* itemManager, uint8_t button_okay, uint8_t b
 	ItemSelector::button_okay = button_okay;
 	ItemSelector::button_next = button_next;
 	ItemSelector::button_prev = button_prev;
-}
-
-void ItemSelector::OkayCall::operator ()() const {
-	using namespace input;
-	if (host->ok_pressed == 0){
-		host->freeButtons();
-		led::printDotsOnly(0xFF);
-		hardware::delay(300);
-		setEvent(makeEvent(host->button_okay,BUTTON_UP),&host->okayCall);
-		host->ok_pressed = 1;
-		} else {
-		led::printDotsOnly(0x00);
-		host->itemManager->runItemProcedure();
-		host->finalize();
-	}
+	/* it may not be necessary to check here whether b#########uttons are valid but we need to do sometime */
 }
 
 void ItemSelector::printItem(){
@@ -166,8 +192,9 @@ void ItemSelector::printItem(){
 }
 
 bool ItemSelector::run(){
-	// no items:
-	if (itemManager->isEmpty()) return false; //<<<<<< throw error
+	if (!isConfigValid()) return false;			// no valid buttons / itemManager
+	if (itemManager->isEmpty()) return false;	// no items
+	
 	occupyButtons();
 	led::LFPrintString("SELECT");
 	hardware::delay(1000);// <<< this also could be replaced.
@@ -175,34 +202,32 @@ bool ItemSelector::run(){
 	return true;
 }
 
-#ifdef debugxl
-
-
+/************************************************************************/
+/*  ItemManager                                                         */
+/************************************************************************/
 
 bool ItemManager::runCancelProcedure(){
 	if (canCancel()){
 		cancelProcedure();
-		finalize();
 		return true;
 		} else {
 		return false;
 	}
 }
 
-ItemManager& ItemManager::operator++(){
-	position = (position + 1) % mod();
+ItemManager& ItemManager::operator++(){ // omitting the return value could be better for small RAM ######
+	position = (position + 1) % countItems();
 	return *this;
 }
 
 ItemManager& ItemManager::operator--(){
-	position = (position - 1) % mod();
+	position = (position - 1) % countItems();
 	return *this;
 }
 
 void ItemManager::getItemLabel(char* string_8_bytes){
 	if (onCancelItem()){
-		//## make a Cancel
-		char mystring[] = "CANCEL";
+		char mystring[] = "-CANCEL-";
 		hardware::copyString(string_8_bytes,mystring,8,false);
 		} else {
 		getItemLabelInternal(string_8_bytes);
@@ -211,15 +236,14 @@ void ItemManager::getItemLabel(char* string_8_bytes){
 
 void ItemManager::runItemProcedure(){
 	if (onCancelItem()){
-		runCancelProcedure();
+		cancelProcedure(); // if clause makes calling save
 		} else {
 		runItemProcedureInternal();
 	}
-	finalize();
 }
 
 
-
+#ifdef debugxl
 
 void ArcProgramItemManager::runItemProcedureInternal() {
 	arch::runProgram(position + (!includingOffProgram));
