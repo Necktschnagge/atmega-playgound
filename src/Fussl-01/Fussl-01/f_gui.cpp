@@ -2,70 +2,35 @@
  * f_gui.cpp
  *
  * Created: 12.09.2016 10:25:46
- *  Author: F-NET-ADMIN
+ *  Author: Maximilian Starke
+ *
+ *	FILE PROGRTESS STATE: see at f_gui.h
+ *
  */ 
 #include <stdlib.h>
 #include "f_gui.h"
 #include "f_ledline.h"
 
+/************************************************************************/
+/* namespace input                                                      */
+/************************************************************************/
+
 namespace input {
 	uint8_t gbutton;
 	uint8_t gchange;
-	event_container_t inputEvents;
-}
-/*
-int8_t input::getEventOld(){ 
-	bool multiEvent{false};								// to mark if there were more than one button state changes
-	constexpr uint8_t _NO_BUTTON_CHANGED_INTERN_ {5};
-	uint8_t button  = {_NO_BUTTON_CHANGED_INTERN_};			// the 'else' value which means there was no event
-	
-	for(uint8_t i = 0; i < 5; ++i){ // iterate through all positions where a button is saved in the global gchange
-		if ((1<<i) & gchange){
-			if (multiEvent) return MULTI_CHANGE;
-			button = i;
-			multiEvent = true;
-		}
-	}
-	if (button == _NO_BUTTON_CHANGED_INTERN_) return NO_CHANGE;
-	return 2*button + !!(gchange & gbutton);
+	EventContainer inputEvents;
 }
 
-
-void input::fetchEvents(){
-	uint8_t button = 0b00011111 & ((~PINA)>>3); // because input pin signals are negative logic:		HIGH == button released			LOW == button pressed 
-	gchange = gbutton ^ button; // In Previous Line: <<<<< check whether there come ZEROs in when shifting
-	gbutton = button;
-
-	for(int8_t i = 4; i>=0; --i){
-		if (gchange & (1<<i)){	
-			if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable){
-				inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].proc();
-				// delay because of prelling <<<<<<<<<
-				hardware::delay(25);
-			}
-		}
-	}
+void input::init(){
+	DDRA  &= 0b00000111; // set all inputs (should be so before) <<<<< test via reading register
+	PORTA |= 0b11111000; // activate pull up resistors
+	gbutton = 0;
+	gchange = 0;
+	deleteEventsAll();
 }
-
-void input::enableEventOld(uint8_t buttonEvent, void (*procedure)()){
-	if ( buttonEvent >= 10){
-		//## throw error;
-		return;
-	}
-	inputEvents.buttonEvent[buttonEvent/2][buttonEvent%2].enable = true;
-	inputEvents.buttonEvent[buttonEvent/2][buttonEvent%2].proc = procedure;
-}
-
-void input::disableEvents(){
-	for(uint8_t button = 0; button <5; ++button){
-		inputEvents.buttonEvent[button][BUTTON_UP].enable = false;
-		inputEvents.buttonEvent[button][BUTTON_DOWN].enable = false;
-	}
-}
-*/
-/* refactored input stuff */
 
 bool input::readInput(){
+
 	uint8_t button = 0b00011111 & ((~PINA)>>3); // because input pin signals are negative logic:		HIGH == button released			LOW == button pressed
 	gchange = gbutton ^ button; // In Previous Line: <<<<< check whether there come ZEROs in when shifting
 	gbutton = button;
@@ -76,9 +41,16 @@ bool input::exec(bool all /* = false */){
 	bool result = false;
 	for(int8_t i = 4; i>=0; --i){
 		if (gchange & (1<<i)){
-			if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable){
-				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].proc != nullptr){
-					inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].proc();
+			if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable > 0){
+				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable == 1){
+					if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackProcedure != nullptr){
+						inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackProcedure();
+					}
+				}
+				if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].enable == 2){
+					if (inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackObject != nullptr){
+						inputEvents.buttonEvent[i][!!(gbutton & (1<<i))].callbackReference.callbackObject->operator ()();
+					}
 				}
 				if (!all) return true;
 				result = true;
@@ -88,47 +60,41 @@ bool input::exec(bool all /* = false */){
 	return result;
 }
 
-void input::setEvent(uint8_t eventId, void (*procedure)(), bool enabled /* = true */){
-	if ( eventId >= 10 ){
-		// throw error ####
+void input::setEvent(int8_t eventId, Callable* callback, bool enabled /* = true */){
+	if ( (eventId >= 10) || (eventId < 0) ){ // illegal eventId
 		return;
 	}
-	inputEvents.buttonEvent[eventId/2][eventId%2].enable = enabled;
-	inputEvents.buttonEvent[eventId/2][eventId%2].proc = procedure;
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * (2*enabled - 1) ;
+	inputEvents.buttonEvent[eventId/2][eventId%2].callbackReference.callbackObject = callback;
 }
 
-const input::event_t& input::getEvent(uint8_t eventId){
-	if ( eventId >= 10 ){
-		// throw error ####
-		eventId = 0;
-	}
-	return inputEvents.buttonEvent[eventId/2][eventId%2];
-}
-
-void input::enableEvent(uint8_t eventId){
-	if ( eventId >= 10 ){
-		// throw error ####
+void input::setEvent(int8_t eventId, void (*callbackProcedure)(), bool enabled /* = true */){
+	if ( (eventId >= 10) || (eventId < 0) ){
 		return;
 	}
-	inputEvents.buttonEvent[eventId/2][eventId%2].enable = true;
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = 2 * enabled -1;
+	inputEvents.buttonEvent[eventId/2][eventId%2].callbackReference.callbackProcedure = callbackProcedure;
 }
 
-void input::disableEvent(uint8_t eventId){
-	if ( eventId >= 10 ){
-		// throw error ####
+bool input::enableEvent(int8_t eventId){
+	if ( (eventId >= 10) || (eventId < 0) ){
+		return false;
+	}
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = abs(inputEvents.buttonEvent[eventId/2][eventId%2].enable);
+	return inputEvents.buttonEvent[eventId/2][eventId%2].enable;
+}
+
+void input::disableEvent(int8_t eventId, bool deleting){
+	if ( (eventId >= 10) || (eventId < 0) ){
 		return;
 	}
-	inputEvents.buttonEvent[eventId/2][eventId%2].enable = false;
+	inputEvents.buttonEvent[eventId/2][eventId%2].enable = - abs(inputEvents.buttonEvent[eventId/2][eventId%2].enable) * (deleting == false);
 }
 
-
-uint8_t input::getEventCode(){
-	bool existingEvent{false};								// to mark if there were more than one button state changes
-	constexpr uint8_t _NO_BUTTON_CHANGED_INTERN_ {5};
-	uint8_t button {_NO_BUTTON_CHANGED_INTERN_};			// the 'else' value which means there was no event
+int8_t input::getEventCode(){
+	bool existingEvent{false};				// to mark if there was at least one button state change
 	constexpr uint8_t COUNT_BUTTONS {5};
-		
-	static_assert(_NO_BUTTON_CHANGED_INTERN_ >= COUNT_BUTTONS, "error in programming logic: no_button seems to be a button representation too");
+	uint8_t button {COUNT_BUTTONS};			// illegal value
 		
 	for(uint8_t i = 0; i < COUNT_BUTTONS; ++i){ // iterate through all positions where a button is saved in the global gchange
 		if ((1<<i) & gchange){
@@ -137,123 +103,131 @@ uint8_t input::getEventCode(){
 			existingEvent = true;
 		}
 	}
-	if (button == _NO_BUTTON_CHANGED_INTERN_) return NO_CHANGE;
+	if (!existingEvent) return NO_CHANGE;
 	return 2*button + !!(gchange & gbutton);
 }
 
-/****************************************************************************************************************************************************************************************************/
+/************************************************************************/
+/* ItemSelector                                                         */
+/************************************************************************/
 
-namespace ItemSelector {
-	
-	ItemManager* itemManager = nullptr;
-	
-	uint8_t button_okay = NO_BUTTON;							// number (0~4) of the button to occupy. Out of range arguments will cause unknown behavior
-	uint8_t button_next = NO_BUTTON;
-	uint8_t button_prev = NO_BUTTON;
-}
-
-void ItemSelector::enableButtons(){
+void ItemSelector::OkayCall::operator ()() const {
 	using namespace input;
-	disableEvent(makeEvent(button_okay,BUTTON_UP));
-	setEvent(makeEvent(button_okay,BUTTON_DOWN),ItemSelector::okay_down);
-	disableEvent(makeEvent(button_next,BUTTON_UP));
-	setEvent(makeEvent(button_next,BUTTON_DOWN),ItemSelector::next);
-	if (button_prev != NO_BUTTON){
-		disableEvent(makeEvent(button_prev,BUTTON_UP));
-		setEvent(makeEvent(button_prev,BUTTON_DOWN),ItemSelector::previous);
+	if (host->ok_pressed == 0){
+		host->freeButtons();
+		led::printDotsOnly(0xFF);
+		hardware::delay(300);
+		setEvent(host->button_okay,BUTTON_UP,&host->okayCall);
+		host->ok_pressed = 1;
+		} else {
+		led::printDotsOnly(0x00);
+		host->itemManager->runItemProcedure();
+		host->finalize();
 	}
 }
 
-void ItemSelector::setButtonsFree(){
+void ItemSelector::NextCall::operator ()() const {
+	++(*host->itemManager);
+	host->printItem();
+}
+
+void ItemSelector::PreviousCall::operator ()() const {
+	--(*host->itemManager);
+	host->printItem();
+}
+
+bool ItemSelector::isConfigValid(){
+	return
+		(button_okay < 5) &&
+		((button_next < 5) || (button_prev < 5)) &&
+			(
+				(button_next < 5) + (button_next == NO_BUTTON) + (button_prev < 5) + (button_prev == NO_BUTTON) == 2
+			) &&
+		(itemManager != nullptr)
+	;
+}
+
+void ItemSelector::occupyButtons(){
 	using namespace input;
-	disableEvent(makeEvent(button_okay,BUTTON_DOWN));
-	disableEvent(makeEvent(button_okay,BUTTON_UP));
-	disableEvent(makeEvent(button_next,BUTTON_DOWN));
-	disableEvent(makeEvent(button_next,BUTTON_UP));
+	ok_pressed = 0;
+	deleteEvent(makeEvent(button_okay,BUTTON_UP));
+	setEvent(button_okay,BUTTON_DOWN,&okayCall);
+	if (button_next != NO_BUTTON){
+		deleteEvent(makeEvent(button_next,BUTTON_UP));
+		setEvent(button_next,BUTTON_DOWN,&nextCall,true);
+	}
 	if (button_prev != NO_BUTTON){
-		disableEvent(makeEvent(button_prev,BUTTON_DOWN));
-		disableEvent(makeEvent(button_prev,BUTTON_UP));
+		deleteEvent(makeEvent(button_prev,BUTTON_UP));
+		setEvent(button_prev,BUTTON_DOWN,&previousCall,true);
 	}
 }
 
-void ItemSelector::initialisation(uint8_t button_okay, uint8_t button_next, uint8_t button_prev, ItemManager* itemManager){
+void ItemSelector::freeButtons(){
+	using namespace input;
+	deleteEvent(makeEvent(button_okay,BUTTON_DOWN));
+	deleteEvent(makeEvent(button_okay,BUTTON_UP));
+	if (button_next != NO_BUTTON){
+		deleteEvent(makeEvent(button_next,BUTTON_DOWN));
+		//disableEvent(makeEvent(button_next,BUTTON_UP)); //not needed because it was disabled when occupying buttons
+	}
+	if (button_prev != NO_BUTTON){
+		deleteEvent(makeEvent(button_prev,BUTTON_DOWN));
+		//disableEvent(makeEvent(button_prev,BUTTON_UP)); //not needed
+	}
+}
+
+void ItemSelector::init(ItemManager* itemManager, uint8_t button_okay, uint8_t button_next, uint8_t button_prev){
+	ItemSelector::itemManager = itemManager;
 	ItemSelector::button_okay = button_okay;
 	ItemSelector::button_next = button_next;
 	ItemSelector::button_prev = button_prev;
-	/*
-	ItemSelector::itemManager = itemManager;*/
-}
-
-
-void ItemSelector::okay_down(){
-	using namespace input;
-	setButtonsFree();
-	led::printDotsOnly(0xFF);
-	hardware::delay(300);
-	setEvent(makeEvent(button_okay,BUTTON_UP),okay_up);
-}
-
-void ItemSelector::okay_up(){
-	led::printDotsOnly(0x00);
-	itemManager->runItemProcedure();
-	finalize();
-}
-
-
-void ItemSelector::next(){
-	++(*itemManager);
-	printItem();
-}
-
-void ItemSelector::previous(){
-	--(*itemManager);
-	printItem();
+	/* it may not be necessary to check here whether b#########uttons are valid but we need to do sometime */
 }
 
 void ItemSelector::printItem(){
 	char label[9];
 	itemManager->getItemLabel(label);
 	label[8] = '\0';
-	led::LFPrintString(label);// this function should also exist with an secound parameter to set the string legth!!!#####
+	led::LFPrintString(label);// this function should also exist with an second parameter to set the string length!!!#####
 }
 
 bool ItemSelector::run(){
-	// no items:
-	if (itemManager->isEmpty()) return false; //<<<<<< throw error
-	enableButtons();
+	if (!isConfigValid()) return false;			// no valid buttons / itemManager
+	if (itemManager->isEmpty()) return false;	// no items
+	
+	occupyButtons();
 	led::LFPrintString("SELECT");
-	hardware::delay(1000);
+	hardware::delay(1000);// <<< this also could be replaced.
 	printItem();
 	return true;
 }
 
-
-
+/************************************************************************/
+/*  ItemManager                                                         */
+/************************************************************************/
 
 bool ItemManager::runCancelProcedure(){
 	if (canCancel()){
 		cancelProcedure();
-		finalize();
 		return true;
 		} else {
 		return false;
 	}
 }
 
-ItemManager& ItemManager::operator++(){
-	position = (position + 1) % mod();
+ItemManager& ItemManager::operator++(){ // omitting the return value could be better for small RAM ######
+	position = (position + 1) % countItems();
 	return *this;
 }
 
 ItemManager& ItemManager::operator--(){
-	position = (position - 1) % mod();
+	position = (position - 1) % countItems();
 	return *this;
 }
 
 void ItemManager::getItemLabel(char* string_8_bytes){
 	if (onCancelItem()){
-		//## make a Cancel
-		char mystring[] = "CANCEL";
+		char mystring[] = "-CANCEL-";
 		hardware::copyString(string_8_bytes,mystring,8,false);
 		} else {
 		getItemLabelInternal(string_8_bytes);
@@ -262,15 +236,14 @@ void ItemManager::getItemLabel(char* string_8_bytes){
 
 void ItemManager::runItemProcedure(){
 	if (onCancelItem()){
-		runCancelProcedure();
+		cancelProcedure(); // if clause makes calling save
 		} else {
 		runItemProcedureInternal();
 	}
-	finalize();
 }
 
 
-
+#ifdef debugxl
 
 void ArcProgramItemManager::runItemProcedureInternal() {
 	arch::runProgram(position + (!includingOffProgram));
@@ -278,3 +251,5 @@ void ArcProgramItemManager::runItemProcedureInternal() {
 		finalProcedure();
 	}
 }
+
+#endif

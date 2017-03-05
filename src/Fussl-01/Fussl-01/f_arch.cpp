@@ -264,7 +264,7 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 							  eeprom_read_byte((uint8_t*) ((avrecord->pc+1)% ADDRESSSPACE)),
 							  eeprom_read_byte((uint8_t*) ((avrecord->pc+2)% ADDRESSSPACE))};
 	
-	uint8_t* const reg2 = &(  avrecord->reg[  (instruction[0] & 0b00001100)>>2  ]  );
+	uint8_t* const reg2 = &(  avrecord->reg[  (instruction[0] & 0b00001100)>>2  ]  );/// constexpr ??? <<<<<<
 	uint8_t* const reg3 = &(  avrecord->reg[    (instruction[0] & 0b00000011)   ]  );
 	uint8_t* const reg6 = &(  avrecord->reg[  (instruction[1] & 0b00001100)>>2  ]  );
 	uint8_t* const reg7 = &(  avrecord->reg[    (instruction[1] & 0b00000011)   ]  );
