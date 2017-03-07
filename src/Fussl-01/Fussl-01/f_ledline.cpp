@@ -6,7 +6,8 @@
  */
 
 /************************************************************************/
-/* status:
+/* FILE PROGRESS STATE
+	status:
 	there aren't any known bugs or omissions
 	
 to do:
