@@ -2,8 +2,12 @@
  * f_arch.cpp
  *
  * Created: 01.09.2016 17:38:51
- *  Author: F-NET-ADMIN
+ *  Author: Maximilian Starke
  */ 
+
+/************************************************************************/
+/* FPS must be created                                                                     */
+/************************************************************************/
 
 #ifdef NNNNNNNNN
 // using timer
@@ -23,7 +27,7 @@ OCR1AL = 0x00; // low c byte			8*256 = 2048 // 8 interrupts per second
 
 // please deactivate interrupts
  TCNT1H =  0; // counter starts a zero
- TCNT1L = 0; //  
+ TCNT1L = 0; // 
 
 #endif
 
@@ -32,62 +36,116 @@ OCR1AL = 0x00; // low c byte			8*256 = 2048 // 8 interrupts per second
 #include "f_arch.h"
 
 #include <avr/eeprom.h>
+#define F_CPU 16000000UL// <<<<<
+#include <util/delay.h>
 #include "f_ledline.h" // need for errors
 
 constexpr uint16_t PROGRAMSTART {1024};		// start address of the first FUVM blinking program : points at program1 (program0 is the FLASH hard coded program which turns all led off)
 constexpr uint16_t ADDRESSSPACE {4096};		// = 1<<12
+static_assert(ADDRESSSPACE == 1 << 12, "Address Space Error");
 
 constexpr uint8_t  BUFFERSIZE   {16};
 constexpr uint8_t RECURSIONDEPTH {8};
 
+
+/* activation record = inner state variables of the running program */
 typedef struct savrecord* pavrecord;
 typedef struct savrecord {
-	uint8_t program;		// program number (necessary for jump reference)
-	uint16_t pc;			// program counter = EEPROM address
-	uint8_t returnMatter;
-	uint8_t reg[4];			//refactoring to uint16_t
+	uint8_t program;		// program number (necessary for jump reference) // max 255 programs. + program 0 (off programm)
+	uint16_t pc;			// program counter = EEPROM address of next instruction
+	uint8_t returnMatter;	// returning condition. is set by calling instance
+	uint8_t reg[4];			// four registers
 } tavrecord;
 
+
+/* a buffer where the FUVM should write into. a timer controlled reader has to read it and push to the ledline */
 typedef struct sbuffer* pbuffer;
 typedef struct sbuffer {
 	uint16_t light;
+		// the real light has only 15 bits - the 15 lower bits of light
+		// the MSB of light has to be zero if the tbuffer is supposed to
+		// push the light config and wait for delay * x * ms
+		// set the MSB = 1 to make a delay without changing light
 	uint8_t delay;
+		// delay time.
+		// make a decision what 0 should mean ####
 } tbuffer;
 
+/* one whole configuration of the decoding system */
 typedef struct slight* plight;
 typedef struct slight {
 	tavrecord avrecord[RECURSIONDEPTH];
-	uint8_t ptr; // indexer to avrecord
-	tbuffer buffer[BUFFERSIZE];
-	uint8_t read; // indexer to the position to read from, but check that read != write mod 16
-	uint8_t write; // indexer to the next free buffer element to write, but check that write + 1 != read mod 16
-	bool bufferWait; // set 0, only increase if the buffer is not ready to read to delay reading
+		/* one program can call another as subroutine.
+			program on 1. level is on avrecord[0]
+			next follows on []++
+			*/
+	uint8_t ptr; // indexer to avrecord. current program state
+	
+	tbuffer buffer[BUFFERSIZE]; //global buffer ##### should be more global (I mean not twice present in "state")
+	
+	uint8_t read; // indexer to the position to read next entry from,
+					//but check that read != write mod 16 <=> means the buffer is empty
+					// first read entry, than ptr++
+	uint8_t write; // indexer to the next free buffer element to write,
+					// but check that write + 1 != read mod 16 <=> means ptr is on last free space.
+							// You have to let this free space blind because write and ptr++ would cause a state
+							// where the consumer thinks that he read everything
+					// first write entry, than ptr++
+	bool bufferWait; // set 0, only set to 1 if the buffer is not ready to read.
+					// actors: buffer reader: set 1 if nothing to read and do not tell the time engine to plan the next buffer reader execution
+					//		buffer filler: check if it is 1. if so call the buffer reader once after filling the buffer
+					
 	uint8_t timerCountDown;
+		// what is that var ?????
 } tlight;
+
+/************************************************************************/
+/* BUFFER EDGE SITUATIONS:
+	f... free Buffer cells
+	d... data in cell
+
+	case: empty buffer. reader has nothing to read:
+					  R
+	-------------------------------------
+	| f | f | f | f | f | f | f | f | f | 
+	-------------------------------------
+					  W
+
+	case: full buffer. producer has no space to write
+					  R
+	-------------------------------------
+	| d | d | d | f | d | d | d | d | d |
+	-------------------------------------
+				  W
+
+	                                                                    */
+/************************************************************************/
 
 typedef struct sstate* pstate;
 typedef struct sstate {
 	tlight light;
-	tlight hiddenLight;// used by waking timer;
+	//tlight hiddenLight;// used by waking timer;
 } tstate;
 
 static tstate state;
 
-inline void WaitOnlyBufferPrepare(){
+	/* mark at writing position WAITONLY into light */
+static inline void WaitOnlyBufferPrepare(){
 	state.light.buffer[state.light.write].light = 0x8000;
 }
 
-inline void BufferWriteIndexerInc(){
+	/* buffer write ptr ++ */
+static inline void BufferWriteIndexerInc(){
 	state.light.write = (state.light.write + 1 ) % BUFFERSIZE;
 }
 
-inline void BufferReadIndexerInc(){
+	/* buffer read ptr ++ */
+static inline void BufferReadIndexerInc(){
 	state.light.read = (state.light.read + 1) % BUFFERSIZE;
 }
 
 void arch::runProgram(uint8_t program){// for user
-	/* initialization of avrecord to run given program */
-	//## turn off timer
+	//##### turn off timer (if any program is running it has to be stopped)
 	state.light.ptr = 0;
 	state.light.avrecord[0].returnMatter = 0x00;
 	state.light.avrecord[0].program = program;
@@ -102,20 +160,23 @@ void arch::runProgram(uint8_t program){// for user
 }
 
 void arch::pushBit(bool bit){
-	/* push a bit to the end of the light line */
+	_delay_ms(0.1); // read the docu of delay again #####
 	PORTB = (PORTB & 0b11111110) | bit;
+	_delay_ms(0.1);
 	PORTB ^= 0b00000010;
+	_delay_ms(0.1);
 	PORTB ^= 0b00000010;
+	
 }
 
 void arch::latch(void){
-	/* send a latch signal to the light line */
+	_delay_ms(0.1);
 	PORTB ^= 0b00000100;
+	_delay_ms(0.1);
 	PORTB ^= 0b00000100;
 }
 
-void arch::pushLineVisible(uint16_t line){// for user needing manipulation
-	/* push 16 bit to the light line (MSB first) and make it visible */
+void arch::pushLineVisible(uint16_t line){
 	for(int8_t i = 15; i>=0; --i){
 		arch::pushBit(line & (1<<i));
 	}
@@ -123,9 +184,8 @@ void arch::pushLineVisible(uint16_t line){// for user needing manipulation
 }
 
 void arch::readBuffer(void){
-	/* check whether we can read from the light buffer. if so: execute one buffer entry. if not: set the bufferWait Flag */
 	if (state.light.read!=state.light.write){
-		if (state.light.buffer[state.light.read].light>>15 == 0){
+		if (state.light.buffer[state.light.read].light>>15 == 0){ // when shiftig to the right, zeros come filling the left???
 			arch::pushLineVisible(state.light.buffer[state.light.read].light);
 		}
 		//### set timer = state.light.buffer[state.light.read].delay; after time execute arch::readBuffer
@@ -136,8 +196,7 @@ void arch::readBuffer(void){
 	}
 }
 
-uint8_t arch::instructionLength(const uint8_t firstByte){
-	/* return the length of the instruction in bytes when the first byte is given */
+uint8_t arch::instructionLength(const uint8_t firstByte){// ###please check this.
 	if  (	(firstByte >= (3<<6)) /* ALU Register */
 		||	((firstByte & 0b11110100) == 0b10110100) /* DEC (Register) and WAIT-R */	){	
 		return 1; // 8 bit
@@ -151,15 +210,10 @@ uint8_t arch::instructionLength(const uint8_t firstByte){
 	return 2; // 16 bit (for each other instruction)
 }
 
-uint16_t arch::EEPAddressHelper_(uint8_t program, uint8_t instruction, const bool& counting){
-	/* deprecated for user and high-level-programmer */
-	/* combined calculating of:
-				EEPROM program address (given program ID, instruction of program)		(iff counting==false)
-				program counting	(up to 255)											(iff counting)
-																													*/
+uint16_t arch::EEPAddressHelper_(uint8_t program, uint8_t instruction, const bool counting){
 	uint16_t ptr = PROGRAMSTART;
 	if ((program == 0) && !counting){
-		ptr = EEPNULL;
+		ptr = hardware::EEPNULL;
 		// ledError(3); ## please delete error from manuscript this should be allowed for compatibility
 	} else {
 		// select the program
@@ -172,7 +226,7 @@ uint16_t arch::EEPAddressHelper_(uint8_t program, uint8_t instruction, const boo
 				if (counting){
 					return -program;
 				}
-				led::error(101);
+				led::error(101);// request for non existent program ####
 			}
 			if ((program==0) && counting){
 				led::error(1);
@@ -233,7 +287,7 @@ void arch::programHeaderInterpreter(){
 	if (avrecord->program==0){ // if program 0 is called there is no header to deal with
 		return;
 	}
-	for(uint8_t i = 1; i < 4; ++i){
+	for(uint8_t i = 0; i < 4; ++i){
 		avrecord->reg[i] = eeprom_read_byte((uint8_t*)(avrecord->pc+10+i));
 	}
 	avrecord->pc += 14;
