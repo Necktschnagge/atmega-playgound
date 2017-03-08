@@ -9,27 +9,6 @@
 /* FPS must be created                                                                     */
 /************************************************************************/
 
-#ifdef NNNNNNNNN
-// using timer
-
-//we need to setup the 16 bit timer 
-TCCR1A = 0x00; // we don't use PWM (for creating a specific output signal) and we don't set any output pins
-TCCR1B = 0b00001000; // timer turned off;
-TCCR1B = 0b00001101; // CTC1 must be 1 to set the counter 0 when it reaches the compare value, prescaler is 1024
-
-// 32768 external oscillator for timing clock
-// 16MHz Clock Signal 16
-
-OCR1AH = 0x08; // high comparison byte // only this order first high than low, please deactivate global interrupts before changing
-OCR1AL = 0x00; // low c byte			8*256 = 2048 // 8 interrupts per second
-//OCR1A = 0x0FFF; // directly
-// don't know why there are an a, b , c register
-
-// please deactivate interrupts
- TCNT1H =  0; // counter starts a zero
- TCNT1L = 0; // 
-
-#endif
 
 
 
