@@ -8,23 +8,78 @@
  */
 
 #include "scheduler.h"
+#include <avr/interrupt.h>
 
-//int8_t scheduler::divisions_of_second;
+uint16_t scheduler::divisions_of_second;
 
 ISR (TIMER1_COMPA_vect){
 	/* compare match interrupt routine */
-	
+	++scheduler::divisions_of_second;
+	//### somewhere in update() we need to check  the overflow;
 }
 
-#ifdef debug
-bool scheduler::Time::isLeapYear() const {
+uint8_t Time::month_to_int(Time::Month month){
+	return static_cast<uint8_t>(month) + 1;
+	static_assert(static_cast<uint8_t>(Month::APR) == 3, "Error in month_to_int");
+	static_assert(static_cast<uint8_t>(Month::DEC) == 11,"Error");
+}
+
+Time::Month Time::int_to_month(uint8_t uint8){
+	return static_cast<Time::Month>((uint8 - 1) % 12);
+}
+
+Time::Month& operator++(Time::Month& op){
+	op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 1 % 12);	
+	return op;
+}
+
+constexpr bool Time::isLeapYear(int16_t year){
+	/*
 	if (year % 4)	return false;
 	if (year % 100)	return true;
 	if (year % 400)	return false;
 	return true;
+	*/
+	return (year % 4) ? false : ((year % 100) ? true : ((year % 400) ? false : true ));
 }
 
-scheduler::Time scheduler::now;
+uint8_t Time::getMonthLength(Month month, bool isLeapYear){
+	if (month == Month::FEB) return 28 + isLeapYear;
+	return Time::__monthLength__[static_cast<uint8_t>(month)];
+}
+
+Time& Time::operator++(){
+	++second;
+	if (second == 60){
+		second = 0;
+		++minute;
+	}
+	if (minute == 60){
+		minute = 0;
+		++hour;
+	}
+	if (hour == 24){
+		hour = 0;
+		++day;
+	}
+	if (day == daysOfYear()){
+		day = 0;
+		++year;
+	}
+	return *this;
+}
+
+Time::date_t Time::getDate() const {
+	int16_t rday {day};
+	Month rmonth {Month::JAN};
+	while (rday >= getMonthLength(rmonth)){
+		rday -= getMonthLength(rmonth);
+		++rmonth;
+	}
+	return {rmonth, static_cast<uint8_t>(rday)};
+}
+
+Time scheduler::now;
 
  void scheduler::init(){
 	 /* using 16bit Timer1 */
@@ -52,4 +107,4 @@ scheduler::Time scheduler::now;
 	 sei();	// activate global interrupts
  }
 
-#endif
+
