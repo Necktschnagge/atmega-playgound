@@ -11,7 +11,7 @@
 //#include <time.h>
 #include <stdint.h>
 
-
+/*
 #ifdef NNNNNNNNN
 // using timer
 // 16 bit timer/counter to count the RTC Quartz signal which is 32768 Hz
@@ -41,14 +41,12 @@ TIMSK |= 0b00010000; // data sheet page 138: interrupt enable for Timer1 Compare
 // activate global interrupts !!!
 
 #endif
-
-
+*/
 
 namespace scheduler {
-	
-	extern int8_t divisions_of_second; // ... 0 ... 31 ???
-	
+	/*
 	class Time {
+		
 		public:
 		
 		enum class Month {
@@ -65,6 +63,11 @@ namespace scheduler {
 			NOV = 10,
 			DEC = 11
 		};
+		
+		uint8_t month_to_int(Month month){
+			return static_cast<uint8_t>(month) + 1;
+			static_assert(static_cast<uint8_t>(Month::APR) == 3);
+		}
 		
 		enum class Day {
 			SUN = 0,
@@ -117,7 +120,7 @@ namespace scheduler {
 		int16_t day; // 0 ... 365 / 366
 		int16_t year; 
 
-			/* returns true if this year has 366 days, otherwise false */
+			/* returns true if this year has 366 days, otherwise false 
 		inline bool isLeapYear() const;
 
 		
@@ -158,7 +161,7 @@ namespace scheduler {
 			cday -= 30;
 			if (cday < 31)					return {Month::MAY, ++cday}
 			cday -= 31;
-			if (cday < 30)					
+			//if (cday < 30)					
 			// better is to iterate through an array to calculate this.
 		}
 		
@@ -174,21 +177,20 @@ namespace scheduler {
 			
 		}
 	};
-	typedef Time* PTime;
 	
+	typedef uint16_t SCHEDULE_HANDLE;
+	constexpr uint16_t NO_HANDLER {0};
+	
+	class Priority;
+	
+	extern int8_t divisions_of_second; // ... 0 ... 31 ???
 	extern Time now;
 	
 	void init();
+	*/
+	//SCHEDULE_HANDLE addTimer(void (*function)(), const Time& interval, uint16_t repeat /*, Priority priority*/){return 0;};
 	
-	typedef uint16_t SCHEDULE_HANDLE;
-	
-	constexpr uint16_t NO_HANDLER {0};
-	
-	void getDayOfWeek(){};
-	
-	SCHEDULE_HANDLE addTimer(void (*function)(), const Time& interval, uint16_t repeat, Priority priority){return 0;};
-	
-	bool cancelTimer(SCHEDULE_HANDLE handler){return false;};
+	//bool cancelTimer(SCHEDULE_HANDLE handler){return false;};
 	
 }
 

@@ -9,13 +9,14 @@
 
 #include "scheduler.h"
 
-int8_t scheduler::divisions_of_second;
+//int8_t scheduler::divisions_of_second;
 
 ISR (TIMER1_COMPA_vect){
 	/* compare match interrupt routine */
 	
 }
 
+#ifdef debug
 bool scheduler::Time::isLeapYear() const {
 	if (year % 4)	return false;
 	if (year % 100)	return true;
@@ -23,7 +24,7 @@ bool scheduler::Time::isLeapYear() const {
 	return true;
 }
 
-scheduler::Time scheduler::now();
+scheduler::Time scheduler::now;
 
  void scheduler::init(){
 	 /* using 16bit Timer1 */
@@ -50,5 +51,5 @@ scheduler::Time scheduler::now();
 	 // 32768Hz external oscillator for timing clock
 	 sei();	// activate global interrupts
  }
- 
- 
+
+#endif
