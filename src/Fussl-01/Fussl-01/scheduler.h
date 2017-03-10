@@ -42,152 +42,139 @@ TIMSK |= 0b00010000; // data sheet page 138: interrupt enable for Timer1 Compare
 
 #endif
 */
+namespace month_sring {
+namespace english {
+	const char JAN[] = "January";
+	const char FEB[] = "February";
+	const char MAR[] = "March";
+	const char APR[] = "April";
+	const char MAY[] = "May";
+	const char JUN[] = "June";
+	const char JUL[] = "July";
+	const char AUG[] = "August";
+	const char SEP[] = "September";
+	const char OCT[] = "October";
+	const char NOV[] = "November";
+	const char DEC[] = "December";
+	
+	const char * const months[] {JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC};
+};
+
+namespace german {
+	const char JAN[] = "Januar";
+	const char FEB[] = "Februar";
+	const char MAR[] = "Maerz";
+	const char* const APR = english::APR;
+	const char MAY[] = "Mai";
+	const char JUN[] = "Juni";
+	const char* const JUL = english::JUL;
+	const char* const AUG = english::AUG;
+	const char* const SEP = english::SEP;
+	const char OCT[] = "Oktober";
+	const char* const NOV = english::NOV;
+	const char DEC[] = "Dezember";
+	
+	const char* const months[] {JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC};
+};
+}
+
+class Time {
+	
+	private:
+	
+	static constexpr uint8_t __monthLength__[12] {31,0,31,30,31,30,31,31,30,31,30,31};
+	
+	public:
+	
+	enum class Month : uint8_t {
+		JAN = 0,
+		FEB = 1,
+		MAR = 2,
+		APR = 3,
+		MAY = 4,
+		JUN = 5,
+		JUL = 6,
+		AUG = 7,
+		SEP = 8,
+		OCT = 9,
+		NOV = 10,
+		DEC = 11
+	};
+	
+	enum class Day : uint8_t {
+		SUN = 0,
+		MON = 1,
+		TUE = 2,
+		WED = 3,
+		THU = 4,
+		FRI = 5,
+		SAT = 6,
+	};
+	
+	typedef struct sdate {
+		Month month;
+		uint8_t day;
+	} date_t;
+	
+	int8_t second {0}; // 0 ... 59
+	int8_t minute {0}; // 0 ... 59
+	int8_t hour {0}; // 0 ... 23
+	int16_t day {0}; // 0 ... 365 / 366
+	int16_t year {0};
+		
+		/* constructor */
+	Time(){}
+	
+	uint8_t month_to_int(Month month); // convertion operator ???
+	Month int_to_month(uint8_t uint8);
+	
+		/* returns true if this year has 366 days, otherwise false */
+	inline static constexpr bool isLeapYear(int16_t year);
+	inline bool isLeapYear() const		{	return isLeapYear(this->year);	}
+	
+		/* return the length in days of given month */
+	static uint8_t getMonthLength(Month month, bool isLeapYear);	
+	inline static uint8_t getMonthLength(Month month,int16_t year)	{	return getMonthLength(month,isLeapYear(year));	}
+	inline uint8_t getMonthLength(Month month) const				{	return getMonthLength(month,isLeapYear());		}
+	
+		/* tick forward one second */
+	inline Time& operator++();
+	
+	inline static int16_t daysOfYear(int16_t year)	{	return 365 + isLeapYear(year);	}
+	inline int16_t daysOfYear()						{	return 365 + isLeapYear();		}
+	
+		/* returns current date */
+	date_t getDate() const;
+	
+		/* return current month */
+	inline Month getMonth() {	return getDate().month;	}
+	
+		/* return current day of month */
+	inline uint8_t getDayOfMonth() {	return getDate().day;	}
+	
+	Day getDayOfWeek(){
+		//### please fill in
+		return Day::MON;
+	}
+
+};
+
+Time::Month& operator++(Time::Month& op);
+
 
 namespace scheduler {
-	/*
-	class Time {
-		
-		public:
-		
-		enum class Month {
-			JAN = 0,
-			FEB = 1,
-			MAR = 2,
-			APR = 3,
-			MAY = 4,
-			JUN = 5,
-			JUL = 6,
-			AUG = 7,
-			SEP = 8,
-			OCT = 9,
-			NOV = 10,
-			DEC = 11
-		};
-		
-		uint8_t month_to_int(Month month){
-			return static_cast<uint8_t>(month) + 1;
-			static_assert(static_cast<uint8_t>(Month::APR) == 3);
-		}
-		
-		enum class Day {
-			SUN = 0,
-			MON = 1,
-			TUE = 2,
-			WED = 3,
-			THU = 4,
-			FRI = 5,
-			SAT = 6,
-		};
-		
-		namespace english {
-			static const char* const JAN = "January";
-			static const char* const FEB = "February";
-			static const char* const MAR = "March";
-			static const char* const APR = "April";
-			static const char* const MAY = "May";
-			static const char* const JUN = "June";
-			static const char* const JUL = "July";
-			static const char* const AUG = "August";
-			static const char* const SEP = "September";
-			static const char* const OCT = "October";
-			static const char* const NOV = "November";
-			static const char* const DEC = "December";
-			
-			static const char* const months[] {JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC};
-		}
-		namespace german {
-			static const char* const JAN = "Januar";
-			static const char* const FEB = "Februar";
-			static const char* const MAR = "Maerz";
-			static const char* const APR = english::APR;
-			static const char* const MAY = "Mai";
-			static const char* const JUN = "Juni";
-			static const char* const JUL = english::JUL;
-			static const char* const AUG = english::AUG;
-			static const char* const SEP = english::SEP;
-			static const char* const OCT = "Oktober";
-			static const char* const NOV = english::NOV
-			static const char* const DEC = "Dezember";
-			
-			static const char* const months[] {JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC};
-		}
-		
-		static const char * const * months = german::months;
-		
-		int8_t second; // 0 ... 59
-		int8_t minute; // 0 ... 59
-		int8_t hour; // 0 ... 23
-		int16_t day; // 0 ... 365 / 366
-		int16_t year; 
-
-			/* returns true if this year has 366 days, otherwise false 
-		inline bool isLeapYear() const;
-
-		
-		inline Time& operator++(){
-			++second;
-			if (second == 60){
-				second = 0;
-				++minute;
-			}
-			if (minute == 60){
-				minute = 0;
-				++hour;
-			}
-			if (hour == 24){
-				hour = 0;
-				++day;
-			}
-			if (day == daysOfThisYear()){
-				day = 0;
-				++year;
-			}
-		}
-		
-		
-		inline uint16_t daysOfThisYear(){
-			return 365 + isLeapYear();
-		}
-		
-		struct {Month month; uint8_t day;} getDate() const {
-			uint16_t cday = day;
-			if (cday < 31)					return {Month::JAN, ++cday};
-			cday -= 31;
-			if (cday < 28 + isLeapYear())	return {Month::FEB, ++cday};
-			cday -= 28 + isLeapYear()
-			if (cday < 31)					return {Month::MAR, ++cday};
-			cday -= 31;
-			if (cday < 30)					return {Month::APR, ++cday};
-			cday -= 30;
-			if (cday < 31)					return {Month::MAY, ++cday}
-			cday -= 31;
-			//if (cday < 30)					
-			// better is to iterate through an array to calculate this.
-		}
-		
-		Month getMonth(){
-			return getDate().month;
-		}
-		
-		uint8_t getDayOfMonth(){
-			return getDate().day;
-		}
-		
-		Day getDayOfWeek(){
-			
-		}
-	};
+	
 	
 	typedef uint16_t SCHEDULE_HANDLE;
 	constexpr uint16_t NO_HANDLER {0};
 	
 	class Priority;
 	
-	extern int8_t divisions_of_second; // ... 0 ... 31 ???
+	extern uint16_t divisions_of_second; // ... 0 ... 31 ???
 	extern Time now;
 	
 	void init();
-	*/
+	
 	//SCHEDULE_HANDLE addTimer(void (*function)(), const Time& interval, uint16_t repeat /*, Priority priority*/){return 0;};
 	
 	//bool cancelTimer(SCHEDULE_HANDLE handler){return false;};
