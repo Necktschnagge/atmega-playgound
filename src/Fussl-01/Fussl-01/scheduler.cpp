@@ -10,12 +10,38 @@
 #include "scheduler.h"
 #include <avr/interrupt.h>
 
-uint16_t scheduler::divisions_of_second;
-
 ISR (TIMER1_COMPA_vect){
 	/* compare match interrupt routine */
 	++scheduler::divisions_of_second;
 	//### somewhere in update() we need to check  the overflow;
+	if (scheduler::divisions_of_second > 0xF000){
+		/* scheduler is not fast enough */
+		scheduler::updateNowTime();
+		//### check that we don't have missed some interrups yet.
+	}
+}
+
+void Time::normalize(){
+	// clear seconds:
+	minute += second / 60;
+	second = second % 60;
+	// clear minutes:
+	hour += minute / 60;
+	minute %= 60;
+	// clear hour:
+	day += hour / 24;
+	hour %= 24;
+	// clear day;
+	if (day >= daysOfYear()) {
+		day -= daysOfYear();
+		++year;
+		normalize();
+	}
+	if (day < 0){
+		--year;
+		day += daysOfYear();
+		normalize();
+	}	
 }
 
 uint8_t Time::month_to_int(Time::Month month){
@@ -26,11 +52,6 @@ uint8_t Time::month_to_int(Time::Month month){
 
 Time::Month Time::int_to_month(uint8_t uint8){
 	return static_cast<Time::Month>((uint8 - 1) % 12);
-}
-
-Time::Month& operator++(Time::Month& op){
-	op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 1 % 12);	
-	return op;
 }
 
 constexpr bool Time::isLeapYear(int16_t year){
@@ -49,7 +70,11 @@ uint8_t Time::getMonthLength(Month month, bool isLeapYear){
 }
 
 Time& Time::operator++(){
-	++second;
+	++second; // tick forward
+	
+	// check overflows:
+	
+	//old implementation // faster but needs more program memory
 	if (second == 60){
 		second = 0;
 		++minute;
@@ -66,6 +91,10 @@ Time& Time::operator++(){
 		day = 0;
 		++year;
 	}
+	
+	// new implementation // needs more time but less flash memory
+	//normalize();
+	
 	return *this;
 }
 
@@ -79,10 +108,43 @@ Time::date_t Time::getDate() const {
 	return {rmonth, static_cast<uint8_t>(rday)};
 }
 
-Time scheduler::now;
+Time::Day Time::getDayOfWeek(){
+	/* via extended version of Gauss' formula (Georg Glaeser) */
+	date_t cdate = getDate();
+	int16_t cyear = this->year - (month_to_int(cdate.month) < 3);
+	uint8_t cday = cdate.day;
+	--cdate.month;
+	--cdate.month;
+	uint16_t shiftedMonth = month_to_int(cdate.month);
+	uint8_t llyear = cyear % 100;
+	int16_t uuyear = cyear / 100;
+	
+	return static_cast<Time::Day>((cday + ((26*shiftedMonth-2) / 10 ) + llyear + (llyear / 4) + (uuyear / 4) -2*uuyear) % 7);
+	//return Day::MON;
+}
 
- void scheduler::init(){
+
+Time::Month& operator++(Time::Month& op){
+	op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 1 % 12);
+	return op;
+}
+
+Time::Month& operator--(Time::Month& op){
+	op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 11 % 12);
+	return op;
+}
+
+uint16_t scheduler::divisions_of_second {0};
+Time scheduler::now;
+uint16_t scheduler::nexHandle {1};
+void* scheduler::taskTable {nullptr};
+uint16_t scheduler::taskTableSize {0};
+
+ void scheduler::init(void* taskTableSpaceJunk, uint16_t taskTableSize){
 	 /* using 16bit Timer1 */
+	 
+	 scheduler::taskTable = taskTableSpaceJunk;
+	 scheduler::taskTableSize = taskTableSize;
 	 
 	 //init time
 	 
@@ -98,7 +160,8 @@ Time scheduler::now;
 	 TCNT1 = 0; // counter starts at zero
 	 TIMSK |= 0b00010000; // data sheet page 138: interrupt enable for Timer1 Compare Match A
 	 // activate global interrupts !!!
-	 OCR1A = 1024; // 1 second divided into 32 equal parts.
+	 OCR1A = /*1024*/ 1 << (15 - PARTS_OF_SECOND_LOG); // 1 second divided into 32 equal parts.
+	 static_assert(1 << (15 - PARTS_OF_SECOND_LOG) == 1024,"bla bla");
 	 // register with compare value
 	 
 	 TCCR1B = 0b00001111;	// CTC (Clear Timer on Compare Match) and start timer running from ext source on,
@@ -107,4 +170,27 @@ Time scheduler::now;
 	 sei();	// activate global interrupts
  }
 
+uint16_t scheduler::updateNowTime(){
+	uint16_t forwardSeconds;
+	uint16_t partOfSecond;
+	uint8_t sreg = SREG;
+	cli();
+	forwardSeconds = divisions_of_second / PARTS_OF_SECOND;
+	divisions_of_second = divisions_of_second % PARTS_OF_SECOND;
+	partOfSecond = divisions_of_second;
+	SREG = sreg;
+	while (forwardSeconds){
+		--forwardSeconds;
+		++now;
+	}
+	return partOfSecond;
+}
 
+void scheduler::run(){
+	uint16_t partOfSecond = updateNowTime();
+	/* 'now' is up to date and we know the current offset from the full second */
+	
+	// look for tasks to be executed
+	
+	
+}

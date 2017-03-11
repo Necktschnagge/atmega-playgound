@@ -11,7 +11,7 @@
 //#include <time.h>
 #include <stdint.h>
 
-/*
+
 #ifdef NNNNNNNNN
 // using timer
 // 16 bit timer/counter to count the RTC Quartz signal which is 32768 Hz
@@ -41,41 +41,43 @@ TIMSK |= 0b00010000; // data sheet page 138: interrupt enable for Timer1 Compare
 // activate global interrupts !!!
 
 #endif
-*/
-namespace month_sring {
-namespace english {
-	const char JAN[] = "January";
-	const char FEB[] = "February";
-	const char MAR[] = "March";
-	const char APR[] = "April";
-	const char MAY[] = "May";
-	const char JUN[] = "June";
-	const char JUL[] = "July";
-	const char AUG[] = "August";
-	const char SEP[] = "September";
-	const char OCT[] = "October";
-	const char NOV[] = "November";
-	const char DEC[] = "December";
-	
-	const char * const months[] {JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC};
-};
 
-namespace german {
-	const char JAN[] = "Januar";
-	const char FEB[] = "Februar";
-	const char MAR[] = "Maerz";
-	const char* const APR = english::APR;
-	const char MAY[] = "Mai";
-	const char JUN[] = "Juni";
-	const char* const JUL = english::JUL;
-	const char* const AUG = english::AUG;
-	const char* const SEP = english::SEP;
-	const char OCT[] = "Oktober";
-	const char* const NOV = english::NOV;
-	const char DEC[] = "Dezember";
+
+
+namespace month_sring {
+	namespace english {
+		const char JAN[] = "January";
+		const char FEB[] = "February";
+		const char MAR[] = "March";
+		const char APR[] = "April";
+		const char MAY[] = "May";
+		const char JUN[] = "June";
+		const char JUL[] = "July";
+		const char AUG[] = "August";
+		const char SEP[] = "September";
+		const char OCT[] = "October";
+		const char NOV[] = "November";
+		const char DEC[] = "December";
+		
+		const char * const months[] {JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC};
+	};
 	
-	const char* const months[] {JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC};
-};
+	namespace german {
+		const char JAN[] = "Januar";
+		const char FEB[] = "Februar";
+		const char MAR[] = "Maerz";
+		const char* const APR = english::APR;
+		const char MAY[] = "Mai";
+		const char JUN[] = "Juni";
+		const char* const JUL = english::JUL;
+		const char* const AUG = english::AUG;
+		const char* const SEP = english::SEP;
+		const char OCT[] = "Oktober";
+		const char* const NOV = english::NOV;
+		const char DEC[] = "Dezember";
+		
+		const char* const months[] {JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC};
+	};
 }
 
 class Time {
@@ -125,6 +127,8 @@ class Time {
 		/* constructor */
 	Time(){}
 	
+	void normalize();
+	
 	uint8_t month_to_int(Month month); // convertion operator ???
 	Month int_to_month(uint8_t uint8);
 	
@@ -143,7 +147,7 @@ class Time {
 	inline static int16_t daysOfYear(int16_t year)	{	return 365 + isLeapYear(year);	}
 	inline int16_t daysOfYear()						{	return 365 + isLeapYear();		}
 	
-		/* returns current date */
+		/* returns current date (enum Month and day {1..31}) */
 	date_t getDate() const;
 	
 		/* return current month */
@@ -151,33 +155,74 @@ class Time {
 	
 		/* return current day of month */
 	inline uint8_t getDayOfMonth() {	return getDate().day;	}
-	
-	Day getDayOfWeek(){
-		//### please fill in
-		return Day::MON;
-	}
+		
+		/* return current day of week */
+	Day getDayOfWeek();
 
 };
 
 Time::Month& operator++(Time::Month& op);
-
+inline Time::Month& operator--(Time::Month& op);
 
 namespace scheduler {
 	
-	
 	typedef uint16_t SCHEDULE_HANDLE;
-	constexpr uint16_t NO_HANDLER {0};
+	constexpr uint16_t NO_HANDLE {0};
 	
-	class Priority;
+	constexpr uint16_t PARTS_OF_SECOND_LOG {5}; // 32 parts of second
+	constexpr uint16_t PARTS_OF_SECOND {1 << PARTS_OF_SECOND_LOG};
+		
+	class Priority{
+		uint8_t state;
+		
+		void setState(uint8_t priority, uint8_t percentage){
+			
+		}
+		
+	};
 	
-	extern uint16_t divisions_of_second; // ... 0 ... 31 ???
+	extern uint16_t divisions_of_second; // 0 ... PARTS_OF_SECOND - 1
 	extern Time now;
+	extern uint16_t nexHandle;
+	extern void* taskTable;
+	extern uint16_t taskTableSize;
 	
-	void init();
+	void init(void* taskTableSpaceJunk, uint16_t taskTableSize);
 	
 	//SCHEDULE_HANDLE addTimer(void (*function)(), const Time& interval, uint16_t repeat /*, Priority priority*/){return 0;};
 	
 	//bool cancelTimer(SCHEDULE_HANDLE handler){return false;};
+	
+		// should return: whether time was increased, exact time after last full second
+	uint16_t updateNowTime();
+	
+		/* central control loop */
+	void run();
+	
+	class SchedulingRecord{
+		SCHEDULE_HANDLE handle;
+		//union callback;
+		
+		
+		
+		uint8_t flags; //{ valid, Timer/Task, Callable/procedure, }
+		
+	};
+	
+	/************************************************************************/
+	/* 
+	ideas:
+	
+	list of timers:
+		handle,		task procedure or callable,		time when to execute*,		intervall*,		repeatings,		priority,		exe time,		some flags (valid etc)
+		
+	list of background tasks:
+		handle,		callback,																	percentage,		priority,		exe time,		some flags
+	
+	                                                                     */
+	/************************************************************************/
+	
+	
 	
 }
 
