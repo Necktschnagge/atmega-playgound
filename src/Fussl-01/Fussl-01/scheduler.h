@@ -80,6 +80,34 @@ namespace month_sring {
 	};
 }
 
+class Time;
+class ExactTime;
+
+class ExtendedMetricTime {
+	int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed dot integer
+	
+	static int64_t Time_to_ExtendedMetricTime();//####
+	
+	inline ExtendedMetricTime& operator= (const int64_t& rop) { value = rop; return *this; }
+	ExtendedMetricTime& operator = (Time& time);
+	ExtendedMetricTime& operator = (ExactTime& time);
+		
+	inline ExtendedMetricTime(int64_t value) : value(value) {}
+	inline ExtendedMetricTime(Time& time) { *this = time; }
+	inline ExtendedMetricTime(ExactTime& time);
+	
+	
+	inline ExtendedMetricTime operator+ (const ExtendedMetricTime& rop) { return value + rop.value; }
+	inline ExtendedMetricTime operator- (const ExtendedMetricTime& rop) { return value - rop.value; }
+	
+	inline bool operator == (const ExtendedMetricTime& rop) { return value == rop.value; }
+	inline bool operator <  (const ExtendedMetricTime& rop) { return value <  rop.value; }
+	inline bool operator >  (const ExtendedMetricTime& rop) { return value >  rop.value; }
+	inline bool operator <= (const ExtendedMetricTime& rop) { return value <= rop.value; }
+	inline bool operator >= (const ExtendedMetricTime& rop) { return value >= rop.value; }
+		
+	};
+
 class Time {
 	
 	private:
@@ -129,8 +157,8 @@ class Time {
 	
 	void normalize();
 	
-	uint8_t month_to_int(Month month); // convertion operator ???
-	Month int_to_month(uint8_t uint8);
+	static uint8_t month_to_int(Month month); // convertion operator ???
+	static Month int_to_month(uint8_t uint8);
 	
 		/* returns true if this year has 366 days, otherwise false */
 	inline static constexpr bool isLeapYear(int16_t year);
@@ -145,22 +173,52 @@ class Time {
 	inline Time& operator++();
 	
 	inline static int16_t daysOfYear(int16_t year)	{	return 365 + isLeapYear(year);	}
-	inline int16_t daysOfYear()						{	return 365 + isLeapYear();		}
+	inline int16_t daysOfYear()	const				{	return 365 + isLeapYear();		}
 	
 		/* returns current date (enum Month and day {1..31}) */
 	date_t getDate() const;
 	
 		/* return current month */
-	inline Month getMonth() {	return getDate().month;	}
+	inline Month getMonth() const					{	return getDate().month;	}
 	
 		/* return current day of month */
-	inline uint8_t getDayOfMonth() {	return getDate().day;	}
+	inline uint8_t getDayOfMonth() const			{	return getDate().day;	}
 		
 		/* return current day of week */
-	Day getDayOfWeek();
-
+	Day getDayOfWeek() const;
+	
+		/* attention: operator normalizes the operands*/
+	inline bool operator==(Time& rop);
+		/* attention: operator normalizes the operands*/	
+	inline bool operator != (Time& rop) { return ! operator == (rop); }
+		/* attention: operator normalizes the operands*/
+	bool operator<(Time& rop);
+		/* attention: operator normalizes the operands*/
+	inline bool operator <=(Time& rop) { return operator<(rop) || operator==(rop); }
+		/* attention: operator normalizes the operands*/
+	inline bool operator >(Time& rop) { return !operator<=(rop); }
+		/* attention: operator normalizes the operands*/
+	inline bool operator >= (Time& rop) { return !operator<(rop); }
+		
+	Time operator + (Time& rop);
+	Time operator - (Time& rop);
+	
 };
 
+class ExtendedTime {
+public:
+	Time time;	
+	uint16_t divisions_of_second;
+	
+	inline void normalize(){ time.normalize(); }
+	
+	//operator == != < > <= >= + - 
+	
+};
+
+
+
+/*operators for enum class must be declared here*/
 Time::Month& operator++(Time::Month& op);
 inline Time::Month& operator--(Time::Month& op);
 
@@ -201,29 +259,73 @@ namespace scheduler {
 	
 	class SchedulingRecord{
 		SCHEDULE_HANDLE handle;
-		//union callback;
-		
-		
-		
+		// put the callback union from gui to another header
 		uint8_t flags; //{ valid, Timer/Task, Callable/procedure, }
 		
 	};
+	
+	class ExactTime {
+		Time time;
+		uint8_t divisions_of_second;
+		};
+	
+	class UCallback {
+		uint16_t dummy;
+		};
+	
+	class ExecutionTime {
+		float dummy;
+		};
+	
+	class BackgroundTaskMemLine {
+		SCHEDULE_HANDLE handle;
+		UCallback callback;
+		uint8_t percentage;
+		uint8_t priority;
+		//ExecutionTime exeTime;
+		uint8_t flags;
+		};
+		
+	class TimerMemLine {
+		SCHEDULE_HANDLE handle;
+		UCallback callback;
+		
+		uint8_t priority;
+		//ExecutionTime exeTime;
+		uint8_t flags;
+		};
+	class TimerMemLineTime {
+		ExactTime time;
+		};
+	class TimerMemLineTime2 {
+		ExactTime time; // but we can leave out the year.
+		uint16_t repeatings;
+	};
+	
+	
 	
 	/************************************************************************/
 	/* 
 	ideas:
 	
 	list of timers:
-		handle,		task procedure or callable,		time when to execute*,		intervall*,		repeatings,		priority,		exe time,		some flags (valid etc)
-		
+		2				2								2											2					2				1								1
+		handle,		task procedure or callable,		time when to execute*, +part of second ,		intervall*,		repeatings,		priority,		exe time,		some flags (valid etc, end of list-flag, is timer/task falg, isBackground- flag, callable/ptr flag)
+													// put this directly after the first "line" in memory. then we do not need pointer.
 	list of background tasks:
+		2					2																		1				1								1
 		handle,		callback,																	percentage,		priority,		exe time,		some flags
 	
 	                                                                     */
 	/************************************************************************/
 	
-	
-	
 }
+
+#ifdef hack
+uint16_t test(){
+	uint16_t x[2];
+	return x[sizeof(Time)];
+}
+#endif
 
 #endif /* SCHEDULER_H_ */
