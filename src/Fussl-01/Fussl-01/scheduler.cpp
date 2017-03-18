@@ -17,8 +17,32 @@ ISR (TIMER1_COMPA_vect){
 	if (scheduler::divisions_of_second > 0xF000){
 		/* scheduler is not fast enough */
 		scheduler::updateNowTime();
-		//### check that we don't have missed some interrups yet.
+		//### check that we don't have missed some interrupts yet.
 	}
+}
+
+ExtendedMetricTime& ExtendedMetricTime::operator = (Time& time){
+	constexpr int64_t factor400 {400ll * 365 /*normal year*/ + 100 * 1 /*leap years*/ - 3 /*no leap years: 100, 200, 300*/ }; // how many days are 400 years
+	constexpr int64_t ticksPerDay { 24LL * 60 * 60 * (1LL << 16) };
+	static_assert(1LL<<16==65536,"mnbvcjha");
+	
+	Time source {time};
+	value = 0;
+	
+	source.normalize();
+	// check that source.year >= 0 otherwise check behaviour (????)
+	value += ticksPerDay * factor400 * ( (source.year - source.year % 400) / 400); // -600 -> -800 -> -2 instead of -600 -> -1
+	source.year %= 400;
+	static_assert((-523 - 377) / 400 == -2,"error");
+	
+	while(source.year > 0){
+		--source.year;
+		value += ticksPerDay * source.daysOfYear();
+	}
+	
+	value += (1LL<<16) * (60LL * (60LL * (24LL * (source.day) + source.hour) + source.minute) + source.second);
+	
+	return *this;
 }
 
 void Time::normalize(){
@@ -108,7 +132,7 @@ Time::date_t Time::getDate() const {
 	return {rmonth, static_cast<uint8_t>(rday)};
 }
 
-Time::Day Time::getDayOfWeek(){
+Time::Day Time::getDayOfWeek() const {
 	/* via extended version of Gauss' formula (Georg Glaeser) */
 	date_t cdate = getDate();
 	int16_t cyear = this->year - (month_to_int(cdate.month) < 3);
@@ -123,6 +147,63 @@ Time::Day Time::getDayOfWeek(){
 	//return Day::MON;
 }
 
+
+bool Time::operator ==(Time& rop){
+	/*do we have to normalize the time ??#####*/
+	rop.normalize();
+	/*Time self {*this};
+	self.normalize();*/
+	normalize();
+	return (rop.second == second) && (rop.minute == minute) && (rop.hour == hour) && (rop.day == day) && (rop.year == year);
+}
+
+bool Time::operator <(Time& rop){
+	rop.normalize();
+	normalize();
+	return (year < rop.year) || ((year == rop.year) && (
+		(day < rop.day) || ((day == rop.day) && (
+			(hour < rop.hour) || ((hour == rop.hour) && (
+				(minute < rop.minute) || ((minute == rop.minute) && (
+					second < rop.second
+				))
+			))
+		))
+	));
+}
+
+Time Time::operator + (Time& rop){
+	rop.normalize();
+	normalize();
+	Time result;
+	
+	result.second = second + rop.second;
+	result.minute = minute + rop.minute;
+	result.hour = hour + rop.hour;
+	result.day = day + rop.day;
+	result.year = year + rop.year;// <<< overflow ignored.
+	result.normalize();
+	
+	return result;
+}
+
+Time Time::operator - (Time& rop){
+	rop.normalize();
+	normalize();
+	Time result;
+	
+	result.second = second - rop.second;
+	result.minute = minute - rop.minute;
+	result.hour = hour - rop.hour;
+	result.day = day - rop.day; // this is not working this way. if we want a difference between two dates. (????)
+	result.year = year;
+	result.normalize();
+	//### idea. we define a new "independent time": second since time zero and make convertion constructors to normal time.
+	
+	result.year -= rop.year; // overflow ignored;
+	result.normalize();
+	
+	return result;
+}
 
 Time::Month& operator++(Time::Month& op){
 	op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 1 % 12);
@@ -191,6 +272,5 @@ void scheduler::run(){
 	/* 'now' is up to date and we know the current offset from the full second */
 	
 	// look for tasks to be executed
-	
 	
 }
