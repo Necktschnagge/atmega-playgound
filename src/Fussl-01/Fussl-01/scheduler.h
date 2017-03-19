@@ -3,6 +3,18 @@
  *
  * Created: 07.03.2017 18:16:16
  *  Author: Maximilian Starke
+ 
+ *
+ *
+ *
+ *
+ *
+ FPS:		everything needs to be completed of course....
+			class Time seems to be ready, check conversions between .. and ExtendedTime
+			make up ExtendedMetricTime
+			typedef new shorter abbrevs,... EMT(ime), ETime, Time
+			
+			... make a short prototype of the scheduler to follow our issues.
  */ 
 
 
@@ -81,32 +93,8 @@ namespace month_sring {
 }
 
 class Time;
-class ExactTime;
+class ExtendedMetricTime;
 
-class ExtendedMetricTime {
-	int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed dot integer
-	
-	static int64_t Time_to_ExtendedMetricTime();//####
-	
-	inline ExtendedMetricTime& operator= (const int64_t& rop) { value = rop; return *this; }
-	ExtendedMetricTime& operator = (Time& time);
-	ExtendedMetricTime& operator = (ExactTime& time);
-		
-	inline ExtendedMetricTime(int64_t value) : value(value) {}
-	inline ExtendedMetricTime(Time& time) { *this = time; }
-	inline ExtendedMetricTime(ExactTime& time);
-	
-	
-	inline ExtendedMetricTime operator+ (const ExtendedMetricTime& rop) { return value + rop.value; }
-	inline ExtendedMetricTime operator- (const ExtendedMetricTime& rop) { return value - rop.value; }
-	
-	inline bool operator == (const ExtendedMetricTime& rop) { return value == rop.value; }
-	inline bool operator <  (const ExtendedMetricTime& rop) { return value <  rop.value; }
-	inline bool operator >  (const ExtendedMetricTime& rop) { return value >  rop.value; }
-	inline bool operator <= (const ExtendedMetricTime& rop) { return value <= rop.value; }
-	inline bool operator >= (const ExtendedMetricTime& rop) { return value >= rop.value; }
-		
-	};
 
 class Time {
 	
@@ -129,7 +117,7 @@ class Time {
 		OCT = 9,
 		NOV = 10,
 		DEC = 11
-	};
+		};
 	
 	enum class Day : uint8_t {
 		SUN = 0,
@@ -149,7 +137,7 @@ class Time {
 	int8_t second {0}; // 0 ... 59
 	int8_t minute {0}; // 0 ... 59
 	int8_t hour {0}; // 0 ... 23
-	int16_t day {0}; // 0 ... 365 / 366
+	int16_t day {0}; // 0 ... 364 / 365
 	int16_t year {0};
 		
 		/* constructor */
@@ -157,11 +145,13 @@ class Time {
 	
 	void normalize();
 	
-	static uint8_t month_to_int(Month month); // convertion operator ???
-	static Month int_to_month(uint8_t uint8);
+	inline static uint8_t month_to_int(Month month)		{ return static_cast<uint8_t>(month) + 1; };
+		 // conversion operator not possible for enum classes
+	inline static Month int_to_month(uint8_t uint8)		{ return static_cast<Time::Month>((uint8 - 1) % 12); }
 	
 		/* returns true if this year has 366 days, otherwise false */
-	inline static constexpr bool isLeapYear(int16_t year);
+	static bool isLeapYear(int16_t year);
+	
 	inline bool isLeapYear() const		{	return isLeapYear(this->year);	}
 	
 		/* return the length in days of given month */
@@ -170,13 +160,16 @@ class Time {
 	inline uint8_t getMonthLength(Month month) const				{	return getMonthLength(month,isLeapYear());		}
 	
 		/* tick forward one second */
-	inline Time& operator++();
+	Time& operator++(); //could be inline if we use the time intensive solution <<<<<
 	
 	inline static int16_t daysOfYear(int16_t year)	{	return 365 + isLeapYear(year);	}
 	inline int16_t daysOfYear()	const				{	return 365 + isLeapYear();		}
 	
 		/* returns current date (enum Month and day {1..31}) */
 	date_t getDate() const;
+	
+		/* change the date inside the current year */
+	bool setDate(uint8_t month, uint8_t day_of_month);
 	
 		/* return current month */
 	inline Month getMonth() const					{	return getDate().month;	}
@@ -188,7 +181,7 @@ class Time {
 	Day getDayOfWeek() const;
 	
 		/* attention: operator normalizes the operands*/
-	inline bool operator==(Time& rop);
+	bool operator==(Time& rop);
 		/* attention: operator normalizes the operands*/	
 	inline bool operator != (Time& rop) { return ! operator == (rop); }
 		/* attention: operator normalizes the operands*/
@@ -200,15 +193,32 @@ class Time {
 		/* attention: operator normalizes the operands*/
 	inline bool operator >= (Time& rop) { return !operator<(rop); }
 		
-	Time operator + (Time& rop);
-	Time operator - (Time& rop);
+	Time operator + (Time& rop);// time + EMT = Time, Time - EMT = time // friend declaration
+	Time operator - (Time& rop);// Time - Time = EMT,  <<--  emt - time = emt via conversion
 	
 };
+
+/*operators for enum class must be declared here*/
+inline Time::Month& operator++(Time::Month& op){
+	return op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 1 % 12);
+}
+inline Time::Month& operator--(Time::Month& op){
+	return op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 11 % 12);
+}
+inline void operator << (Time::Month& lop, uint8_t rop)		{ lop = Time::int_to_month(rop); }
+inline void operator >> (Time::Month lop, uint8_t& rop)		{ rop = Time::month_to_int(lop); }
+inline void operator << (uint8_t& lop, Time::Month rop)		{ return rop>>lop; }
+inline void operator >> (uint8_t lop, Time::Month& rop)		{ return rop<<lop; }
 
 class ExtendedTime {
 public:
 	Time time;	
 	uint16_t divisions_of_second;
+	
+	ExtendedTime(const ExtendedTime& extTime) = default; // copy constructor
+	ExtendedTime(const ExtendedTime&& extTime) = delete;
+	ExtendedTime(const Time& time) : time(time), divisions_of_second(0) {} // conversion constructor for Time
+	ExtendedTime(const ExtendedMetricTime& time); // conversion from EMT
 	
 	inline void normalize(){ time.normalize(); }
 	
@@ -216,11 +226,70 @@ public:
 	
 };
 
+typedef ExtendedTime ETime, ET;
 
 
-/*operators for enum class must be declared here*/
-Time::Month& operator++(Time::Month& op);
-inline Time::Month& operator--(Time::Month& op);
+class ExtendedMetricTime { // seems ready, only some <<<< test sth out.
+private:
+	int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed dot integer
+	
+public:
+		/* assignment operators */
+	inline ExtendedMetricTime& operator = (const int64_t& rop) { value = rop; return *this; }
+	ExtendedMetricTime& operator = (const ExtendedTime& time);
+	inline ExtendedMetricTime& operator = (const Time& time) { return operator=(ExtendedTime(time)); }; // should be possible also with automatic conversion.<<<<<< check this
+	
+		/* ctor / conversion	from/to		int64 */
+	inline ExtendedMetricTime(int64_t value) : value(value) {}	// implicit conversion int64 ->  EMT
+	inline operator int64_t() const { return value; }					// implicit conversion  EMT  -> int64
+		
+		/* c-tors */
+	inline ExtendedMetricTime(Time& time) { *this = time; } // must be implicitly possible via extendedTime c-tor <<<<?????
+	inline ExtendedMetricTime(ExtendedTime& time) { *this = time; }
+	
+		/* setter (supposedly for time differences) */
+	inline void setFromSeconds	(int32_t seconds)		{ value = (1LL << 16) * seconds; }
+	inline void setFromMinutes	(int16_t minutes)		{ value = (1LL << 16) * 60 * minutes; }
+	inline void setFromHours	(int16_t hours)			{ value = (1LL << 16) * 60 * 60 *hours; }
+	inline void setFromDays		(int16_t days)			{ value = (1LL << 16) * 60 * 60 * 24 * days; }
+	
+		/* factories */
+	inline static ExtendedMetricTime seconds_to_EMT		(int32_t seconds)		{ return ExtendedMetricTime((1LL << 16) * seconds); }
+	inline static ExtendedMetricTime minutes_to_EMT		(int16_t minutes)		{ return ExtendedMetricTime((1LL << 16) * 60 * minutes); }
+	inline static ExtendedMetricTime hours_to_EMT		(int16_t hours)			{ return ExtendedMetricTime((1LL << 16) * 60 * 60 * hours); }
+	inline static ExtendedMetricTime days_to_EMT		(int16_t days)			{ return ExtendedMetricTime((1LL << 16) * 60 * 60 * 24 * days); }	
+	
+		/* arithmetic operators */
+	inline friend ExtendedMetricTime operator + (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
+	inline friend ExtendedMetricTime operator - (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
+	inline friend ExtendedMetricTime operator * (ExtendedMetricTime emt, int64_t factor);
+	inline friend ExtendedMetricTime operator * (int64_t factor, ExtendedMetricTime emt);
+	inline friend ExtendedMetricTime operator / (ExtendedMetricTime emt, int64_t divisor);
+	
+		/* comparison operators */
+	inline friend bool operator == (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
+	inline friend bool operator <  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop); 
+	inline friend bool operator >  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop); 
+	inline friend bool operator <= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop); 
+	inline friend bool operator >= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
+		// ## is comparison possible without these functions and with implicit conversion to int instead ????
+};
+typedef ExtendedMetricTime EMTime, EMT;
+
+inline bool operator == (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value == rop.value; }
+inline bool operator <  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value <  rop.value; }
+inline bool operator >  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value >  rop.value; }
+inline bool operator <= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value <= rop.value; }
+inline bool operator >= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value >= rop.value; }
+
+inline ExtendedMetricTime operator + (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop) { return lop.value + rop.value; }
+inline ExtendedMetricTime operator - (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop) { return lop.value - rop.value; }
+inline ExtendedMetricTime operator * (const ExtendedMetricTime emt, const int64_t factor)			{ return emt * factor; }
+inline ExtendedMetricTime operator * (const int64_t factor, const ExtendedMetricTime emt)			{ return factor * emt; }
+inline ExtendedMetricTime operator / (const EMT emt, const int64_t divisor)							{ return emt / divisor; }
+
+
+
 
 namespace scheduler {
 	
@@ -241,7 +310,7 @@ namespace scheduler {
 	
 	extern uint16_t divisions_of_second; // 0 ... PARTS_OF_SECOND - 1
 	extern Time now;
-	extern uint16_t nexHandle;
+	extern uint16_t nextFreeHandle;
 	extern void* taskTable;
 	extern uint16_t taskTableSize;
 	

@@ -129,7 +129,7 @@ namespace input {
 	/*	activate the input pins of the controller,
 		init the event array by deleting all events.
 		*/
-	inline void init();
+	void init();
 	
 	//	returns the event id of the given event description
 	inline int8_t makeEvent(uint8_t button, bool up_or_down){
