@@ -21,30 +21,6 @@ ISR (TIMER1_COMPA_vect){
 	}
 }
 
-ExtendedMetricTime& ExtendedMetricTime::operator = (Time& time){
-	constexpr int64_t factor400 {400ll * 365 /*normal year*/ + 100 * 1 /*leap years*/ - 3 /*no leap years: 100, 200, 300*/ }; // how many days are 400 years
-	constexpr int64_t ticksPerDay { 24LL * 60 * 60 * (1LL << 16) };
-	static_assert(1LL<<16==65536,"mnbvcjha");
-	
-	Time source {time};
-	value = 0;
-	
-	source.normalize();
-	// check that source.year >= 0 otherwise check behaviour (????)
-	value += ticksPerDay * factor400 * ( (source.year - source.year % 400) / 400); // -600 -> -800 -> -2 instead of -600 -> -1
-	source.year %= 400;
-	static_assert((-523 - 377) / 400 == -2,"error");
-	
-	while(source.year > 0){
-		--source.year;
-		value += ticksPerDay * source.daysOfYear();
-	}
-	
-	value += (1LL<<16) * (60LL * (60LL * (24LL * (source.day) + source.hour) + source.minute) + source.second);
-	
-	return *this;
-}
-
 void Time::normalize(){
 	// clear seconds:
 	minute += second / 60;
@@ -65,20 +41,11 @@ void Time::normalize(){
 		--year;
 		day += daysOfYear();
 		normalize();
-	}	
+	}
 }
 
-uint8_t Time::month_to_int(Time::Month month){
-	return static_cast<uint8_t>(month) + 1;
-	static_assert(static_cast<uint8_t>(Month::APR) == 3, "Error in month_to_int");
-	static_assert(static_cast<uint8_t>(Month::DEC) == 11,"Error");
-}
 
-Time::Month Time::int_to_month(uint8_t uint8){
-	return static_cast<Time::Month>((uint8 - 1) % 12);
-}
-
-constexpr bool Time::isLeapYear(int16_t year){
+bool Time::isLeapYear(int16_t year){
 	/*
 	if (year % 4)	return false;
 	if (year % 100)	return true;
@@ -132,6 +99,11 @@ Time::date_t Time::getDate() const {
 	return {rmonth, static_cast<uint8_t>(rday)};
 }
 
+bool Time::setDate(uint8_t month, uint8_t day_of_month){
+	//### do this
+	return false;
+}
+
 Time::Day Time::getDayOfWeek() const {
 	/* via extended version of Gauss' formula (Georg Glaeser) */
 	date_t cdate = getDate();
@@ -147,8 +119,7 @@ Time::Day Time::getDayOfWeek() const {
 	//return Day::MON;
 }
 
-
-bool Time::operator ==(Time& rop){
+bool Time::operator == (Time& rop){
 	/*do we have to normalize the time ??#####*/
 	rop.normalize();
 	/*Time self {*this};
@@ -205,19 +176,65 @@ Time Time::operator - (Time& rop){
 	return result;
 }
 
-Time::Month& operator++(Time::Month& op){
-	op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 1 % 12);
-	return op;
+namespace {
+	// 400 years in days:
+	constexpr int64_t factor400 {400ll * 365 /*normal year*/ + 100 * 1 /*leap years*/ - 3 /*no leap years: 100, 200, 300*/ };
+	// [++value]s for one day:
+	constexpr int64_t ticksPerDay { 24LL * 60 * 60 * (1LL << 16) };
 }
 
-Time::Month& operator--(Time::Month& op){
-	op = static_cast<Time::Month>(static_cast<uint8_t>(op) + 11 % 12);
-	return op;
+/************************************************************************/
+/* ET class                                                             */
+/************************************************************************/
+
+ExtendedTime::ExtendedTime(const EMT& emt) /*: divisions_of_second( (time.operator int64_t()) & 0xFFFFLL)*/ {
+	int64_t value = emt;
+	divisions_of_second = value % 0x10000;
+	value -= divisions_of_second;
+	value = value >> 16;
+	time.second = value % 60;
+	value -= time.second;
+	value /= 60;
+	time.minute = value % 60;
+	value -= time.minute;
+	value /= 60;
+	time.hour = value % 24;
+	value -= time.hour;
+	value /= 60;
+	// now we have time remaining in days...
+	// first check for applicable 400 years...
+	time.year = 400 * (  ( value - (value % factor400) ) / factor400  );
+	value -= time.year * factor400;
+	// 0 <= value < factor400 assert <<<<<
+	while (value >= time.daysOfYear()){
+		value -= time.daysOfYear();
+		++time.year;
+	}
+	time.day = value;
+}
+
+/************************************************************************/
+/* EMT class                                                            */
+/************************************************************************/
+
+ExtendedMetricTime& ExtendedMetricTime::operator = (const ExtendedTime& time){	
+	value = time.divisions_of_second;
+	Time source = time.time; // cannot use element initializer {...} because of public member attributes (!)
+	source.normalize();
+	
+	value += ticksPerDay * factor400 * ( (source.year - source.year % 400) / 400); // -600 -> -800 -> -2 instead of -600 -> -1
+	source.year %= 400;
+	while(source.year > 0){
+		--source.year;
+		value += ticksPerDay * source.daysOfYear();
+	}
+	value += (1LL<<16) * (60LL * (60LL * (24LL * (source.day) + source.hour) + source.minute) + source.second);
+	return *this;
 }
 
 uint16_t scheduler::divisions_of_second {0};
 Time scheduler::now;
-uint16_t scheduler::nexHandle {1};
+uint16_t scheduler::nextFreeHandle {1};
 void* scheduler::taskTable {nullptr};
 uint16_t scheduler::taskTableSize {0};
 

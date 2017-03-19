@@ -13,7 +13,7 @@
 #include "f_arch.h"
 #include "f_gui.h"
 #include "f_test.h"
-
+#include "scheduler.h"
 
 void foo(){
 	
@@ -50,6 +50,14 @@ void after_selecting(){
 }
 
 int main(void){
+	
+	Time::Month bsp {Time::Month::APR};
+	uint8_t zahl;
+	zahl << bsp;
+	Time t1;
+	Time t2;
+	bool is_equal = (t1 == t2);
+	
 	//###
 	// please check the board frequency of quartz and redefine fcpu in hardware.cpp
 	// define dot position in ledline.cpp -> please find out it's hardware configuration
