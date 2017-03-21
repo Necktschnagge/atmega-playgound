@@ -21,6 +21,11 @@ ISR (TIMER1_COMPA_vect){
 	}
 }
 
+Time::Time(const ETime& etime) : second(etime.time.second), minute(etime.time.minute), hour(etime.time.hour), day(etime.time.day), year() {
+	normalize();
+}
+
+
 void Time::normalize(){
 	// clear seconds:
 	minute += second / 60;

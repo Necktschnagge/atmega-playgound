@@ -93,7 +93,11 @@ namespace month_sring {
 }
 
 class Time;
+class ExtendedTime;
 class ExtendedMetricTime;
+
+typedef ExtendedTime ETime, ET;
+typedef ExtendedMetricTime EMTime, EMT;
 
 
 class Time {
@@ -142,6 +146,11 @@ class Time {
 		
 		/* constructor */
 	Time(){}
+	Time(const EMT& emt){
+		//## do this
+		normalize(); // if recommended
+	}
+	Time(const ETime& etime);
 	
 	void normalize();
 	
@@ -170,6 +179,7 @@ class Time {
 	
 		/* change the date inside the current year */
 	bool setDate(uint8_t month, uint8_t day_of_month);
+	bool setDate(Month month, uint8_t day_of_month);//## implement both
 	
 		/* return current month */
 	inline Month getMonth() const					{	return getDate().month;	}
@@ -193,10 +203,15 @@ class Time {
 		/* attention: operator normalizes the operands*/
 	inline bool operator >= (Time& rop) { return !operator<(rop); }
 		
-	Time operator + (Time& rop);// time + EMT = Time, Time - EMT = time // friend declaration
+
+	Time operator + (Time& rop);
+	inline Time operator + (const EMT& rop) const;
+	inline Time operator - (const EMT& rop) const;
 	Time operator - (Time& rop);// Time - Time = EMT,  <<--  emt - time = emt via conversion
 	
 };
+
+// make #### ++ and -- for days too.
 
 /*operators for enum class must be declared here*/
 inline Time::Month& operator++(Time::Month& op){
@@ -226,9 +241,6 @@ public:
 	
 };
 
-typedef ExtendedTime ETime, ET;
-
-
 class ExtendedMetricTime { // seems ready, only some <<<< test sth out.
 private:
 	int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed dot integer
@@ -244,8 +256,8 @@ public:
 	inline operator int64_t() const { return value; }					// implicit conversion  EMT  -> int64
 		
 		/* c-tors */
-	inline ExtendedMetricTime(Time& time) { *this = time; } // must be implicitly possible via extendedTime c-tor <<<<?????
-	inline ExtendedMetricTime(ExtendedTime& time) { *this = time; }
+	inline ExtendedMetricTime(const Time& time) { *this = time; } // must be implicitly possible via extendedTime c-tor <<<<?????
+	inline ExtendedMetricTime(const ExtendedTime& time) { *this = time; }
 	
 		/* setter (supposedly for time differences) */
 	inline void setFromSeconds	(int32_t seconds)		{ value = (1LL << 16) * seconds; }
@@ -274,7 +286,6 @@ public:
 	inline friend bool operator >= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
 		// ## is comparison possible without these functions and with implicit conversion to int instead ????
 };
-typedef ExtendedMetricTime EMTime, EMT;
 
 inline bool operator == (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value == rop.value; }
 inline bool operator <  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value <  rop.value; }
@@ -288,7 +299,8 @@ inline ExtendedMetricTime operator * (const ExtendedMetricTime emt, const int64_
 inline ExtendedMetricTime operator * (const int64_t factor, const ExtendedMetricTime emt)			{ return factor * emt; }
 inline ExtendedMetricTime operator / (const EMT emt, const int64_t divisor)							{ return emt / divisor; }
 
-
+inline Time Time::operator + (const EMT& rop) const { return rop + EMT(*this); }
+inline Time Time::operator - (const EMT& rop) const { return EMT(*this) - rop; }
 
 
 namespace scheduler {
