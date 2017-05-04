@@ -42,6 +42,7 @@ C_SRCS +=  \
 ../f_hardware.cpp \
 ../f_ledline.cpp \
 ../f_test.cpp \
+../f_time.cpp \
 ../main.cpp \
 ../scheduler.cpp
 
@@ -58,6 +59,7 @@ f_gui.o \
 f_hardware.o \
 f_ledline.o \
 f_test.o \
+f_time.o \
 main.o \
 scheduler.o
 
@@ -67,6 +69,7 @@ f_gui.o \
 f_hardware.o \
 f_ledline.o \
 f_test.o \
+f_time.o \
 main.o \
 scheduler.o
 
@@ -76,6 +79,7 @@ f_gui.d \
 f_hardware.d \
 f_ledline.d \
 f_test.d \
+f_time.d \
 main.d \
 scheduler.d
 
@@ -85,6 +89,7 @@ f_gui.d \
 f_hardware.d \
 f_ledline.d \
 f_test.d \
+f_time.d \
 main.d \
 scheduler.d
 
@@ -131,6 +136,13 @@ LINKER_SCRIPT_DEP+=
 	
 
 ./f_test.o: .././f_test.cpp
+	@echo Building file: $<
+	@echo Invoking: AVR8/GNU C Compiler : 4.9.2
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\include"  -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
+	@echo Finished building: $<
+	
+
+./f_time.o: .././f_time.cpp
 	@echo Building file: $<
 	@echo Invoking: AVR8/GNU C Compiler : 4.9.2
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\include"  -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 

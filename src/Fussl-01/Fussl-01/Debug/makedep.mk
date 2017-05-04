@@ -12,6 +12,8 @@ f_ledline.cpp
 
 f_test.cpp
 
+f_time.cpp
+
 main.cpp
 
 scheduler.cpp
