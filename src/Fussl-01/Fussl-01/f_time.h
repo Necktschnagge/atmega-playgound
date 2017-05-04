@@ -8,10 +8,20 @@
 #ifndef F_TIME_H_
 #define F_TIME_H_
 
+
 /* extern headers */
 #include <stdint.h>
 
 /* [no] own headers */
+
+
+
+/************************************************************************/
+/* TYPE DECLARATION
+                                                                        */
+/************************************************************************/
+
+////<<< put everything in an extra namespace
 
 
 class HumanTime;
@@ -23,7 +33,6 @@ typedef HumanTime HTime, HT;
 // typedef HumanTime Time;
 
 
-////<<< put everything in a namespace
 enum class Month : uint8_t {
 	JAN = 0,
 	FEB = 1,
@@ -38,14 +47,6 @@ enum class Month : uint8_t {
 	NOV = 10,
 	DEC = 11
 };
-
-inline Month& operator++(Month& op){
-	return op = static_cast<Month>(static_cast<uint8_t>(op) + 1 % 12);
-}
-
-inline Month& operator--(Month& op){
-	return op = static_cast<Month>(static_cast<uint8_t>(op) + 11 % 12);
-}
 	
 	enum class Day : uint8_t {
 		SUN = 0,
@@ -116,7 +117,6 @@ public:
 	
 	void normalize();
 	
-	// ### provide some getters and setters!
 	inline int8_t get_second()		const { return second;	}
 	inline int8_t get_minute()		const { return minute;	}
 	inline int8_t get_hour()		const { return hour;	}
@@ -124,6 +124,12 @@ public:
 	inline int16_t get_day_of_year()const { return get_day();}
 	inline int16_t get_year()		const { return year;	}
 
+	inline HumanTime& set_second(int8_t s) { second = s; normalize(); return *this; }
+	inline HumanTime& set_minute(int8_t m) { minute = m; normalize(); return *this; }
+	inline HumanTime& set_hour(int8_t h) { hour = h; normalize(); return *this; }
+	inline HumanTime& set_day(int16_t d) { day = d; normalize(); return *this; }
+	inline HumanTime& set_year(int16_t y) { year = y; normalize(); return *this; }
+	
 		/* enum month -> human-friendly month int8 coding (JAN,1), (FEB,2), ..., (DEC,12) */
 	inline static uint8_t month_to_int(Month month)		{ return static_cast<uint8_t>(month) + 1; };
 		
@@ -146,8 +152,9 @@ public:
 	inline uint8_t getMonthLength(Month month) const				{	return getMonthLength(month,isLeapYear());		}
 	
 		/* tick forward one second */
-	HumanTime& operator++(); //could be inline if we use the time intensive solution <<<<<
-		// what about -- ??  //<<<<
+	inline HumanTime& operator++();
+	
+	inline HumanTime& operator--() { --second; normalize(); return *this;}
 			
 		/* return the amount of days of given year */
 	inline static int16_t daysOfYear(int16_t year)	{	return 365 + isLeapYear(year);	}
@@ -259,22 +266,210 @@ public:
 	
 };
 
+class ExtendedMetricTime { // seems ready, only some <<<< test sth out.
+private:
+public:
+	static constexpr HumanTime CHRIST_0 = HumanTime();
+
+	int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed-dot-integer
+	
+public:
+		/* assignment operators */
+	inline ExtendedMetricTime& operator = (const int64_t& rop) { value = rop; return *this; }
+	inline ExtendedMetricTime& operator = (const HumanTime& time);
+	
+		/* ctor / conversion	from/to		int64 */
+	inline ExtendedMetricTime(int64_t value) : value(value) {}	// implicit conversion int64 ->  EMT
+	//inline operator int64_t() const { return value; }					// implicit conversion  EMT  -> int64
+		
+		/* c-tors */
+	inline ExtendedMetricTime(const HumanTime& time, const HumanTime& perspective = CHRIST_0);
+	
+	//inline int64_t& inner_value()								{	return value;	}
+	
+		/* setter (supposedly for time differences) */
+	inline void setFromSeconds	(int32_t seconds)		{ value = (1LL << 16) * seconds; }
+	inline void setFromMinutes	(int16_t minutes)		{ value = (1LL << 16) * 60 * minutes; }
+	inline void setFromHours	(int16_t hours)			{ value = (1LL << 16) * 60 * 60 *hours; }
+	inline void setFromDays		(int16_t days)			{ value = (1LL << 16) * 60 * 60 * 24 * days; }
+		
+	void set_from(const HumanTime& time, const HumanTime& perspective = CHRIST_0);
+	
+		/* factories */
+	inline static ExtendedMetricTime seconds_to_EMT		(int32_t seconds)		{ return ExtendedMetricTime((1LL << 16) * seconds); }
+	inline static ExtendedMetricTime minutes_to_EMT		(int16_t minutes)		{ return ExtendedMetricTime((1LL << 16) * 60 * minutes); }
+	inline static ExtendedMetricTime hours_to_EMT		(int16_t hours)			{ return ExtendedMetricTime((1LL << 16) * 60 * 60 * hours); }
+	inline static ExtendedMetricTime days_to_EMT		(int16_t days)			{ return ExtendedMetricTime((1LL << 16) * 60 * 60 * 24 * days); }	
+	
+		/* arithmetic operators */ // ## need to be implemented
+	inline friend ExtendedMetricTime operator + (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
+	//inline friend HumanTime operator + (const ExtendedMetricTime&, const HumanTime&);
+	inline friend ExtendedMetricTime operator - (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
+	template <typename T>
+	inline friend ExtendedMetricTime operator * (ExtendedMetricTime emt, T factor);
+	template <typename T>
+	inline friend ExtendedMetricTime operator * (T factor, ExtendedMetricTime emt);
+	template <typename T>
+	inline friend ExtendedMetricTime operator / (ExtendedMetricTime emt, T divisor);
+	template <typename T>
+	inline friend void div(const ExtendedMetricTime&, const ExtendedMetricTime, T&);
+	
+		/* comparison operators */
+	inline friend bool operator == (const ExtendedMetricTime&, const ExtendedMetricTime&);
+	inline friend bool operator <  (const ExtendedMetricTime&, const ExtendedMetricTime&); 
+	inline friend bool operator >  (const ExtendedMetricTime&, const ExtendedMetricTime&); 
+	inline friend bool operator <= (const ExtendedMetricTime&, const ExtendedMetricTime&); 
+	inline friend bool operator >= (const ExtendedMetricTime&, const ExtendedMetricTime&);
+		// ## is comparison possible without these functions and with implicit conversion to int instead ????
+		
+	/// <<< add some trunc or round function
+};
+
+
+
+
+
+
+/************************************************************************/
+/* FUNCTION / OPERATOR DECLARATION
+                                                                        */
+/************************************************************************/
+
+/* Human Time arithmetic operators */
 inline auto operator + (const HumanTime&)								-> const HumanTime&;
-		auto operator - (const HumanTime&)								-> const HumanTime& = delete;
+auto operator - (const HumanTime&)								-> const HumanTime& = delete; // its clear why it is what it is - but why is it written down here?
 inline auto operator + (const ExtendedMetricTime&, const HumanTime&)	-> HumanTime;
 inline auto operator + (const HumanTime&, const ExtendedMetricTime&)	-> HumanTime;
 inline auto operator - (const HumanTime&, const HumanTime&)				-> ExtendedMetricTime;
 inline auto operator - (const HumanTime&, const ExtendedMetricTime&)	-> HumanTime;
-///## those op need to be defined!!!!!
 
 
-/* f-like transcription operators, = operator must be a non-static member function */
+/* f-like transcription operators, = operator must be a non-static member function, therefore it cannot be used */
 inline void operator << (Month& lop, uint8_t rop)		{ lop = HumanTime::int_to_month(rop); }
 inline void operator >> (Month lop, uint8_t& rop)		{ rop = HumanTime::month_to_int(lop); }
 inline void operator << (uint8_t& lop, Month rop)		{ return rop>>lop; }
 inline void operator >> (uint8_t lop, Month& rop)		{ return rop<<lop; }
+// <<< could be splitted but not now <<<<<<
+
+/* Extended Metric Time comparison operators */
+inline bool operator == (const ExtendedMetricTime&, const ExtendedMetricTime&);
+inline bool operator <  (const ExtendedMetricTime&, const ExtendedMetricTime&);
+inline bool operator >  (const ExtendedMetricTime&, const ExtendedMetricTime&);
+inline bool operator <= (const ExtendedMetricTime&, const ExtendedMetricTime&);
+inline bool operator >= (const ExtendedMetricTime&, const ExtendedMetricTime&);
 
 
+
+
+
+/************************************************************************/
+/* INLINE FUNCTION IMPLEMENTATION
+                                                                        */
+/************************************************************************/
+
+inline Month& operator++(Month& op){
+	return op = static_cast<Month>(static_cast<uint8_t>(op) + 1 % 12);
+}
+
+inline Month& operator--(Month& op){
+	return op = static_cast<Month>(static_cast<uint8_t>(op) + 11 % 12);
+}
+
+// HumanTime Operators:
+inline auto operator + (const HumanTime& op)								-> HumanTime const& {
+	return op;
+}
+
+inline auto operator + (const ExtendedMetricTime& lop, const HumanTime& rop)	-> HumanTime {
+	return HumanTime(lop + ExtendedMetricTime(rop, ExtendedMetricTime::CHRIST_0));
+}
+
+inline auto operator + (const HumanTime& lop, const ExtendedMetricTime& rop)	-> HumanTime {
+	return rop + lop;
+}
+
+inline auto operator - (const HumanTime& lop, const HumanTime& rop)				-> ExtendedMetricTime {
+	return ExtendedMetricTime(lop) - ExtendedMetricTime(rop);
+}
+
+inline auto operator - (const HumanTime& lop, const ExtendedMetricTime& rop)	-> HumanTime {
+	return HumanTime(ExtendedMetricTime(lop,ExtendedMetricTime::CHRIST_0) - rop);
+}
+
+
+HumanTime& HumanTime::operator++(){// ready, checked
+	++second; // tick forward
+	normalize(); // check any overflows
+	return *this;
+	//old implementation for checking OV // faster but needs more program memory, normalize() needs more stack mem
+	/*
+	if (second == 60){
+		second = 0;
+		++minute;
+	}
+	if (minute == 60){
+		minute = 0;
+		++hour;
+	}
+	if (hour == 24){
+		hour = 0;
+		++day;
+	}
+	if (day == daysOfYear()){
+		day = 0;
+		++year;
+	}*/
+}
+
+
+// EMT constructors and operators
+inline ExtendedMetricTime& ExtendedMetricTime::operator = (const HumanTime& time) {
+	set_from(time,CHRIST_0);
+	return *this;
+}
+
+inline ExtendedMetricTime::ExtendedMetricTime(const HumanTime& time, const HumanTime& perspective){
+	set_from(time, perspective);
+}
+
+
+// notice: constexpr functions are implicitly inline!
+bool constexpr HumanTime::isLeapYear(int16_t year){ // ready, checked
+	/*
+	if (year % 4)	return false;
+	if (year % 100)	return true;
+	if (year % 400)	return false;
+	return true;
+	*/
+	return (year % 4) ? false : (
+							(year % 100) ? true : (!(year % 400))
+							);
+}
+
+
+inline bool operator == (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value == rop.value; }
+inline bool operator <  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value <  rop.value; }
+inline bool operator >  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value >  rop.value; }
+inline bool operator <= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value <= rop.value; }
+inline bool operator >= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value >= rop.value; }
+
+inline ExtendedMetricTime operator + (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop) { return lop.value + rop.value; }
+inline ExtendedMetricTime operator - (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop) { return lop.value - rop.value; }
+inline ExtendedMetricTime operator * (const ExtendedMetricTime emt, const int64_t factor)			{ return emt * factor; }
+inline ExtendedMetricTime operator * (const int64_t factor, const ExtendedMetricTime emt)			{ return factor * emt; }
+inline ExtendedMetricTime operator / (const EMT emt, const int64_t divisor)							{ return emt / divisor; }
+
+/*inline Time Time::operator + (const EMT& rop) const { return rop + EMT(*this); }
+inline Time Time::operator - (const EMT& rop) const { return EMT(*this) - rop; }
+*/
+
+#endif /* F_TIME_H_ */
+
+
+
+
+
+/* ideas or conceptional stuff stored here: */
 
 //<<< refactor: provide a new Metric Time which works as EMT but has no extendency means there are no divisions of seconds
 /* we don't need such a time class right now. just providing EMT and HT should be enough.
@@ -294,132 +489,3 @@ public:
 	
 };
 */
-
-
-class ExtendedMetricTime { // seems ready, only some <<<< test sth out.
-private:
-public:
-	static constexpr HumanTime CHRIST_0 = HumanTime();
-
-	int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed-dot-integer
-	
-public:
-		/* assignment operators */
-	inline ExtendedMetricTime& operator = (const int64_t& rop) { value = rop; return *this; }
-	inline ExtendedMetricTime& operator = (const HumanTime& time);
-	
-		/* ctor / conversion	from/to		int64 */
-	inline ExtendedMetricTime(int64_t value) : value(value) {}	// implicit conversion int64 ->  EMT
-	//inline operator int64_t() const { return value; }					// implicit conversion  EMT  -> int64
-		
-		/* c-tors */
-	inline ExtendedMetricTime(const HumanTime& time, const HumanTime& perspective = CHRIST_0);
-	// { *this = time; } //## handle christ// must be implicitly possible via extendedTime c-tor <<<<?????
-	
-	//inline int64_t& inner_value()								{	return value;	}
-	
-		/* setter (supposedly for time differences) */
-	inline void setFromSeconds	(int32_t seconds)		{ value = (1LL << 16) * seconds; }
-	inline void setFromMinutes	(int16_t minutes)		{ value = (1LL << 16) * 60 * minutes; }
-	inline void setFromHours	(int16_t hours)			{ value = (1LL << 16) * 60 * 60 *hours; }
-	inline void setFromDays		(int16_t days)			{ value = (1LL << 16) * 60 * 60 * 24 * days; }
-	void set_from(const HumanTime& time, const HumanTime& perspective = CHRIST_0);
-// { *this = time; } //## handle christ// must be implicitly possible via extendedTime c-tor <<<<?????
-	
-		/* factories */
-	inline static ExtendedMetricTime seconds_to_EMT		(int32_t seconds)		{ return ExtendedMetricTime((1LL << 16) * seconds); }
-	inline static ExtendedMetricTime minutes_to_EMT		(int16_t minutes)		{ return ExtendedMetricTime((1LL << 16) * 60 * minutes); }
-	inline static ExtendedMetricTime hours_to_EMT		(int16_t hours)			{ return ExtendedMetricTime((1LL << 16) * 60 * 60 * hours); }
-	inline static ExtendedMetricTime days_to_EMT		(int16_t days)			{ return ExtendedMetricTime((1LL << 16) * 60 * 60 * 24 * days); }	
-	
-		/* arithmetic operators */
-	inline friend ExtendedMetricTime operator + (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
-	//inline friend HumanTime operator + (const ExtendedMetricTime&, const HumanTime&);
-	inline friend ExtendedMetricTime operator - (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
-	template <typename T>
-	inline friend ExtendedMetricTime operator * (ExtendedMetricTime emt, T factor);
-	template <typename T>
-	inline friend ExtendedMetricTime operator * (T factor, ExtendedMetricTime emt);
-	template <typename T>
-	inline friend ExtendedMetricTime operator / (ExtendedMetricTime emt, T divisor);
-	template <typename T>
-	inline friend void div(const ExtendedMetricTime&, const ExtendedMetricTime, T&);
-	
-		/* comparison operators */
-	inline friend bool operator == (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop); /// <<<<<<< no lop, rop
-	inline friend bool operator <  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop); 
-	inline friend bool operator >  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop); 
-	inline friend bool operator <= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop); 
-	inline friend bool operator >= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop);
-		// ## is comparison possible without these functions and with implicit conversion to int instead ????
-};
-
-
-
-
-
-/* header body : */
-
-// HumanTime Operators:
-
-inline auto operator + (const HumanTime& op)								-> HumanTime const& {
-	return op;
-}
-
-inline auto operator + (const ExtendedMetricTime& lop, const HumanTime& rop)	-> HumanTime {
-	return HumanTime(lop + ExtendedMetricTime(rop, ExtendedMetricTime::CHRIST_0));
-}
-
-inline auto operator + (const HumanTime&, const ExtendedMetricTime&)	-> HumanTime;
-inline auto operator - (const HumanTime&, const HumanTime&)				-> ExtendedMetricTime;
-inline auto operator - (const HumanTime&, const ExtendedMetricTime&)	-> HumanTime;
-
-// EMT constructors and operators
-inline ExtendedMetricTime& ExtendedMetricTime::operator = (const HumanTime& time) {
-	set_from(time,CHRIST_0);
-	return *this;
-}
-
-inline ExtendedMetricTime::ExtendedMetricTime(const HumanTime& time, const HumanTime& perspective){
-	set_from(time, perspective);
-}
-
-
-// notice: constexpr functions are implicitely inline!
-bool constexpr HumanTime::isLeapYear(int16_t year){ // ready, checked
-	/*
-	if (year % 4)	return false;
-	if (year % 100)	return true;
-	if (year % 400)	return false;
-	return true;
-	*/
-	return (year % 4) ? false : (
-							(year % 100) ? true : (!(year % 400))
-							);
-}
-
-
-
-inline bool operator == (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value == rop.value; }
-inline bool operator <  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value <  rop.value; }
-inline bool operator >  (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value >  rop.value; }
-inline bool operator <= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value <= rop.value; }
-inline bool operator >= (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop)		{ return lop.value >= rop.value; }
-
-inline ExtendedMetricTime operator + (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop) { return lop.value + rop.value; }
-inline ExtendedMetricTime operator - (const ExtendedMetricTime& lop, const ExtendedMetricTime& rop) { return lop.value - rop.value; }
-inline ExtendedMetricTime operator * (const ExtendedMetricTime emt, const int64_t factor)			{ return emt * factor; }
-inline ExtendedMetricTime operator * (const int64_t factor, const ExtendedMetricTime emt)			{ return factor * emt; }
-inline ExtendedMetricTime operator / (const EMT emt, const int64_t divisor)							{ return emt / divisor; }
-
-/*inline Time Time::operator + (const EMT& rop) const { return rop + EMT(*this); }
-inline Time Time::operator - (const EMT& rop) const { return EMT(*this) - rop; }
-*/
-
-
-
-
-
-
-
-#endif /* F_TIME_H_ */

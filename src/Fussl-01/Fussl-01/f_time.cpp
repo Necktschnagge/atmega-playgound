@@ -7,6 +7,15 @@
 
 #include "f_time.h"
 
+namespace { // compilation unit local
+	
+		// 400 years in days:
+	constexpr int64_t c_400_years_in_days {400ll * 365 /*normal year*/ + 100 * 1 /*leap years*/ - 3 /*no leap years: 100, 200, 300*/ };
+		// [++value]s of an ExtendedMetricTime for one day:
+	constexpr int64_t emt_step_per_day { 24LL * 60 * 60 * (1LL << 16) };
+		
+}
+
 bool HumanTime::Date::is_valid(bool isLeapYear) const {
 	if ((0 <= static_cast<uint8_t>(month)) && (static_cast<uint8_t>(month) <12)){
 		return day < getMonthLength(month,isLeapYear);
@@ -20,12 +29,6 @@ bool HumanTime::HDate::is_valid(bool isLeapYear) const {
 	return ((day != 0) || (day <= getMonthLength(int_to_month(month),isLeapYear)));
 }
 
-namespace {
-	// 400 years in days:
-	constexpr int64_t c_400_years_in_days {400ll * 365 /*normal year*/ + 100 * 1 /*leap years*/ - 3 /*no leap years: 100, 200, 300*/ };
-	// [++value]s of an ExtendedMetricTime for one day:
-	constexpr int64_t emt_step_per_day { 24LL * 60 * 60 * (1LL << 16) };
-}
 
 HumanTime::HumanTime(const ExtendedMetricTime& emt){
 	int64_t value = emt.value;
@@ -88,37 +91,6 @@ uint8_t HumanTime::getMonthLength(Month month, bool isLeapYear){ // ready, check
 	if (month == Month::FEB) return 28 + isLeapYear;
 	return HumanTime::__monthLength__[static_cast<uint8_t>(month)];
 }
-
-HumanTime& HumanTime::operator++(){// ready, checked, change implementation!
-	++second; // tick forward
-	
-	// check overflows:
-	
-	//old implementation // faster but needs more program memory
-	if (second == 60){
-		second = 0;
-		++minute;
-	}
-	if (minute == 60){
-		minute = 0;
-		++hour;
-	}
-	if (hour == 24){
-		hour = 0;
-		++day;
-	}
-	if (day == daysOfYear()){
-		day = 0;
-		++year;
-	}
-	// normalize should be better because of case second == 61 a.s.o.
-	
-	// new implementation // needs more time and stack but less flash memory
-	//normalize();
-	
-	return *this;
-}
-
 
 HumanTime::Date HumanTime::getDate() const { // ready, checked
 	int16_t d {day};
