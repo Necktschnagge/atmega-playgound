@@ -2,7 +2,7 @@
  * f_time.cpp
  *
  * Created: 04.05.2017 14:28:49
- *  Author: F-NET-ADMIN
+ *  Author: Maximilian Starke
  */ 
 
 #include "f_time.h"
@@ -19,6 +19,41 @@ bool HumanTime::HDate::is_valid(bool isLeapYear) const {
 	if ((month==0) || (month > 12)) return false;
 	return ((day != 0) || (day <= getMonthLength(int_to_month(month),isLeapYear)));
 }
+
+namespace {
+	// 400 years in days:
+	constexpr int64_t c_400_years_in_days {400ll * 365 /*normal year*/ + 100 * 1 /*leap years*/ - 3 /*no leap years: 100, 200, 300*/ };
+	// [++value]s of an ExtendedMetricTime for one day:
+	constexpr int64_t emt_step_per_day { 24LL * 60 * 60 * (1LL << 16) };
+}
+
+HumanTime::HumanTime(const ExtendedMetricTime& emt){
+	int64_t value = emt.value;
+				//divisions_of_second = value % 0x10000;
+				//value -= divisions_of_second;
+	value = value >> 16;
+	second = value % 60;
+	value -= second; // this is necessary because of negative numbers
+	value /= 60;	// int div would otherwise do -7 : 2 = -3 instead of -8 :2 = - 4;
+	minute = value % 60;
+	value -= minute;
+	value /= 60;
+	hour = value % 24;
+	value -= hour;
+	value /= 24;
+	// now we have time remaining in days...
+	// first check for applicable 400 years...
+	year = 400 * (  ( value - (value % c_400_years_in_days) ) / c_400_years_in_days  );
+	value -= year * c_400_years_in_days;
+	// 0 <= value < factor400 assert <<<<<
+	while (value >= daysOfYear()){
+		value -= daysOfYear();
+		++year;
+	}
+	day = value;
+}
+
+
 /*
 HumanTime::HumanTime(const ETime& etime) : second(etime.time.second), minute(etime.time.minute), hour(etime.time.hour), day(etime.time.day), year() {
 	normalize();
@@ -147,6 +182,22 @@ bool HumanTime::operator <(HumanTime& rop){
 	));
 }
 
+void ExtendedMetricTime::set_from(const HumanTime& time, const HumanTime& perspective){
+	if (perspective == CHRIST_0) {
+		value = (1LL<<16) * (60LL * (60LL * (24LL * (time.get_day()) + time.get_hour()) + time.get_minute()) + time.get_second());
+		int16_t year = time.get_year();
+		value += emt_step_per_day * c_400_years_in_days * ( (year - year % 400) / 400);
+					// -600 -> -800 -> -2 instead of -600 -> -1
+		year %= 400; // this remaining we must add in ticks
+		while(year > 0){
+			--year;
+			value += emt_step_per_day * HumanTime::daysOfYear(year);
+		}
+	} else {
+		*this = ExtendedMetricTime(time,CHRIST_0) - ExtendedMetricTime(perspective,CHRIST_0);
+	}
+}
+
 /*Time Time::operator + (Time& rop){
 	rop.normalize();
 	normalize();
@@ -181,12 +232,6 @@ Time Time::operator - (Time& rop){
 	return result;
 }*/
 
-namespace {
-	// 400 years in days:
-	constexpr int64_t factor400 {400ll * 365 /*normal year*/ + 100 * 1 /*leap years*/ - 3 /*no leap years: 100, 200, 300*/ };
-	// [++value]s for one day:
-	constexpr int64_t ticksPerDay { 24LL * 60 * 60 * (1LL << 16) };
-}
 
 /************************************************************************/
 /* ET class                                                             */
