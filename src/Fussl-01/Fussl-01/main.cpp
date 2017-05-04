@@ -51,12 +51,39 @@ void after_selecting(){
 
 int main(void){
 	
-	Time::Month bsp {Time::Month::APR};
-	uint8_t zahl;
-	zahl << bsp;
-	Time t1;
-	Time t2;
-	bool is_equal = (t1 == t2);
+	// code for second release;
+	
+	led::init(8);
+	while (1){
+	for (uint8_t i = 0; i<=20; ++i){
+		led::pushByteVisible(0xFF);
+		hardware::delay(1500);
+		led::pushByteVisible(0x00);
+		hardware::delay(1500);
+		led::pushByteVisible(0x00);
+		hardware::delay(1500);
+	}
+	for (int8_t i = 0; i <64; ++i){
+		led::push64(1LL<< i);
+		led::latch();
+		hardware::delay(1500);
+	}
+	for (int8_t i = 0; i<8; ++i){
+		for (int8_t z = 0; z<10; ++z){
+			led::printDigit(z);
+			int8_t cc = i;
+			while (cc) {
+				--cc;
+				led::pushByteVisible(0x00);
+			}
+			hardware::delay(2000);
+		}
+	}
+
+	}
+	
+	return 0;
+	
 	
 	//###
 	// please check the board frequency of quartz and redefine fcpu in hardware.cpp
