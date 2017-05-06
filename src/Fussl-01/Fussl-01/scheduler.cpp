@@ -10,6 +10,8 @@
 #include "scheduler.h"
 #include <avr/interrupt.h>
 
+using namespace time;
+
 ISR (TIMER1_COMPA_vect){
 	/* compare match interrupt routine */
 	++scheduler::divisions_of_second;
@@ -75,7 +77,7 @@ uint16_t scheduler::updateNowTime(){
 }
 
 void scheduler::run(){
-	uint16_t partOfSecond = updateNowTime();
+	//uint16_t partOfSecond = updateNowTime();
 	/* 'now' is up to date and we know the current offset from the full second */
 	
 	// look for tasks to be executed

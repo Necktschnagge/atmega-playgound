@@ -115,7 +115,7 @@ namespace scheduler {
 	};
 	
 	extern uint16_t divisions_of_second; // 0 ... PARTS_OF_SECOND - 1
-	extern HumanTime now;
+	extern time::HumanTime now;
 	extern uint16_t nextFreeHandle;
 	extern void* taskTable;
 	extern uint16_t taskTableSize;
@@ -140,7 +140,7 @@ namespace scheduler {
 	};
 	
 	class ExactTime {
-		HumanTime time;
+		time::HumanTime time;
 		uint8_t divisions_of_second;
 		};
 	
