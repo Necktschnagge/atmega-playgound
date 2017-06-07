@@ -51,6 +51,74 @@ void after_selecting(){
 
 int main(void){
 	
+	// code for third release: a better testing program than the last build
+	
+	led::init(8);
+	while (true)
+	{
+		for (uint8_t pos = 0; pos < 8; ++pos){
+			// Test all segments on that particular LED character
+			
+			// single segments:
+			for (uint8_t shift = 0; shift <8; ++shift){
+				led::clear();
+				led::pushByteVisible(1<<shift);
+				for (uint8_t padding = 0; padding < pos; ++padding){
+					led::pushByteVisible(0);
+				}
+				hardware::delay(3000);
+			}
+			
+			// Try numbers:
+			for (uint8_t ziffer = 0; ziffer < 10; ++ziffer)
+			{
+				led::clear();
+				led::printDigit(ziffer);
+				for (uint8_t padding = 0; padding < pos; ++padding){
+					led::pushByteVisible(0);
+				}
+				hardware::delay(3000);
+			}
+			
+			led::clear();
+			led::printSign('A');
+			for (uint8_t padding = 0; padding < pos; ++padding){
+				led::pushByteVisible(0);
+			}
+			hardware::delay(3000);
+			
+			led::clear();
+			led::printSign('B');
+			for (uint8_t padding = 0; padding < pos; ++padding){
+				led::pushByteVisible(0);
+			}
+			hardware::delay(3000);
+			
+			led::clear();
+			led::printSign('C');
+			for (uint8_t padding = 0; padding < pos; ++padding){
+				led::pushByteVisible(0);
+			}
+			hardware::delay(3000);
+			
+			led::clear();
+			led::printSign('D');
+			for (uint8_t padding = 0; padding < pos; ++padding){
+				led::pushByteVisible(0);
+			}
+			hardware::delay(3000);
+			
+			led::clear();
+			led::printSign('E');
+			for (uint8_t padding = 0; padding < pos; ++padding){
+				led::pushByteVisible(0);
+			}
+			hardware::delay(3000);
+		}
+	}
+	
+	return 0;
+	
 	// code for second release;
 	
 	led::init(8);
