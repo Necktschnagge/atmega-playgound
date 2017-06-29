@@ -49,11 +49,70 @@ void after_selecting(){
 	led::clear();
 }
 
+void init_sr(){
+	DDRB = 0b00000011;
+	PORTB = 0b00000010;
+}
+
+void reset_sr(){
+	PORTB = 0b0;
+	hardware::delay(5);
+	PORTB = 0b00000010;
+}
+
+int16_t messen(){
+		PORTB |= 0b00000001;
+		hardware::delay(1);
+		PORTB &= 0b11111110;
+
+		while ((PINB & 0b00000100) == 0){}
+		TCCR1A = 0x00; // ~ NO PWM
+		TCNT1 = 0; // counter starts at zero
+		TCCR1B = 0b00000011; // CTC (Clear Timer on Compare Match) and start timer running from ext source on,
+		while (1){
+			if ((PINB & 0b00000100) == 0){
+				TCCR1B = 0;
+				return TCNT1;
+			}
+			if (false /*TCNT1 > 6000*/){
+				TCCR1B = 0;
+				reset_sr();
+				return 0;
+			}
+		}
+}
+
+void show_string(const char* str){
+	led::printString(str);
+	hardware::delay(1000);
+	led::clear();
+	
+}
+
 int main(void){
-	
-	// code for third release: a better testing program than the last build
-	
 	led::init(8);
+	led::printString("init");
+	hardware::delay(1000);
+	led::clear();
+	init_sr();
+	int32_t n = 0;
+	uint8_t i = 0;
+	while (1){
+		
+		int32_t m = messen();
+		m = (m * 68679) / 100000;
+		n = (n * 95 + m *5 ) / 100;
+		if (!i) {
+			led::clear();
+			led::printInt(n);
+		}
+		++i;
+		i %= 100;
+		//hardware::delay(1000);
+	}
+
+	// code for third release: a better testing program than the last build
+
 	while (true)
 	{
 		for (uint8_t pos = 0; pos < 8; ++pos){

@@ -11,6 +11,9 @@
  FPS:		everything needs to be completed of course....
 			
 			... make a short prototype of the scheduler to follow our issues.
+			
+				/// ### think about which procedures must deactivate interrupts during their execution
+
  */ 
 
 
@@ -34,23 +37,29 @@ namespace scheduler {
 		static constexpr uint8_t DEFAULT_PRECISION {10u};
 		static constexpr uint8_t PRECISION_ERROR {0xFF};
 		
-			/* precision is the logarithmic expression how accurate the time resolution of SystemTime is
+		/* PHASE: a phase is the time gap / time area between two compare matchings */
+		
+		
+			/* precision is the logarithmic expression how accurate the time resolution of SystemTime[.now] is
 				precision says the second is divided into 2^precision equal parts
-				so with precision=0 the smallest resolution is a second,
-				with precision=10 the resolution will be 1/1024 s
-				constraints: 0<= precision <= ld(OSC_FREQUENCY) // natural constraints
-				OSC_FREQUENCY / 2^(precision)  < 2^16 // cannot be = 2^16. This is the TCNT OV.
-					// We always want to make compare match for better code density and less complexity
-				*/
+						so with precision=0 the smallest resolution is a second,
+						with precision=10 the resolution will be 1/1024 s
+					constraints: 0<= precision <= ld(OSC_FREQUENCY) // natural constraints
+					OSC_FREQUENCY / 2^(precision)  < 2^16 // cannot be = 2^16. This is the TCNT OV.
+						// We always want to make compare match for better code density and less complexity
+				since precision is read by ISR but it is one byte only,
+					I suppose it is not necessary to put access into critical() environment */
 		uint8_t precision;
+		
 			/* purpose: changing precision during timer run:
 				current timer gap must be calculated with old_precision,
-				next must be initiated by precision*/
+				next must be initiated by precision
+				since it is read by ISR but it is one byte only,
+				I suppose it is not necessary to put access into critical() */
 		uint8_t old_precision;
 		
-			/* PHASE: a phase is the time gap / time area between two compare matchings */
-		
-			/* the frequency of the RTC oscillator */
+			/* the frequency of the RTC oscillator
+				note: writing osc_frequency is critical since ISR reads it */
 		uint32_t osc_frequency;
 	
 			/* amount of additional ticks to wait for during one phase,
@@ -62,76 +71,46 @@ namespace scheduler {
 			// ä## must be changed i.e. adapted when precision is changed!!!
 		
 			/* when the controller starts (booting process) 'now' should be initialized to zero
-			   then it values the distance from now to the begin of computing time */
+			   then it values the distance from now to the begin of computing time
+			   since now is changed by an ISR you must deactivate interrupts when accessing now */
 		time::ExtendedMetricTime now;
 			/* last time of setting RTC as refinement reference */
 		time::ExtendedMetricTime ref_time;
 		
 		SystemTime();
-					 //## precision gültig machen
 		
-			/* return the (maybe negative) padding to add to the normal TNCTCompareValue
-				*/
-		inline int16_t get_time_padding(){
-			static long double padding {0};
-			padding += refinement
-					+ static_cast<long double>(osc_frequency % (1<<precision))
-							/ static_cast<long double>(1<<precision);
-			// extract the int part of padding
-			long double trunced = trunc(padding);
-			padding -= trunced;
-			return static_cast<int16_t>(trunced); // ### think about test cases how are negative numbers trunced?
+		inline uint16_t get_normal_TCNT_compare_value(){ // Timer Counter
+			return osc_frequency / (static_cast<uint16_t>(1) << precision);
+			// damit das valid ist, müssen wir immer die gültigkeit von precision prüfen
 		}
+
+		/* return the (maybe negative) padding to add to the normal TNCTCompareValue */
+		inline int16_t get_time_padding();
 		
-		inline uint16_t get_normal_TCNT_compare_value(){ // Timer Counter 
-			return osc_frequency / (1 << precision); // damit das valid ist, müssen wir immer die gültigkeit von precision prüfen
-		}
-		
+		/* looks at the instance's osc frequency and says if it allows given precision */
 		bool is_precision_possible(uint8_t precision);
 			
 	public:
+		
+		/* singleton instance */
+		static SystemTime instance;
 	
+		/* deleted constructors / operators */
 		SystemTime(const SystemTime&) = delete;
 		const SystemTime& operator = (const SystemTime&) = delete;
 		SystemTime(SystemTime&&) = delete;
 		const SystemTime& operator = (SystemTime&&) = delete;
 		
-		static inline uint16_t __timer__counter__compare__value__only__called__by__interrupt__() {
-			//### check overflows / underflows
-			int32_t value;
-			
-		again:
-			value = static_cast<int32_t>(instance.get_normal_TCNT_compare_value()) + static_cast<int32_t>(instance.get_time_padding());
-			
-		begain:
-			if (value == 0){
-				// well, I think this is okay. It happens when we use maximum precision and or osc is a slower than it should be.
-				// but this case should really not appear far more than one time again during one function call.
-				++instance;
-				goto again;
-			}
-			if (value < 0){
-				// ### log any kind of error. this case should never happen!!!!
-				// we should stop immediately.
-				value = 0;
-				goto begain;
-				// osc frequency is far from its value
-			}
-			if (value > 0xFFFE){ // FFFF must also be possible
-				// osc_frequency far from its value
-				// ## log error
-				value = 0xFFFF;
-			}
-			
-			return static_cast<uint16_t>(value);
-		}
+		/* only to call by ISR (interrupt routine) or timer start function
+			meta: even if declared public it is for lib internal purpose.
+				it is inline despite defined in the cpp because of that
+		   calculates the Timer Compare Value, respecting instantly (periodically) changing paddings
+		   in order to realize the refinement */
+		/// <<< refactor: make this a friend and put it cpp local (???)
+		static inline uint16_t __timer__counter__compare__value__only__called__by__interrupt__();
 
-		static SystemTime instance;
-		
-		
-		// such a changing process must wait till the current second is over or not ???###
-		/// -> no it neednt but the last phase must be treated with the old precision
-		/// ### think about which procedures must deactivate interrupts during their execution	
+		/* get the now time copied in your local variable */
+		void get_now(time::ExtendedMetricTime& target) const;
 
 			/* try to change the precision (and return true).
 			   if not possible than don't change anything and return false */
@@ -139,26 +118,48 @@ namespace scheduler {
 		
 			/* try to change the precision to the given value,
 			   if not possible the function tries to find a possible precision in the near of given precision
-			   returns this->precision after change or 0xFF as an error code for "no possible precision" */
+			   returns this->precision after change or 0xFF as an error code (PRECISION_ERROR) for "no possible precision" */
 		uint8_t change_precision_anyway(uint8_t precision);
-
-			/* increase the instance's now time by the time delta given indirect by precision */
-			/* more exactly: given by old_precision and ser the old_precision to precision */
-		const SystemTime& operator ++ ();
 		
-			/* static version of operator ++ on singleton instance */
-		inline static void tick_forward(){
-			instance.operator ++();
+		// changing refinement...
+		// changing ref_time
+		
+		/* returns a reference to the refinement. only change, if you know what you do. */
+		inline long double& raw_refinement(){
+			return refinement;
 		}
 		
-			/* init the SystemTime singleton */
-		static bool init(uint8_t precision = DEFAULT_PRECISION, uint32_t osc_frequency = DEFAULT_OSC_FREQUENCY, const long double& clock_precision = 0.0L);
-			//##not impl
+		/* update, i.e. enhance the refinement by getting the
+			time offset that summed up since the reference time when your RTC-time was reset (ref_time)
+			offset must be the value to add scaled to refinement to correct the time error
+			so case SystemTime is too fast: offset must be negative to correct
+			   case SystemTime is too slow: offset must be positive to correct 
+			   offset = view to real time from SystemTime */
+		void update_refinement(const time::ExtendedMetricTime& offset);
 		
-			/* start running SystemTime clock */
-		static bool start();
-			// ## not impl both
+		/* to call to when your RTC-Time was totally reset.
+			set the refinement reference time to now @ function call */
+		void reset_ref_time();
+		
+		/* only use if you know what you're doing
+			returns reference to the reference time for refinement enhancing*/
+		inline time::ExtendedMetricTime& raw_ref_time(){
+			return ref_time;
+		}
+
+			/* increase the instance's now time by the time delta given indirect by precision */
+			/* more exactly: given by old_precision and set the old_precision to precision */
+		const SystemTime& operator ++ ();
+				
+			/* stops the timer / SystemTime if it is running (anyway)
+			   tries to set frequency, precision and refinement */
+		static bool init(const long double& refinement, uint32_t osc_frequency, uint8_t precision);
 			
+			/* start running SystemTime clock
+				true: precision is valid and SystemTime started
+				false: precision invalid or SystemTime already running */
+		static bool start();
+		
 			/* stop running SystemTime clock */
 		static void stop();
 		

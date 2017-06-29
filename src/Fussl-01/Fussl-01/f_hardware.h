@@ -39,6 +39,50 @@ namespace hardware {
 	/* the real string length of destination will be count + 1 (if nullTerminated) */
 	/* but if source has an '\0' before copying will be stopped immediately */
 	void copyString(char* destination, const char* source, uint8_t count, bool nullTerminated);
+	
+	/*template<int index>
+	class IOPin {
+		
+		private:
+		
+		static constexpr uint8_t MAX {8*6 + 5 - 2}; // 53 - 2
+			// BECAUSE OF 2 32kHz OSC INPUTS AT THESE PORTS
+		
+		public:
+		
+		IOPin<index> instance;
+		
+		IOPin();
+		
+		
+		inline operator int() { return this->operator bool(); };
+		
+			* get input value *
+		inline operator bool() {
+			if (index < 8) {
+				
+			} else if (index < 16) {
+
+			} else if (index < 16) {
+				
+			}
+		}
+		
+		
+			* set output or pull-up /
+		void operator = (bool);
+		
+		
+	};*/
+	/*
+		occupied pins
+		PG3..4 are TOSC1..2 for external RTC clock osc.
+		
+	
+	*/
+	
+	
+	
 }
 
 #endif /* F_HARDWARE_H_ */

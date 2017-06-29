@@ -23,8 +23,8 @@
 #include "f_ledline.h"
 
 void hardware::delay(uint16_t ms){
-	for(uint16_t i = 0; i<ms; i+=10){
-		_delay_ms(10);
+	for(uint16_t i = 0; i<ms; i+=1){
+		_delay_ms(1);
 	}
 }
 
