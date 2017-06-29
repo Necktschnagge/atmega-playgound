@@ -8,6 +8,12 @@
  
  */
 
+#define critical_begin		uint8_t __sreg__ = SREG; cli()
+#define critical_end		SREG = __sreg__
+#define critical(code)		critical_begin; { code } critical_end
+// it is so un-C++-like but I think here it it good because it makes code better readable and understandable
+// make sure that you don't jump from inside a critical to outside without using an extra critical_end;
+
 #include <avr/interrupt.h>
 
 #include "scheduler.h"
@@ -31,8 +37,19 @@ ISR (TIMER1_COMPA_vect){
 	++scheduler::SystemTime::instance;
 }
 
-scheduler::SystemTime::SystemTime() : now(0), ref_time(0) {
+scheduler::SystemTime::SystemTime() : refinement(0), now(0), ref_time(0) {
 	init(DEFAULT_PRECISION,DEFAULT_OSC_FREQUENCY,0.0L);
+}
+
+int16_t scheduler::SystemTime::get_time_padding(){
+	static long double padding {0};
+	padding += refinement
+	+ static_cast<long double>(osc_frequency % (1<<precision))
+	/ static_cast<long double>(1<<precision);
+	// extract the int part of padding
+	long double trunced = trunc(padding);
+	padding -= trunced;
+	return static_cast<int16_t>(trunced); // ### think about test cases how are negative numbers trunced?
 }
 
 bool scheduler::SystemTime::is_precision_possible(uint8_t precision){
@@ -48,9 +65,50 @@ bool scheduler::SystemTime::is_precision_possible(uint8_t precision){
 	return true;
 }
 
+uint16_t scheduler::SystemTime::__timer__counter__compare__value__only__called__by__interrupt__() {
+	//#### check overflows / underflows
+	int32_t value;
+	
+	again:
+	value = static_cast<int32_t>(instance.get_normal_TCNT_compare_value()) + static_cast<int32_t>(instance.get_time_padding());
+	
+	begain:
+	if (value == 0){
+		// well, I think this is okay. It happens when we use maximum precision and or osc is a slower than it should be.
+		// but this case should really not appear far more than one time again during one function call.
+		++instance;
+		goto again;
+	}
+	if (value < 0){
+		// ### log any kind of error. this case should never happen!!!!
+		// we should stop immediately.
+		value = 0;
+		goto begain;
+		// osc frequency is far from its value
+	}
+	if (value > 0xFFFE){ // FFFF must also be possible
+		// osc_frequency far from its value
+		// ## log error
+		value = 0xFFFF;
+	}
+	
+	return static_cast<uint16_t>(value);
+}
+
+void scheduler::SystemTime::get_now(time::ExtendedMetricTime& target) const {
+	critical(
+		target = now;
+		);
+}
+
 bool scheduler::SystemTime::change_precision_aborting(uint8_t precision){
 	// can be interrupted, no problem
 	if (is_precision_possible(precision)){
+		long double factor {1};
+	//	for (uint8_t i = 0; i < abs(precision - this->precision); ++i){
+	//		factor *= 2;
+	//	} #### abs not working
+		// refinement /=  1.0 (1<< (precision - this->precision) ); ###same
 		this->precision = precision;
 		return true;
 	}
@@ -58,7 +116,8 @@ bool scheduler::SystemTime::change_precision_aborting(uint8_t precision){
 }
 
 uint8_t scheduler::SystemTime::change_precision_anyway(uint8_t precision){
-	// can be interrupted, no problem
+	// can be interrupted, no problem,
+	// we only change precision, which is read by ISR, but only 1 Byte size
 	while (precision > 0){
 		if (change_precision_aborting(precision)) return precision;
 		--precision;
@@ -70,26 +129,41 @@ uint8_t scheduler::SystemTime::change_precision_anyway(uint8_t precision){
 	return PRECISION_ERROR;
 }
 
+void scheduler::SystemTime::update_refinement(const ExtendedMetricTime& offset){
+	critical(
+		// vielleicht wäre es besser wenn wir direkt die Frequenz ändern würden.
+	);
+}
+
+void scheduler::SystemTime::reset_ref_time(){
+	critical(
+	// do not interrupt because of reading now
+		ref_time = now;
+	);
+}
+
 const scheduler::SystemTime& scheduler::SystemTime::operator ++ (){
-	uint8_t sreg = SREG;
+	critical(
 		// do not interrupt
 		// of course: if called by the ISR interrupts are already deactivated,
 		// but in case someone else calls this function despite I cannot imagine any purpose to do that
-	cli();
-	now = now + ( 1ull << (16 - old_precision) );
-	old_precision = precision;
-	SREG = sreg;
+		now = now + ( 1ull << (16 - old_precision) );
+		old_precision = precision;
+	);
 	return *this;
 }
 
-bool scheduler::SystemTime::init(uint8_t precision, uint32_t osc_frequency, const long double& clock_precision){
+bool scheduler::SystemTime::init(const long double& refinement, uint32_t osc_frequency, uint8_t precision){
 	stop();
 	// because you should not use this function to change while SystemTime is running
-	// shoukld be called by the constructor ## check this
 	
-	instance.refinement = clock_precision;
+	instance.refinement = refinement;
 	instance.osc_frequency = osc_frequency;
-	instance.precision = 12; // for the error case // why <<<<
+	instance.precision = 10; // for the error case:
+							// at error case precision will be unchanged,
+							// so we want to have at least some not totally senseless value
+							
+							// by the way: if there was precision error you cannot start SystemTime with start();
 	uint8_t result = instance.change_precision_anyway(precision);
 	instance.old_precision = instance.precision;
 	
@@ -98,6 +172,7 @@ bool scheduler::SystemTime::init(uint8_t precision, uint32_t osc_frequency, cons
 
 bool scheduler::SystemTime::start(){
 	if (instance.is_precision_possible(instance.precision) == false) return false;
+	if (TCCR1B & 0b00000111) return false; // already started
 	
 	// <<<<< if already started ... (do not handle) ??
 	
@@ -118,7 +193,8 @@ bool scheduler::SystemTime::start(){
 }
 
 void scheduler::SystemTime::stop(){
-	TIMSK &= 0b11000011;
+	TCCR1B = 0b00000000;
+	//	TIMSK &= 0b11000011;	// cancel the ISR reference
 }
 
 
@@ -151,23 +227,6 @@ void scheduler::SystemTime::stop(){
 	 scheduler::taskTableSize = taskTableSize;
 }
 
-/*
-uint16_t scheduler::updateNowTime(){
-	uint16_t forwardSeconds;
-	uint16_t partOfSecond;
-	uint8_t sreg = SREG;
-	cli();
-	forwardSeconds = divisions_of_second / PARTS_OF_SECOND;
-	divisions_of_second = divisions_of_second % PARTS_OF_SECOND;
-	partOfSecond = divisions_of_second;
-	SREG = sreg;
-	while (forwardSeconds){
-		--forwardSeconds;
-		//++now;
-	}
-	return partOfSecond;
-}
-*/
 
 uint16_t scheduler::nextFreeHandle {1};
 void* scheduler::taskTable {nullptr};
