@@ -6,10 +6,6 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Fussl-01", "Fussl-01\Fussl-01.cppproj", "{DCE6C7E3-EE26-4D79-826B-08594B9AD897}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6F8832BF-AE3D-41A3-ACC3-F171C1DF0ECC}"
-	ProjectSection(SolutionItems) = preProject
-		f_hcsr04.cpp = f_hcsr04.cpp
-		f_hcsr04.h = f_hcsr04.h
-	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

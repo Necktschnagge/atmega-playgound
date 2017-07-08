@@ -40,6 +40,7 @@ C_SRCS +=  \
 ../f_arch.cpp \
 ../f_gui.cpp \
 ../f_hardware.cpp \
+../f_hcsr04.cpp \
 ../f_ledline.cpp \
 ../f_test.cpp \
 ../f_time.cpp \
@@ -57,6 +58,7 @@ OBJS +=  \
 f_arch.o \
 f_gui.o \
 f_hardware.o \
+f_hcsr04.o \
 f_ledline.o \
 f_test.o \
 f_time.o \
@@ -67,6 +69,7 @@ OBJS_AS_ARGS +=  \
 f_arch.o \
 f_gui.o \
 f_hardware.o \
+f_hcsr04.o \
 f_ledline.o \
 f_test.o \
 f_time.o \
@@ -77,6 +80,7 @@ C_DEPS +=  \
 f_arch.d \
 f_gui.d \
 f_hardware.d \
+f_hcsr04.d \
 f_ledline.d \
 f_test.d \
 f_time.d \
@@ -87,6 +91,7 @@ C_DEPS_AS_ARGS +=  \
 f_arch.d \
 f_gui.d \
 f_hardware.d \
+f_hcsr04.d \
 f_ledline.d \
 f_test.d \
 f_time.d \
@@ -127,6 +132,8 @@ LINKER_SCRIPT_DEP+=
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\include"  -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
 	@echo Finished building: $<
 	
+
+
 
 ./f_ledline.o: .././f_ledline.cpp
 	@echo Building file: $<

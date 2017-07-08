@@ -220,6 +220,12 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
+    <Compile Include="f_hcsr04.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_hcsr04.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_ledline.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
