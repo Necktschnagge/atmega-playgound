@@ -250,7 +250,7 @@ void led::printDigit(const uint8_t digit){
 uint8_t led::printInt(const int64_t integer, const bool checkLineLength){
 	uint8_t chars = (integer<0); // use chars to count how many characters we need.
 	if (chars){ // print '-' if there is one
-		led::printSign('-');
+		led::printSign('-'); // <<< causes annoying flicker !!!! do not use recursion!!! 
 	}
 	if (abs(integer/10)){ // print recursively the higher part of the int if any
 		chars += led::printInt(abs(integer/10), false);

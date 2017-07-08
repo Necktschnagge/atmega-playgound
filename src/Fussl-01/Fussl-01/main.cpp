@@ -14,7 +14,7 @@
 #include "f_gui.h"
 #include "f_test.h"
 #include "scheduler.h"
-
+#include "f_hcsr04.h"
 void foo(){
 	
 
@@ -60,7 +60,7 @@ void reset_sr(){
 	PORTB = 0b00000010;
 }
 
-int16_t messen(){
+int32_t messen(){
 		PORTB |= 0b00000001;
 		hardware::delay(1);
 		PORTB &= 0b11111110;
@@ -74,10 +74,10 @@ int16_t messen(){
 				TCCR1B = 0;
 				return TCNT1;
 			}
-			if (false /*TCNT1 > 6000*/){
+			if (TCNT1 > 6000){
 				TCCR1B = 0;
 				reset_sr();
-				return 0;
+				return -200;
 			}
 		}
 }
@@ -92,23 +92,48 @@ void show_string(const char* str){
 int main(void){
 	led::init(8);
 	led::printString("init");
-	hardware::delay(1000);
+	hardware::delay(4000);
 	led::clear();
 	init_sr();
-	int32_t n = 0;
-	uint8_t i = 0;
+	
+	int32_t data[501];
+
+nochmal:
+	led::LFPrintString("miss");
+	//int32_t n = 0;
+	int16_t i = 0;
 	while (1){
 		
-		int32_t m = messen();
-		m = (m * 68679) / 100000;
-		n = (n * 95 + m *5 ) / 100;
-		if (!i) {
-			led::clear();
-			led::printInt(n);
-		}
+		data[i] = messen();
+		//m = (m * 68679) / 100000;
+		//n = (n * 95 + m *5 ) / 100;
+		//if (!i) {
+		//	led::clear();
+		//	led::printInt(n);
+		//}
+		
 		++i;
-		i %= 100;
+		//i %= 100;
 		//hardware::delay(1000);
+		if (i > 500){
+			// ausgeben
+			led::LFPrintString("Ausgabe");
+			hardware::delay(4000);
+			led::clear();
+			
+			for (uint16_t j = 0; j < 501; ++j){
+				led::printInt(j);
+				led::printSign('|');
+				hardware::delay(1000);
+				
+				led::clear();
+				led::printInt(data[j]);
+				hardware::delay(4000);
+				led::clear();				
+			}
+			goto nochmal;
+		}
+		
 	}
 
 	// code for third release: a better testing program than the last build
