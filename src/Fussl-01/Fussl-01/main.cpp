@@ -52,6 +52,10 @@ void after_selecting(){
 void init_sr(){
 	DDRB = 0b00000011;
 	PORTB = 0b00000010;
+	// und init für netsend:
+	DDRB = 0b00011011;
+	PORTB = 0b00011010;
+	//feedback_trigger, trigger_out, data 
 }
 
 void reset_sr(){
@@ -77,7 +81,7 @@ int32_t messen(){
 			if (TCNT1 > 6000){
 				TCCR1B = 0;
 				reset_sr();
-				return -200;
+				return 0;
 			}
 		}
 }
@@ -89,16 +93,25 @@ void show_string(const char* str){
 	
 }
 
-int main(void){
-	led::init(8);
-	led::printString("init");
-	hardware::delay(4000);
-	led::clear();
-	init_sr();
+bool get_feedback(){
+	return (PINB & (1<<5));
+}
+
+void sendbit(bool value){
+	static bool last_feedback {0};
+	while (get_feedback()==last_feedback);
+	PORTB &= 0b11110111;
+	uint8_t v = value;
+	PORTB |= (v<<3);
+	bool toggle;
 	
+}
+
+void messreihe500(){
+
 	int32_t data[501];
 
-nochmal:
+	nochmal:
 	led::LFPrintString("miss");
 	//int32_t n = 0;
 	int16_t i = 0;
@@ -129,12 +142,49 @@ nochmal:
 				led::clear();
 				led::printInt(data[j]);
 				hardware::delay(4000);
-				led::clear();				
+				led::clear();
 			}
 			goto nochmal;
 		}
 		
 	}
+	
+}
+
+int main(void){
+	led::init(8);
+	guiBootScreen();
+	led::clear();
+
+	init_sr();
+	
+	sensor::Kanalysator<int32_t,4>::Configuration config;
+		config.weight_old = 990; // changed from 95 npercent to 99
+		config.weight_new =  10;
+		
+		config.initial_badness = 80;
+		config.badness_reducer = 9;
+	sensor::Kanalysator<int32_t,4> analytiker(&config);
+	
+	int32_t messwert;
+	int32_t ausgabe;
+	//uint8_t 
+	while (1){
+		messwert = messen();
+		analytiker.input(messwert);
+		
+		ausgabe = analytiker.output();
+		led::clear();
+		led::printInt(ausgabe * 6632 / 10000); // 0.06632 cm/tick. Messunng vom 13.07.2017; C++ Stunde mit Hannes
+	}
+
+
+
+	while (1) {}
+
+	/************************************************************************/
+	/* older code                                                          */
+	/************************************************************************/
 
 	// code for third release: a better testing program than the last build
 

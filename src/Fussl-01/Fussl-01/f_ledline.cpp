@@ -61,6 +61,13 @@ void led::init(const uint8_t lineLength) {
 	PORTA = 0b11111000;
 	_LEDLINE_ = 0; // comment: is not necessary
 	led::clear();
+	hardware::delay(20);
+	led::clear();
+	hardware::delay(20);
+	for (uint8_t i = 0; i < lineLength; ++i) led::pushByte(1<<7);
+	led::latch();
+	hardware::delay(300);
+	led::clear();
 	LINELENGTH = lineLength;
 }
 
