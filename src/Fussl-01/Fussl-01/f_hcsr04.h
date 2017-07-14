@@ -17,7 +17,7 @@ namespace sensor {
 #if false	
 	class HCSR04 {
 		public:
-		static constexpr int16_t OUT_OF_RANGE {-1};
+		static constexpr int16_t OUT_OF_RANGE {0};
 		
 		private:
 		

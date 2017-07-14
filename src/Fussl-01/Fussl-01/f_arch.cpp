@@ -108,19 +108,21 @@ typedef struct sstate {
 
 static tstate state;
 
-	/* mark at writing position WAITONLY into light */
-static inline void WaitOnlyBufferPrepare(){
-	state.light.buffer[state.light.write].light = 0x8000;
-}
-
-	/* buffer write ptr ++ */
-static inline void BufferWriteIndexerInc(){
-	state.light.write = (state.light.write + 1 ) % BUFFERSIZE;
-}
-
-	/* buffer read ptr ++ */
-static inline void BufferReadIndexerInc(){
-	state.light.read = (state.light.read + 1) % BUFFERSIZE;
+namespace {
+		/* mark at writing position WAITONLY into light */
+	inline void WaitOnlyBufferPrepare(){
+		state.light.buffer[state.light.write].light = 0x8000;
+	}
+	
+		/* buffer write ptr ++ */
+	inline void BufferWriteIndexerInc(){
+		state.light.write = (state.light.write + 1 ) % BUFFERSIZE;
+	}
+	
+		/* buffer read ptr ++ */
+	inline void BufferReadIndexerInc(){
+		state.light.read = (state.light.read + 1) % BUFFERSIZE;
+	}
 }
 
 void arch::runProgram(uint8_t program){// for user
