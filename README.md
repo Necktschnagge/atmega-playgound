@@ -16,5 +16,5 @@ software can target a 7 segment output, can read distance from ultrasonic sensor
 * * a cooperative scheduler
 * * simple user interface tools
 * * some tools for distance sensor
-* * a tool for blinking of a christmas arch (Schwibbogen)
+* * a tool for blinking of a candle arch (Schwibbogen)
 * * some easy network tools for communicating with other atmels and raspberry pi for information interchange
