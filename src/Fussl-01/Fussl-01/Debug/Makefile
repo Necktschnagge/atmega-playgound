@@ -38,6 +38,7 @@ SUBDIRS :=
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS +=  \
 ../f_arch.cpp \
+../f_cmi.cpp \
 ../f_gui.cpp \
 ../f_hardware.cpp \
 ../f_hcsr04.cpp \
@@ -56,6 +57,7 @@ ASM_SRCS +=
 
 OBJS +=  \
 f_arch.o \
+f_cmi.o \
 f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
@@ -67,6 +69,7 @@ scheduler.o
 
 OBJS_AS_ARGS +=  \
 f_arch.o \
+f_cmi.o \
 f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
@@ -78,6 +81,7 @@ scheduler.o
 
 C_DEPS +=  \
 f_arch.d \
+f_cmi.d \
 f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
@@ -89,6 +93,7 @@ scheduler.d
 
 C_DEPS_AS_ARGS +=  \
 f_arch.d \
+f_cmi.d \
 f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
@@ -113,6 +118,13 @@ LINKER_SCRIPT_DEP+=
 
 # AVR32/GNU C Compiler
 ./f_arch.o: .././f_arch.cpp
+	@echo Building file: $<
+	@echo Invoking: AVR8/GNU C Compiler : 4.9.2
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\include"  -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
+	@echo Finished building: $<
+	
+
+./f_cmi.o: .././f_cmi.cpp
 	@echo Building file: $<
 	@echo Invoking: AVR8/GNU C Compiler : 4.9.2
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\include"  -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.0.106\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
