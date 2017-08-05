@@ -58,6 +58,7 @@ void reset_sr(){
 	PORTB = 0b00000010;
 }
 
+	/* returns the raw value from the HCRS04 */
 int32_t messen(){
 		PORTB |= 0b00000001;
 		hardware::delay(1);
@@ -260,10 +261,7 @@ void arch_prototype_release_blink_up_and_l_to_r() {
 
 void testing_CMI_Interpreter_with_one_HCSR04_sensor(){
 	/* no return */
-	led::init(8);
-	guiBootScreen();
-	led::clear();
-
+	
 	init_sr();
 	
 	sensor::Kanalysator<int32_t,4>::Configuration config;
@@ -288,6 +286,10 @@ void testing_CMI_Interpreter_with_one_HCSR04_sensor(){
 }
 
 int main(void){
+	
+	led::init(8);
+	guiBootScreen();
+	led::clear();
 	
 	testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
 	
