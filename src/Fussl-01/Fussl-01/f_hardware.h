@@ -41,24 +41,29 @@ namespace hardware {
 	/* but if source has an '\0' before copying will be stopped immediately */
 	void copyString(char* destination, const char* source, uint8_t count, bool nullTerminated);
 	
+	
+	/*
+	Also am liebsten hätte ich ja ein Checking dass kein Pin mehrfach verwendet wird
+	
+	*/
 	class PIN {
 	private:
 		uint8_t code;
-		static 
+		static uint8_t min_code;
 	public:
 		PIN(uint8_t pin_number) : code(pin_number) {}
 		
 		/* copy ctor, = */
 		PIN(const PIN&) = delete;
 		PIN(PIN&) = delete;
-		operator = (const PIN&) = delete;
+		void operator = (const PIN&) = delete;
 		
 		/* move ctor, = */
 		inline PIN(PIN&& pin) {
 			 this->code = pin.code;
 			 pin.code = 255; 
 		}
-		inline operator = (PIN&& pin) {
+		inline void operator = (PIN&& pin) {
 			this->code = pin.code;
 			pin.code = 255;
 		}
