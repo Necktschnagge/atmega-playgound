@@ -61,6 +61,13 @@ void led::init(const uint8_t lineLength) {
 	PORTA = 0b11111000;
 	_LEDLINE_ = 0; // comment: is not necessary
 	led::clear();
+	hardware::delay(20);
+	led::clear();
+	hardware::delay(20);
+	for (uint8_t i = 0; i < lineLength; ++i) led::pushByte(1<<7);
+	led::latch();
+	hardware::delay(300);
+	led::clear();
 	LINELENGTH = lineLength;
 }
 
@@ -250,7 +257,7 @@ void led::printDigit(const uint8_t digit){
 uint8_t led::printInt(const int64_t integer, const bool checkLineLength){
 	uint8_t chars = (integer<0); // use chars to count how many characters we need.
 	if (chars){ // print '-' if there is one
-		led::printSign('-');
+		led::printSign('-'); // <<< causes annoying flicker !!!! do not use recursion!!! 
 	}
 	if (abs(integer/10)){ // print recursively the higher part of the int if any
 		chars += led::printInt(abs(integer/10), false);

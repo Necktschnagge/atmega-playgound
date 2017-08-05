@@ -220,13 +220,20 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
+    <Compile Include="f_hcsr04.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_hcsr04.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_ledline.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
     <Compile Include="f_ledline.h">
       <SubType>compile</SubType>
-      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">std=c++11</CustomCompilationSetting>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
     <Compile Include="f_test.cpp">
       <SubType>compile</SubType>
@@ -236,15 +243,24 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
+    <Compile Include="f_time.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_time.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="main.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
     <Compile Include="scheduler.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
     <Compile Include="scheduler.h">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />

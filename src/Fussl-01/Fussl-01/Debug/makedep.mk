@@ -8,9 +8,13 @@ f_gui.cpp
 
 f_hardware.cpp
 
+f_hcsr04.cpp
+
 f_ledline.cpp
 
 f_test.cpp
+
+f_time.cpp
 
 main.cpp
 

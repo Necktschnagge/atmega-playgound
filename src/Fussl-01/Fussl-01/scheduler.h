@@ -1,151 +1,284 @@
 /*
  * scheduler.h
  *
- * Created: 07.03.2017 18:16:16
+ *  Created: 07.03.2017 18:16:16
  *  Author: Maximilian Starke
+ *
+ *
+ *
+ *
+ *
+ FPS:		everything needs to be completed of course....
+			
+			... make a short prototype of the scheduler to follow our issues.
+			
+				/// ### think about which procedures must deactivate interrupts during their execution
+
  */ 
 
 
 #ifndef SCHEDULER_H_
 #define SCHEDULER_H_
-//#include <time.h>
+//#include <avr/interrupt.h>
 
+#include <stdint.h> // by the way... it is already included by f_time.h
+#include <math.h>
+#include "f_time.h"
 
-
-#ifdef NNNNNNNNN
-// using timer
-// 16 bit timer/counter to count the RTC Quartz signal which is 32768 Hz
-//we need to setup the 16 bit timer
-TCCR1A = 0x00; // we don't use PWM (for creating a specific output signal) and we don't set any output pins
-TCCR1B = 0b00001000; // timer turned off; // 1 stands for CTC (Clear Timer on Compare Match) with OCR1A
-// CTC1 must be 1 to set the counter 0 when it reaches the compare value, we have no prescaler because of external source
-TCCR1B = 0b00001111; // count on rising edge, timer runs.
-// TCCR1C is per default 0 so we can leave this out.
-
-// 32768 external oscillator for timing clock
-// 16MHz CPU Clock 
-
-OCR1A = 1024; // 1 second divided into 32 equal parts
-//OCR1AH = 0x08; // high comparison byte // only this order first high than low, please deactivate global interrupts before changing
-//OCR1AL = 0x00; // low c byte			8*256 = 2048 // 8 interrupts per second
-//OCR1A = 0x0FFF; // directly
-
-// don't know why there are an a, b , c register
-
-// please deactivate interrupts
-TCNT1H =  0; // counter starts a zero
-TCNT1L = 0; //
-TCNT1 = 0;
-
-TIMSK |= 0b00010000; // data sheet page 138: interrupt enable for Timer1 Compare Match A
-// activate global interrupts !!!
-
-#endif
-
-
-ISR (TIMER1_COMPA_vect){
-	/* compare match interrupt routine */
-	
-}
+/* scheduler ----------------------------------------------------------------------------------------------------  */
 
 namespace scheduler {
 	
-	int8_t divisions_of_second; // ... 0 ... 31 ???
+		/* Singleton */
+	class SystemTime {
+		
+			// 32768Hz external oscillator for timing clock
+		static constexpr uint32_t DEFAULT_OSC_FREQUENCY { 1u << 15 };
+		static constexpr uint8_t DEFAULT_PRECISION {10u};
+		static constexpr uint8_t PRECISION_ERROR {0xFF};
+		
+		/* PHASE: a phase is the time gap / time area between two compare matchings */
+		
+		
+			/* precision is the logarithmic expression how accurate the time resolution of SystemTime[.now] is
+				precision says the second is divided into 2^precision equal parts
+						so with precision=0 the smallest resolution is a second,
+						with precision=10 the resolution will be 1/1024 s
+					constraints: 0<= precision <= ld(OSC_FREQUENCY) // natural constraints
+					OSC_FREQUENCY / 2^(precision)  < 2^16 // cannot be = 2^16. This is the TCNT OV.
+						// We always want to make compare match for better code density and less complexity
+				since precision is read by ISR but it is one byte only,
+					I suppose it is not necessary to put access into critical() environment */
+		uint8_t precision;
+		
+			/* purpose: changing precision during timer run:
+				current timer gap must be calculated with old_precision,
+				next must be initiated by precision
+				since it is read by ISR but it is one byte only,
+				I suppose it is not necessary to put access into critical() */
+		uint8_t old_precision;
+		
+			/* the frequency of the RTC oscillator
+				note: writing osc_frequency is critical since ISR reads it */
+		uint32_t osc_frequency;
 	
-	class Time {
-		public:
+			/* amount of additional ticks to wait for during one phase,
+				given by user or admin 
+				it does not contain the ticks which were kicked out be the integer division
+				in order to calculate the Compare-Match-Value.
+				That (necessary) fix is already treated by get_time_padding() */
+		long double refinement;
+			// ä## must be changed i.e. adapted when precision is changed!!!
 		
-		int8_t second; // 0 ... 59
-		int8_t minute; // 0 ... 59
-		int8_t hour; // 0 ... 23
-		int16_t day; // 0 ... 365 / 366
-		int16_t year; 
+			/* when the controller starts (booting process) 'now' should be initialized to zero
+			   then it values the distance from now to the begin of computing time
+			   since now is changed by an ISR you must deactivate interrupts when accessing now */
+		time::ExtendedMetricTime now;
+			/* last time of setting RTC as refinement reference */
+		time::ExtendedMetricTime ref_time;
 		
-		Time& operator++(){
-			++second;
-			if (second == 60){
-				second = 0;
-				++minute;
-			}
-			if (minute == 60){
-				minute = 0;
-				++hour;
-			}
-			if (hour == 24){
-				hour = 0;
-				++day;
-			}
-			if (day == ())
+		SystemTime();
+		
+		inline uint16_t get_normal_TCNT_compare_value(){ // Timer Counter
+			return osc_frequency / (static_cast<uint16_t>(1) << precision);
+			// damit das valid ist, müssen wir immer die gültigkeit von precision prüfen
 		}
+
+		/* return the (maybe negative) padding to add to the normal TNCTCompareValue */
+		inline int16_t get_time_padding();
 		
-		enum class Month {
-			JANUARY,
-			FEBRUARY,
-			MARCH,
-			APRIL,
-			MAY,
-			JUNE,
-			JULY,
-			AUGUST,
-			SEPTEMBER,
-			OCTOBER,
-			NOVEMBER,
-			DECEMBER
-		};
-		
-		
-		
-		struct {Month month, uint8_t day} getDate(){
-			//if 
-		}
-		
-		Month getMonth(){
+		/* looks at the instance's osc frequency and says if it allows given precision */
+		bool is_precision_possible(uint8_t precision);
 			
+	public:
+		
+		/* singleton instance */
+		static SystemTime instance;
+	
+		/* deleted constructors / operators */
+		SystemTime(const SystemTime&) = delete;
+		const SystemTime& operator = (const SystemTime&) = delete;
+		SystemTime(SystemTime&&) = delete;
+		const SystemTime& operator = (SystemTime&&) = delete;
+		
+		/* only to call by ISR (interrupt routine) or timer start function
+			meta: even if declared public it is for lib internal purpose.
+				it is inline despite defined in the cpp because of that
+		   calculates the Timer Compare Value, respecting instantly (periodically) changing paddings
+		   in order to realize the refinement */
+		/// <<< refactor: make this a friend and put it cpp local (???)
+		static inline uint16_t __timer__counter__compare__value__only__called__by__interrupt__();
+
+		/* get the now time copied in your local variable */
+		void get_now(time::ExtendedMetricTime& target) const;
+
+			/* try to change the precision (and return true).
+			   if not possible than don't change anything and return false */
+		bool change_precision_aborting(uint8_t precision);
+		
+			/* try to change the precision to the given value,
+			   if not possible the function tries to find a possible precision in the near of given precision
+			   returns this->precision after change or 0xFF as an error code (PRECISION_ERROR) for "no possible precision" */
+		uint8_t change_precision_anyway(uint8_t precision);
+		
+		// changing refinement...
+		// changing ref_time
+		
+		/* returns a reference to the refinement. only change, if you know what you do. */
+		inline long double& raw_refinement(){
+			return refinement;
 		}
+		
+		/* update, i.e. enhance the refinement by getting the
+			time offset that summed up since the reference time when your RTC-time was reset (ref_time)
+			offset must be the value to add scaled to refinement to correct the time error
+			so case SystemTime is too fast: offset must be negative to correct
+			   case SystemTime is too slow: offset must be positive to correct 
+			   offset = view to real time from SystemTime */
+		void update_refinement(const time::ExtendedMetricTime& offset);
+		
+		/* to call to when your RTC-Time was totally reset.
+			set the refinement reference time to now @ function call */
+		void reset_ref_time();
+		
+		/* only use if you know what you're doing
+			returns reference to the reference time for refinement enhancing*/
+		inline time::ExtendedMetricTime& raw_ref_time(){
+			return ref_time;
+		}
+
+			/* increase the instance's now time by the time delta given indirect by precision */
+			/* more exactly: given by old_precision and set the old_precision to precision */
+		const SystemTime& operator ++ ();
+				
+			/* stops the timer / SystemTime if it is running (anyway)
+			   tries to set frequency, precision and refinement */
+		static bool init(const long double& refinement, uint32_t osc_frequency, uint8_t precision);
+			
+			/* start running SystemTime clock
+				true: precision is valid and SystemTime started
+				false: precision invalid or SystemTime already running */
+		static bool start();
+		
+			/* stop running SystemTime clock */
+		static void stop();
+		
 	};
 	
-	MAY
 	
-	typedef Time* PTime;
 	
-	extern Time now;
 	
-	void init(){
-		/* using 16bit Timer1 */
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	typedef uint16_t SCHEDULE_HANDLE; /// no make a wrapper, a class with one uint16_t
+	
+	constexpr SCHEDULE_HANDLE NO_HANDLE {0};
+	
+	//constexpr uint16_t PARTS_OF_SECOND_LOG {5}; // 32 parts of second
+	
+	//constexpr uint16_t PARTS_OF_SECOND {1 << PARTS_OF_SECOND_LOG};
+	
+	class Priority{
+		uint8_t state;
 		
-	//init time
+		void setState(uint8_t priority, uint8_t percentage){
+			
+		}
+		
+	};
 	
-	now.day = 1;
-	now.year = 2017;
-	now.hour = 0;
-	now.minute = 0;
-	now.second = 0;
+	extern uint16_t divisions_of_second; // 0 ... PARTS_OF_SECOND - 1
+//	extern time::HumanTime now;
+	extern uint16_t nextFreeHandle;
+	extern void* taskTable;
+	extern uint16_t taskTableSize;
 	
-	cli(); // deactivate global interrupts
+	void init(void* taskTableSpaceJunk, uint16_t taskTableSize);
 	
-	TCCR1A = 0x00; // ~ NO PWM
-	TCNT1 = 0; // counter starts at zero
-	TIMSK |= 0b00010000; // data sheet page 138: interrupt enable for Timer1 Compare Match A
-		// activate global interrupts !!!
-	OCR1A = 1024; // 1 second divided into 32 equal parts.
-					// register with compare value
+	//SCHEDULE_HANDLE addTimer(void (*function)(), const Time& interval, uint16_t repeat /*, Priority priority*/){return 0;};
 	
-	TCCR1B = 0b00001111;	// CTC (Clear Timer on Compare Match) and start timer running from ext source on,
-							//triggered rising edge 
-							// 32768Hz external oscillator for timing clock
-	sei();	// activate global interrupts
-	}
+	//bool cancelTimer(SCHEDULE_HANDLE handler){return false;};
 	
-	typedef uint16_t SCHEDULE_HANDLE;
+		// should return: whether time was increased, exact time after last full second
+	uint16_t updateNowTime();
 	
-	constexpr uint16_t NO_HANDLER {0};
+		/* central control loop */
+	void run();
 	
-	void getDayOfWeek(){};
+	class SchedulingRecord{
+		SCHEDULE_HANDLE handle;
+		// put the callback union from gui to another header
+		uint8_t flags; //{ valid, Timer/Task, Callable/procedure, }
+		
+	};
 	
-	SCHEDULE_HANDLE addTimer(void (*function)(), const Time& interval, uint16_t repeat, Priority priority){return 0;};
+	class UCallback {
+		uint16_t dummy;
+		};
 	
-	bool cancelTimer(SCHEDULE_HANDLE handler){return false;};
+	class ExecutionTime {
+		float dummy;
+		};
+	
+	class BackgroundTaskMemLine {
+		SCHEDULE_HANDLE handle;
+		UCallback callback;
+		uint8_t percentage;
+		uint8_t priority;
+		//ExecutionTime exeTime;
+		uint8_t flags;
+		};
+		
+	class TimerMemLine {
+		SCHEDULE_HANDLE handle;
+		UCallback callback;
+		
+		uint8_t priority;
+		//ExecutionTime exeTime;
+		uint8_t flags;
+		};
+	class TimerMemLineTime {
+		//ExactTime time;
+		};
+	class TimerMemLineTime2 {
+		//ExactTime time; // but we can leave out the year.
+		uint16_t repeatings;
+	};
+	
+	
+	
+	/************************************************************************/
+	/* 
+	ideas:
+	
+	list of timers:
+		2				2								2											2					2				1								1
+		handle,		task procedure or callable,		time when to execute*, +part of second ,		intervall*,		repeatings,		priority,		exe time,		some flags (valid etc, end of list-flag, is timer/task falg, isBackground- flag, callable/ptr flag)
+													// put this directly after the first "line" in memory. then we do not need pointer.
+	list of background tasks:
+		2					2																		1				1								1
+		handle,		callback,																	percentage,		priority,		exe time,		some flags
+	
+	                                                                     */
+	/************************************************************************/
 	
 }
+
+#ifdef hack
+uint16_t test(){
+	uint16_t x[2];
+	return x[sizeof(HumanTime)];
+}
+#endif
 
 #endif /* SCHEDULER_H_ */

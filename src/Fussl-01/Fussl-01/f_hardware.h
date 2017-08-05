@@ -19,6 +19,7 @@
 
 
 #include <stdint.h>
+#include <avr/io.h>
 
 #ifndef F_HARDWARE_H_
 #define F_HARDWARE_H_
@@ -39,6 +40,110 @@ namespace hardware {
 	/* the real string length of destination will be count + 1 (if nullTerminated) */
 	/* but if source has an '\0' before copying will be stopped immediately */
 	void copyString(char* destination, const char* source, uint8_t count, bool nullTerminated);
+	
+	
+	/*
+	Also am liebsten hätte ich ja ein Checking dass kein Pin mehrfach verwendet wird
+	
+	*/
+	class PIN {
+	private:
+		uint8_t code;
+		static uint8_t min_code;
+	public:
+		PIN(uint8_t pin_number) : code(pin_number) {}
+		
+		/* copy ctor, = */
+		PIN(const PIN&) = delete;
+		PIN(PIN&) = delete;
+		void operator = (const PIN&) = delete;
+		
+		/* move ctor, = */
+		inline PIN(PIN&& pin) {
+			 this->code = pin.code;
+			 pin.code = 255; 
+		}
+		inline void operator = (PIN&& pin) {
+			this->code = pin.code;
+			pin.code = 255;
+		}
+		
+	};
+	
+	
+	#if true
+	
+	template<uint8_t index>
+	class IOPin {
+		
+		private:
+		static bool occupied;
+		
+		static constexpr uint8_t MAX {8*6 + 5 - 2}; // 53 - 2
+			// BECAUSE OF 2 32kHz OSC INPUTS AT THESE PORTS
+		
+		static_assert(index < MAX, "#Pin Error"); // or  <=???? -> data sheets
+		
+		IOPin(){}
+		
+		public:
+		
+		static IOPin instance;
+		
+		inline static IOPin<index>* occupy(){
+			if (occupied) {
+				//#error "IOPin already used!"
+				
+			} else {
+				occupied = true;
+			}
+			return &instance;
+		}
+		
+		inline operator int() { return this->operator bool(); };
+		
+			/* get input value */
+		inline operator bool() {
+			constexpr uint8_t select = 1 << (index % 8);
+			if (index < 8) {
+				return static_cast<bool>(PINA & select);
+				
+			} else if (index < 16) {
+				return static_cast<bool>(PINB & select);
+				
+			} else if (index < 24) {
+				return static_cast<bool>(PINC & select);
+				
+			} else if (index < 32) {
+				return static_cast<bool>(PIND & select);
+				
+			} else if (index < 40) {
+				return static_cast<bool>(PINE & select);
+				
+			} else if (index < 48) {
+				return static_cast<bool>(PINF & select);
+				
+			} else if (index < 56) {
+				return static_cast<bool>(PING & select);
+				
+			}
+		}
+		
+		
+			/* set output or pull-up */
+		void operator = (bool);
+		
+		
+	};
+	/*
+		occupied pins
+		PG3..4 are TOSC1..2 for external RTC clock osc.
+		
+	
+	*/
+	
+	
+	#endif
 }
 
 #endif /* F_HARDWARE_H_ */

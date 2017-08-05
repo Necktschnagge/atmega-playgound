@@ -34,4 +34,4 @@
 *.lss
 *.map
 *.srec
-Makefile
+*Makefile
