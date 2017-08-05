@@ -4,6 +4,8 @@
 
 f_arch.cpp
 
+f_cmi.cpp
+
 f_gui.cpp
 
 f_hardware.cpp

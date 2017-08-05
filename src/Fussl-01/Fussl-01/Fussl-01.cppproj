@@ -204,6 +204,13 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
+    <Compile Include="f_cmi.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_cmi.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_gui.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
