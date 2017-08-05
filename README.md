@@ -13,8 +13,8 @@ software can target a 7 segment output, can read distance from ultrasonic sensor
 
 **Goal is:**
 * writing a lite "Operating System" for Atmel CPUs for home automation purpose which comes with:
-* * an cooperative scheduler
+* * a cooperative scheduler
 * * simple user interface tools
 * * some tools for sitance sensor
-* * a tool for blinking of a diaphragm arch (Schwibbogen)
+* * a tool for blinking of a christmas arch (Schwibbogen)
 * * some eays network tools for communicating with other atmels and raspberry pi for information interchange
