@@ -15,6 +15,9 @@
 #include "f_test.h"
 #include "scheduler.h"
 #include "f_hcsr04.h"
+#include "stdint.h"
+#include "f_cmr.h"
+
 
 void foo(){
 //#include <avr/pgmspace.h>
@@ -28,14 +31,24 @@ void foo(){
 }
 
 void guiBootScreen(){
-		led::LFPrintString("-FUSSEL-");
-		for(uint8_t i = 0 ; i < 5; ++i){
-			led::printDotsOnly(0xFF);
-			hardware::delay(500);
-			led::printDotsOnly(0x00);
-			hardware::delay(500);
-		}
-		led::clear();
+	hardware::delay(10);	
+	led::LFPrintString("-FUSSEL-");
+	hardware::delay(1000);
+	uint8_t dots {0};
+	for(uint8_t i = 0 ; i < 8; ++i){
+		dots += 1 << (7-i);
+		led::printDotsOnly(dots);
+		hardware::delay(500);
+	}
+	for(uint8_t i = 0 ; i < 5; ++i){
+		led::printDotsOnly(0x00);
+		hardware::delay(500);
+		led::printDotsOnly(0xFF);
+		hardware::delay(500);
+	}
+	hardware::delay(500);
+	led::clear();
+	hardware::delay(500);
 }
 
 void after_selecting(){
@@ -285,13 +298,92 @@ void testing_CMI_Interpreter_with_one_HCSR04_sensor(){
 	}
 }
 
+void test_cmr(){
+	
+		init_sr();
+		
+		sensor::Kanalysator<int32_t,4>::Configuration config;
+		config.weight_old = 950; // changed from 95 npercent to 99
+		config.weight_new =  50;
+		
+		config.initial_badness = 80;
+		config.badness_reducer = 9;
+		sensor::Kanalysator<int32_t,4> analytiker(&config);
+		
+		analyzer::CMR<int32_t,4>::Zone zones[3];
+		zones[0].lower_border = 150;
+		zones[0].upper_border = 300;
+		zones[1].lower_border = 500;
+		zones[1].upper_border = 650;
+		zones[2].lower_border = 800;
+		zones[2].upper_border = 1000;
+		
+		
+		
+		analyzer::CMR<int32_t,4>::Configuration cmr_config;
+		cmr_config.epsilon = 100;
+		cmr_config.initial_badness = 50;
+		cmr_config.max_badness = 200;
+		cmr_config.zones = &(zones[0]);
+		cmr_config.count_zones = 3;
+		
+		analyzer::CMR<int32_t,4> my_cmr(cmr_config);
+		
+		
+		
+		int32_t messwert;
+		int32_t ausgabe;
+		int8_t _1_to_2 {0};
+		int8_t _2_to_3 {0};
+		//uint8_t
+		while (1){
+			messwert = messen();
+			analytiker.input(messwert);
+			
+			ausgabe = analytiker.output();
+			ausgabe = ausgabe * 6632 / 10000;
+			uint8_t f = 0;
+			uint8_t t = 0;
+			my_cmr.put(ausgabe, f, t);
+			if ((f == 0)&&(t == 1))
+			{
+				++_1_to_2;
+			}
+			if ((f==1)&&(t==2)){
+				++_2_to_3;
+			}
+			if ((f == 1)&&(t == 0))
+			{
+				--_1_to_2;
+			}
+			if ((f==2)&&(t==1)){
+				--_2_to_3;
+			}
+			led::clear();
+			led::printInt(_1_to_2); // 0.06632 cm/tick. Messunng vom 13.07.2017; C++ Stunde mit Hannes
+			led::printString("  ");
+			led::printInt(_2_to_3);
+			
+			
+			/*led::clear();
+			led::printInt(static_cast<uint8_t>(f+1)); // 0.06632 cm/tick. Messunng vom 13.07.2017; C++ Stunde mit Hannes
+			led::printString(" - ");
+			led::printInt(static_cast<uint8_t>(t+1));
+			*/
+			
+		}
+
+	
+}
+
 int main(void){
 	
 	led::init(8);
 	guiBootScreen();
 	led::clear();
 	
-	testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
+	//testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
+	test_cmr();
 	
 	led::LFPrintString("MAIN-ERR");
 	while (1) {}

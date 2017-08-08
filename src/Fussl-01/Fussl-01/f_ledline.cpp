@@ -215,9 +215,12 @@ uint8_t led::signCode(const char sign){
 		/* do something in order to make a line feed */
 		return 0x00; // <<<<< the newline char is currently a space sign, please change the function signature / provide an additional function
 	}
+	if (code == 32){
+		return 0;
+	}
 	if (code < 33){
 		/* return a standard sign */
-		return 0xFF ^ (DOTSIGN * isDotted(sign));
+		return 0xFF ^ (DOTSIGN * isDotted(sign)); // <<<<< try to make another standard sign
 	}
 	if (code >96){// small letters match to capital letters
 		if (code > 122){ // jump over the 6 characters between the capital letters and the small letters in ASCII code
@@ -321,8 +324,8 @@ void led::LFPrintString(const char* const string){
 
 void led::printDotsOnly(const uint8_t dotCode){//<<<<<< this function isnt ready for scalable linelength, please change sometime
 	for (uint8_t i = 0; i<8; ++i){
-		_LEDLINE_ &= ~(1<<(DOTPOSITION + 8 * i)); // make it 0
-		_LEDLINE_ |= ((1<<(DOTPOSITION + 8 * i)) * !! (dotCode & (1<<i) ));
+		_LEDLINE_ &= ~(static_cast<uint64_t>(1)<<(DOTPOSITION + 8 * i)); // make it 0
+		_LEDLINE_ |= ((static_cast<uint64_t>(1)<<(DOTPOSITION + 8 * i)) * (!! (dotCode & (1<<i) ) )    );
 	}
 	pushMemory();
 }
