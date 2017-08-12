@@ -271,8 +271,9 @@ void arch_prototype_release_blink_up_and_l_to_r() {
 		}
 	}
 }
-
 void testing_CMI_Interpreter_with_one_HCSR04_sensor(){
+#ifdef false // test for the old version of cmi - the one with hardcoded 5% delta
+
 	/* no return */
 	
 	init_sr();
@@ -296,10 +297,11 @@ void testing_CMI_Interpreter_with_one_HCSR04_sensor(){
 		led::clear();
 		led::printInt(ausgabe * 6632 / 10000); // 0.06632 cm/tick. Messunng vom 13.07.2017; C++ Stunde mit Hannes
 	}
+#endif
 }
 
 void test_cmr(){
-	
+#ifdef false // old cmi version
 		init_sr();
 		
 		sensor::Kanalysator<int32_t,4>::Configuration config;
@@ -372,8 +374,7 @@ void test_cmr(){
 			*/
 			
 		}
-
-	
+#endif
 }
 
 int main(void){
@@ -383,7 +384,7 @@ int main(void){
 	led::clear();
 	
 	//testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
-	test_cmr();
+	//test_cmr();
 	
 	led::LFPrintString("MAIN-ERR");
 	while (1) {}
