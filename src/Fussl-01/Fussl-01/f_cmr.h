@@ -5,7 +5,7 @@
  *  Author: Maximilian Starke
  
  *		FPS:	make a whole check. one check after getting ready is done. maybe restructure by function implementations
- *				search for ###
+ *				search for ### (one of these was fixed´: it was about acces to latest_zone from nest>>ing<< class.)
  */ 
 
 
@@ -34,7 +34,7 @@ namespace analyzer {
 		/* private types */
 		class Channel {
 			
-		public: // #### fix this issue. this should be private but if its private nothing works
+		private:
 				/* 0 is faded out, that means we ~Channel(), i.e. delete and ignore the channel */
 				/* max is 255. it is set to 255 every time we get a match with new measured distance */
 				/* it is decreased from extern when calling the fade_out() method */
@@ -133,6 +133,8 @@ namespace analyzer {
 				}
 				return false;
 			}
+			
+			inline const uint8_t& get_latest_zone(){ return latest_zone; }
 			
 				/* compare two channels by comparing their badness */
 			bool operator < (const Channel& op) { return this->badness < op.badness; }
@@ -243,7 +245,7 @@ namespace analyzer {
 			// ch[channels-1].~Channel(); // destroy worst channel // optional because we override it
 			ch[channels-1] = Channel(distance,config); // replace worst channel
 			from = NO_ZONE;
-			to = ch[channels-1].latest_zone;
+			to = ch[channels-1].get_latest_zone();
 			smart_sort(channels-1);
 		}
 		

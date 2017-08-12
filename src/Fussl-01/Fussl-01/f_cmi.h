@@ -4,13 +4,22 @@
  * Created: 05.08.2017 18:30:03
  *  Author: Maximilian Starke
  
- *		FPS: all over it is ready for use with positive values in a metric.
+ *		FPS:
+ 
+		history:
+		
+	issue 
+		all over it is ready for use with positive values in a metric.
 		I suppose (but never tried) there is a fatal bug when using negative values.
 		This bug can be fixed when putting some get_delta function pointer into Config
 		so the user prgmmer has to decide how to choose the allowed delta deviation his- or herself.
 		At the moment it is 20% of the initial measured value
 			... which is seriously not good if starting by a few cm and ending in 2m e.g. using hc-sr04.
 		Change this!!!!!#### there is a ##### mark and some <<<< marks at the regarding lines...
+		
+	solution
+		i added a virtual function to config which provides a delta from average function.
+		the delta property of channel was removed .... makes by the way channels smaller
 		
 		despite this.. everything was checked again once after production. and everthing (else) is okay.
  */ 
@@ -40,11 +49,10 @@ namespace analyzer {
 		class Channel {
 		public:
 			Metric average;		// average of accumulated values
-			Metric delta;		// positive max deviation a value may have from average to be applied
 			uint8_t badness;	// channel invalid <=> badness == 255, channel would be best if badness = 0
 			
 				/* create an invalid Channel */
-			Channel() : average(0), delta(0), badness(255) {}
+			Channel() : average(0), badness(255) {}
 				
 				/* create a valid Channel */
 			Channel(const Metric& initial_value, const Configuration* config);
@@ -56,6 +64,8 @@ namespace analyzer {
 			inline void dec_badness(const Configuration* config){
 				badness = (static_cast<uint16_t>(badness) * static_cast<uint16_t>(config->badness_reducer))
 					/ (static_cast<uint16_t>(config->badness_reducer) + 3); // <<<<< maybe change the 3 to a bigger number ?
+						// or make this 3 template ??? ... a better solution could be to make the mapping reducer -> actual factor better
+						// maybe change this mapping generally
 			}
 				
 				/* try to apply value
@@ -67,7 +77,10 @@ namespace analyzer {
 				/* comparison by badness */
 			inline bool operator < (const Channel& op) const { return badness < op.badness; }
 			
-				/* destroy a channel */
+				/* make channel invalid */	
+			inline void invalidate(){ badness = 255; }
+			
+				/* destroy a channel, actually the same as invalidate() */
 			inline ~Channel() {	badness = 255;	}
 		};
 		
@@ -110,10 +123,46 @@ namespace analyzer {
 				/* badness will be reduced on match by factor ~ / (~ + 3) */
 			uint8_t badness_reducer;
 			
-			// maybe we want do accumulate the delta and specify an initial delta later here
-			// ?type delta_accumulator;
-			};
+				/* tells you the allowed delta to the average for which new values are accepted and accumulated */
+				/* this function must be overridden by an inheriting class */
+				/* if you prefer const, and from value independent delta, you can use predefined ConstDeltaConfiguration */
+			virtual const Metric& delta(const Metric& value) = 0;
+		};
 			
+		class ConstDeltaConfiguration : public Configuration {
+		private:
+			const Metric _delta;
+		public:
+			ConstDeltaConfiguration(const Metric& const_delta) : _delta(const_delta) {}
+			const Metric& delta(const Metric&) override { return _delta; }
+		};
+		
+		using ConstDeltaConfig = ConstDeltaConfiguration;
+		using CDConfig = ConstDeltaConfiguration;
+		using CDC = ConstDeltaConfiguration;
+		
+		template<typename multiplicator>
+		class LinearPercentageDeltaConfiguration : public Configuration {
+		private:
+			multiplicator _mult;
+		public:
+				/* you have to ensure by your self that value multiplied with percentage won't overflow! */
+			LinearPercentageDeltaConfiguration(multiplicator percentage) : _mult(percentage) {}
+			const Metric& delta(const Metric& value) override {
+				return ((value<0 ? -value : value) * _mult) / 100;  
+			}
+		};
+		using LinPercDeltaConfig = LinearPercentageDeltaConfiguration<Metric>;
+		using LPDConfig = LinearPercentageDeltaConfiguration<Metric>;
+		using LPDC = LinearPercentageDeltaConfiguration<Metric>;
+		
+		class AffineDeltaConfiguration {
+			uint16_t _factor;
+			uint16_t _divisor;
+			Metric _abs_delta;
+			//### make c-tor...
+		};
+		
 	/* public data */
 	
 			/* pointer to the configuration record */
@@ -133,6 +182,7 @@ namespace analyzer {
 			
 			/* c-tor */
 		CMI(Configuration* configuration) : configuration(configuration) {}
+		// also time to check about copy and move c-to and = op ######
 	};
 
 	/* defining synonyms */ // <<<<< I don't know whether this is good or not
@@ -148,7 +198,6 @@ namespace analyzer {
 	template<class Metric, uint8_t channels>
 	inline CMI<Metric,channels>::Channel::Channel(const Metric& initial_value, const Configuration* config){
 		average = initial_value;
-		delta = initial_value / 20; // for now we make this hard coded as 5%; // <<<<< maybe change this decision, negativ initial values cause issues ######
 		badness = config->initial_badness;
 		if (badness == 255) --badness; // just to avoid that someone tries to create a invalid channel.
 	}
@@ -156,13 +205,14 @@ namespace analyzer {
 	template<class Metric, uint8_t channels>
 	inline bool CMI<Metric,channels>::Channel::accumulate(const Metric& value, Configuration* config){
 		if (badness == 255) return false; // channel invalid
-		if ((value < average - delta)  || (value > average + delta)){
+		if ((value < average - config->delta(average))  || (value > average + config->delta(average))){
+				// no match:
 			inc_badness();
 			return false;
 		}
+		// match:
 		average = (average * config->weight_old + value * config->weight_new) / config->weight_sum();
 		dec_badness(config);
-		// maybe update accumulated delta <<<<<<<
 		return true;
 	}
 	
@@ -173,6 +223,7 @@ namespace analyzer {
 		ch[channel-1] = swap;
 		/* some byte-wise mem swap would be better of course */
 		/* but I think this is okay because it is only function scope stack memory. */
+		/* but there is no function like memcpy doing this in the standard library */
 	}
 	
 	template<class Metric, uint8_t channels>
@@ -186,7 +237,7 @@ namespace analyzer {
 		}
 	}
 	
-	template<class Metric, uint8_t channels>
+	template<class Metric, uint8_t channels> /// <<<<<<< return instead the (old) index od channel, which matched. and also throw some _NO_Channel
 	void CMI<Metric,channels>::input(const Metric& value){
 		uint8_t i;
 		for (i = 0; i<channels; ++i){ // go through all channels and try to accumulate new value
