@@ -5,23 +5,11 @@
  *  Author: Maximilian Starke
  
  *		FPS:
- 
-		history:
+		everything was checked a few times and is supposed to be stable.
 		
-	issue 
-		all over it is ready for use with positive values in a metric.
-		I suppose (but never tried) there is a fatal bug when using negative values.
-		This bug can be fixed when putting some get_delta function pointer into Config
-		so the user prgmmer has to decide how to choose the allowed delta deviation his- or herself.
-		At the moment it is 20% of the initial measured value
-			... which is seriously not good if starting by a few cm and ending in 2m e.g. using hc-sr04.
-		Change this!!!!!#### there is a ##### mark and some <<<< marks at the regarding lines...
+		improve descriptions, especially at the configuration stuff which has to be implmented by the uprogrammer
 		
-	solution
-		i added a virtual function to config which provides a delta from average function.
-		the delta property of channel was removed .... makes by the way channels smaller
-		
-		despite this.. everything was checked again once after production. and everthing (else) is okay.
+		some <<< for optimisation or additional stuff is present and can be done later.
  */ 
 
 
@@ -38,31 +26,40 @@ namespace analyzer {
 	
 		/* Channeling Measurement Interpreter */
 	template <typename Metric, uint8_t channels>
-	class CMI {
+	class ChannellingMeasurementInterpreter {
 		static_assert(channels <= 255,"too many channels!");
 	public:
 		class Configuration;
+		static constexpr uint8_t NO_CHANNEL { 255 };
 		
 	private:
 	/* private types */
 	
 		class Channel {
-		public:
-			Metric average;		// average of accumulated values
-			uint8_t badness;	// channel invalid <=> badness == 255, channel would be best if badness = 0
-			
+			/// <<< I don't know very well about compiler optimization,
+			// but when putting class channel's methods directly into CMI,
+			// we would not need to pass config pointers
+			// -> better in storage usage on stack and also execution time (*config derefencing)
+		private:
+			Metric _average;		// average of accumulated values
+			uint8_t _badness;	// channel invalid <=> badness == 255, channel would be best if badness = 0
+
+		public:	
 				/* create an invalid Channel */
-			Channel() : average(0), badness(255) {}
+			Channel() : _average(0), _badness(255) {}
 				
 				/* create a valid Channel */
 			Channel(const Metric& initial_value, const Configuration* config);
 			
+				/* returns reference to best average */
+			inline const Metric& get_average() { return _average; }
+				
 				/* make the Channel 'worse' */
-			inline void inc_badness(){ if (badness < 254) ++badness; }
+			inline void inc_badness(){ if (_badness < 254) ++_badness; }
 			
 				/* make the Channel 'better' */
 			inline void dec_badness(const Configuration* config){
-				badness = (static_cast<uint16_t>(badness) * static_cast<uint16_t>(config->badness_reducer))
+				_badness = (static_cast<uint16_t>(_badness) * static_cast<uint16_t>(config->badness_reducer))
 					/ (static_cast<uint16_t>(config->badness_reducer) + 3); // <<<<< maybe change the 3 to a bigger number ?
 						// or make this 3 template ??? ... a better solution could be to make the mapping reducer -> actual factor better
 						// maybe change this mapping generally
@@ -75,20 +72,20 @@ namespace analyzer {
 			inline bool accumulate(const Metric& value, Configuration* config);
 			
 				/* comparison by badness */
-			inline bool operator < (const Channel& op) const { return badness < op.badness; }
+			inline bool operator < (const Channel& op) const { return _badness < op._badness; }
 			
 				/* make channel invalid */	
-			inline void invalidate(){ badness = 255; }
+			inline void invalidate(){ _badness = 255; }
 			
 				/* destroy a channel, actually the same as invalidate() */
-			inline ~Channel() {	badness = 255;	}
+			inline ~Channel() {	invalidate(); }
 		};
 		
 	/* private data */
 	
 			/*	channels of the interpreter should be sorted ascending by the badness
 				best channel is at index 0 */
-		Channel ch[channels];
+		Channel _ch[channels];
 		
 	/* private methods */
 	
@@ -103,6 +100,7 @@ namespace analyzer {
 	public:
 	/* public types */
 	
+			/* abstract class for configuration objects */
 		class Configuration {
 		public:
 				/* You should choose the weights and the type 'Metric' such way
@@ -129,6 +127,7 @@ namespace analyzer {
 			virtual const Metric& delta(const Metric& value) = 0;
 		};
 			
+			/* Configuration class for const delta */
 		class ConstDeltaConfiguration : public Configuration {
 		private:
 			const Metric _delta;
@@ -152,16 +151,19 @@ namespace analyzer {
 				return ((value<0 ? -value : value) * _mult) / 100;  
 			}
 		};
-		using LinPercDeltaConfig = LinearPercentageDeltaConfiguration<Metric>;
-		using LPDConfig = LinearPercentageDeltaConfiguration<Metric>;
-		using LPDC = LinearPercentageDeltaConfiguration<Metric>;
+		template<typename multiplicator>
+		using LinPercDeltaConfig = LinearPercentageDeltaConfiguration<multiplicator>;
+		template<typename multiplicator>
+		using LPDConfig = LinearPercentageDeltaConfiguration<multiplicator>;
+		template<typename multiplicator>
+		using LPDC = LinearPercentageDeltaConfiguration<multiplicator>;
 		
-		class AffineDeltaConfiguration {
+		/*class AffineDeltaConfiguration {
 			uint16_t _factor;
 			uint16_t _divisor;
 			Metric _abs_delta;
-			//### make c-tor...
-		};
+			//make c-tor...
+		};*/ ///<<<<<< for a later version
 		
 	/* public data */
 	
@@ -171,24 +173,36 @@ namespace analyzer {
 	/* public methods */
 	
 			/* enter a new measured value */
-		void input(const Metric& value);
+			/* returns the Channel {0, ... ,channels-1} which matched,
+			   returns NO_CHANNEL iff no channel matched and creates a new channel */
+		uint8_t input(const Metric& value);
 		
 			/* return current measurement result */
 			/* never interrupt output by input or vice versa */
 			/* attention: you'll get a reference to the value stored inside the CMI
 			   if you update the value indirectly via an input(..) the value behind
 			   your reference will be updated too and will be the new correct output. */
-		inline const Metric& output(){ return ch[0].average; }
+		inline const Metric& output(){ return _ch[0].get_average(); }
 			
-			/* c-tor */
-		CMI(Configuration* configuration) : configuration(configuration) {}
-		// also time to check about copy and move c-to and = op ######
+			/* create a CMI with all channels invalid
+			   attention: you have to provide a Configuration object */
+		ChannellingMeasurementInterpreter(Configuration& configuration) : configuration(&configuration) {}
+			
+		ChannellingMeasurementInterpreter(const ChannellingMeasurementInterpreter&) = delete;
+		ChannellingMeasurementInterpreter(ChannellingMeasurementInterpreter&&) = delete;
+		ChannellingMeasurementInterpreter& operator = (const ChannellingMeasurementInterpreter&) = delete;
+		ChannellingMeasurementInterpreter& operator = (ChannellingMeasurementInterpreter&&) = delete;
+		
+		~ChannellingMeasurementInterpreter(){
+			for (uint8_t i = 0; i < channels; ++i) _ch[i].invalidate();
+		}
+		
 	};
 
-	/* defining synonyms */ // <<<<< I don't know whether this is good or not
+	/* defining synonyms */
 	
 	template<typename Metric, uint8_t channels>
-	using ChannellingMeasurementInterpreter = CMI<Metric,channels>;
+	using CMI = ChannellingMeasurementInterpreter<Metric,channels>;
 
 
 /************************************************************************/
@@ -196,66 +210,68 @@ namespace analyzer {
 /************************************************************************/
 
 	template<class Metric, uint8_t channels>
-	inline CMI<Metric,channels>::Channel::Channel(const Metric& initial_value, const Configuration* config){
-		average = initial_value;
-		badness = config->initial_badness;
-		if (badness == 255) --badness; // just to avoid that someone tries to create a invalid channel.
+	inline ChannellingMeasurementInterpreter<Metric,channels>::Channel::Channel(const Metric& initial_value, const Configuration* config){
+		_average = initial_value;
+		_badness = config->initial_badness;
+		if (_badness == 255) --_badness; // just to avoid that someone tries to create a invalid channel.
 	}
 	
 	template<class Metric, uint8_t channels>
-	inline bool CMI<Metric,channels>::Channel::accumulate(const Metric& value, Configuration* config){
-		if (badness == 255) return false; // channel invalid
-		if ((value < average - config->delta(average))  || (value > average + config->delta(average))){
+	inline bool ChannellingMeasurementInterpreter<Metric,channels>::Channel::accumulate(const Metric& value, Configuration* config){
+		if (_badness == 255) return false; // channel invalid
+		if ((value < _average - config->delta(_average))  || (value > _average + config->delta(_average))){
 				// no match:
 			inc_badness();
 			return false;
 		}
 		// match:
-		average = (average * config->weight_old + value * config->weight_new) / config->weight_sum();
+		_average = (_average * config->weight_old + value * config->weight_new) / config->weight_sum();
 		dec_badness(config);
 		return true;
 	}
 	
 	template<class Metric, uint8_t channels>
-	inline void CMI<Metric,channels>::swap_with_previous(uint8_t channel){
-		Channel swap { ch[channel] };
-		ch[channel] = ch[channel-1];
-		ch[channel-1] = swap;
+	inline void ChannellingMeasurementInterpreter<Metric,channels>::swap_with_previous(uint8_t channel){
+		Channel swap { _ch[channel] };
+		_ch[channel] = _ch[channel-1];
+		_ch[channel-1] = swap;
 		/* some byte-wise mem swap would be better of course */
 		/* but I think this is okay because it is only function scope stack memory. */
 		/* but there is no function like memcpy doing this in the standard library */
 	}
 	
 	template<class Metric, uint8_t channels>
-	inline void CMI<Metric,channels>::smart_sort(uint8_t channel){
+	inline void ChannellingMeasurementInterpreter<Metric,channels>::smart_sort(uint8_t channel){
 		again_smart_sort:
 		if (channel == 0) return;
-		if (ch[channel] < ch[channel-1]){
+		if (_ch[channel] < _ch[channel-1]){
 			swap_with_previous(channel);
 			--channel;
 			goto again_smart_sort;
 		}
 	}
 	
-	template<class Metric, uint8_t channels> /// <<<<<<< return instead the (old) index od channel, which matched. and also throw some _NO_Channel
-	void CMI<Metric,channels>::input(const Metric& value){
+	template<class Metric, uint8_t channels>
+	uint8_t ChannellingMeasurementInterpreter<Metric,channels>::input(const Metric& value){
 		uint8_t i;
 		for (i = 0; i<channels; ++i){ // go through all channels and try to accumulate new value
-			if (ch[i].accumulate(value,configuration)) {
+			if (_ch[i].accumulate(value,configuration)) {
+				uint8_t matched_channel {i};
 				smart_sort(i); // i was updated and got 'better' so it might need to be pushed to the left.
 				++i; // skip the current (matching) channel
 				while(i<channels){ // make all residual channels worse too
-					ch[i].inc_badness();
+					_ch[i].inc_badness();
 					++i;
 				}
-				return;
+				return matched_channel;
 			}
 		}
 		// no_match: // applies if the value did not match any of the channels
 		//ch[channels-1].~Channel(); // empty d-tor
 		///new (&ch[channels-1]) Channel(value, configuration); // replace the worst channel in array by a new channel
-		ch[channels-1] = Channel(value, configuration); // replace the worst channel in array by a new channel
+		_ch[channels-1] = Channel(value, configuration); // replace the worst channel in array by a new channel
 		smart_sort(channels-1); // maybe the new channel is not the worst
+		return NO_CHANNEL;
 	}
 	
 }
