@@ -326,8 +326,8 @@ void test_cmr(){
 		cmr_config.epsilon = 100;
 		cmr_config.initial_badness = 50;
 		cmr_config.max_badness = 200;
-		cmr_config.zones = &(zones[0]);
-		cmr_config.count_zones = 3;
+		cmr_config.pzones = &(zones[0]);
+		cmr_config.rgzones = 3;
 		
 		analyzer::CMR<int32_t,4> my_cmr(cmr_config);
 		
