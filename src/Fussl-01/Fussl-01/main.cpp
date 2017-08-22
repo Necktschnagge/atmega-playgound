@@ -312,7 +312,7 @@ void test_cmr(){
 		config.badness_reducer = 9;
 		sensor::Kanalysator<int32_t,4> analytiker(&config);
 		
-		analyzer::CMR<int32_t,4>::Zone zones[3];
+		analyzer::ChannellingMovementRecognizer<int32_t,4>::Zone zones[3];
 		zones[0].lower_border = 150;
 		zones[0].upper_border = 300;
 		zones[1].lower_border = 500;
@@ -322,14 +322,14 @@ void test_cmr(){
 		
 		
 		
-		analyzer::CMR<int32_t,4>::Configuration cmr_config;
+		analyzer::ChannellingMovementRecognizer<int32_t,4>::Configuration cmr_config;
 		cmr_config.epsilon = 100;
 		cmr_config.initial_badness = 50;
 		cmr_config.max_badness = 200;
 		cmr_config.pzones = &(zones[0]);
 		cmr_config.rgzones = 3;
 		
-		analyzer::CMR<int32_t,4> my_cmr(cmr_config);
+		analyzer::ChannellingMovementRecognizer<int32_t,4> my_cmr(cmr_config);
 		
 		
 		
