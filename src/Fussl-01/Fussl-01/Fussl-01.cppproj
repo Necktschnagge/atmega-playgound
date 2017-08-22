@@ -249,6 +249,12 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
+    <Compile Include="f_systime.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_systime.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_test.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>

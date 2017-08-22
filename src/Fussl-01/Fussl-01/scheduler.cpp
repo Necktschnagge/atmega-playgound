@@ -8,7 +8,7 @@
  
  */
 
-#define critical_begin		uint8_t __sreg__ = SREG; cli()
+#define critical_begin		uint8_t __sreg__ = SREG; cli() // rename this shit!!! to something like macro_critical_begin
 #define critical_end		SREG = __sreg__
 #define critical(code)		critical_begin; { code } critical_end
 // it is so un-C++-like but I think here it it good because it makes code better readable and understandable
@@ -21,27 +21,27 @@
 using namespace time;
 
 namespace scheduler {
-	SystemTime SystemTime::instance{}; // default constructor
+	SystemTime_OLD SystemTime_OLD::instance{}; // default constructor
 }
 
 ISR (TIMER1_COMPA_vect){
 	// set the compare-match value for the next interrupt
 	// update the SystemTime::instance
 	
-	OCR1A = scheduler::SystemTime::__timer__counter__compare__value__only__called__by__interrupt__();
+	OCR1A = scheduler::SystemTime_OLD::__timer__counter__compare__value__only__called__by__interrupt__();
 	// this value must not over or underflow. check this!!!
 	
 	// a problem would be if the calculation of the new compare match is not ready until the next osc rising edge
 	// ##detect this.
 	
-	++scheduler::SystemTime::instance;
+	++scheduler::SystemTime_OLD::instance;
 }
 
-scheduler::SystemTime::SystemTime() : refinement(0), now(0), ref_time(0) {
+scheduler::SystemTime_OLD::SystemTime_OLD() : refinement(0), now(0), ref_time(0) {
 	init(DEFAULT_PRECISION,DEFAULT_OSC_FREQUENCY,0.0L);
 }
 
-int16_t scheduler::SystemTime::get_time_padding(){
+int16_t scheduler::SystemTime_OLD::get_time_padding(){
 	static long double padding {0};
 	padding += refinement
 	+ static_cast<long double>(osc_frequency % (1<<precision))
@@ -52,7 +52,7 @@ int16_t scheduler::SystemTime::get_time_padding(){
 	return static_cast<int16_t>(trunced); // ### think about test cases how are negative numbers trunced?
 }
 
-bool scheduler::SystemTime::is_precision_possible(uint8_t precision){
+bool scheduler::SystemTime_OLD::is_precision_possible(uint8_t precision){
 	// can be interrupted, no problem
 	if (precision > 16) return false; // accuracy exceed of SystemTime itself
 	constexpr uint32_t int1_32 {1u};
@@ -65,7 +65,7 @@ bool scheduler::SystemTime::is_precision_possible(uint8_t precision){
 	return true;
 }
 
-uint16_t scheduler::SystemTime::__timer__counter__compare__value__only__called__by__interrupt__() {
+uint16_t scheduler::SystemTime_OLD::__timer__counter__compare__value__only__called__by__interrupt__() {
 	//#### check overflows / underflows
 	int32_t value;
 	
@@ -95,13 +95,13 @@ uint16_t scheduler::SystemTime::__timer__counter__compare__value__only__called__
 	return static_cast<uint16_t>(value);
 }
 
-void scheduler::SystemTime::get_now(time::ExtendedMetricTime& target) const {
+void scheduler::SystemTime_OLD::get_now(time::ExtendedMetricTime& target) const {
 	critical(
 		target = now;
 		);
 }
 
-bool scheduler::SystemTime::change_precision_aborting(uint8_t precision){
+bool scheduler::SystemTime_OLD::change_precision_aborting(uint8_t precision){
 	// can be interrupted, no problem
 	if (is_precision_possible(precision)){
 		long double factor {1};
@@ -115,7 +115,7 @@ bool scheduler::SystemTime::change_precision_aborting(uint8_t precision){
 	return false;
 }
 
-uint8_t scheduler::SystemTime::change_precision_anyway(uint8_t precision){
+uint8_t scheduler::SystemTime_OLD::change_precision_anyway(uint8_t precision){
 	// can be interrupted, no problem,
 	// we only change precision, which is read by ISR, but only 1 Byte size
 	while (precision > 0){
@@ -129,20 +129,20 @@ uint8_t scheduler::SystemTime::change_precision_anyway(uint8_t precision){
 	return PRECISION_ERROR;
 }
 
-void scheduler::SystemTime::update_refinement(const ExtendedMetricTime& offset){
+void scheduler::SystemTime_OLD::update_refinement(const ExtendedMetricTime& offset){
 	critical(
 		// vielleicht wäre es besser wenn wir direkt die Frequenz ändern würden.
 	);
 }
 
-void scheduler::SystemTime::reset_ref_time(){
+void scheduler::SystemTime_OLD::reset_ref_time(){
 	critical(
 	// do not interrupt because of reading now
 		ref_time = now;
 	);
 }
 
-const scheduler::SystemTime& scheduler::SystemTime::operator ++ (){
+const scheduler::SystemTime_OLD& scheduler::SystemTime_OLD::operator ++ (){
 	critical(
 		// do not interrupt
 		// of course: if called by the ISR interrupts are already deactivated,
@@ -153,7 +153,7 @@ const scheduler::SystemTime& scheduler::SystemTime::operator ++ (){
 	return *this;
 }
 
-bool scheduler::SystemTime::init(const long double& refinement, uint32_t osc_frequency, uint8_t precision){
+bool scheduler::SystemTime_OLD::init(const long double& refinement, uint32_t osc_frequency, uint8_t precision){
 	stop();
 	// because you should not use this function to change while SystemTime is running
 	
@@ -170,7 +170,7 @@ bool scheduler::SystemTime::init(const long double& refinement, uint32_t osc_fre
 	return (result != PRECISION_ERROR);
 }
 
-bool scheduler::SystemTime::start(){
+bool scheduler::SystemTime_OLD::start(){
 	if (instance.is_precision_possible(instance.precision) == false) return false;
 	if (TCCR1B & 0b00000111) return false; // already started
 	
@@ -192,7 +192,7 @@ bool scheduler::SystemTime::start(){
 	return true;
 }
 
-void scheduler::SystemTime::stop(){
+void scheduler::SystemTime_OLD::stop(){
 	TCCR1B = 0b00000000;
 	//	TIMSK &= 0b11000011;	// cancel the ISR reference
 }
