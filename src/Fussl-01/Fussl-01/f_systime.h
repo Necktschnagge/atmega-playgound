@@ -115,16 +115,60 @@ Evaluation of constraints:
 		whileEND
 		
 		construction complete
-		"return" actual precision_log
-						
-                                                             */
+		"return" resulting precision_log
+		
+
+C++ DESIGN				
+what abóut the static and the non-static stuff ???
+
+if singleton, the instance must be a static class member not a static function local var because of this interrupt problem
+
+I want a constructor where you pass the osc_freq and
+		neither a macro passing to header file nor changing any constexpr in the library
+So I am for a public constructor and
+	a way that only one (of maybe n constructed SysTime objects) can be "linked" to the interrupt routine
+                                                     */
 /************************************************************************/
+
+#include "f_macros.h"
+
+
 
 
 namespace scheduler {
 	
 	class SystemTime {
+	private /*static*/:
+			/* pointer to the one and only class instance which is encountered by ISR */
+		static SystemTime* p_activated_instance;
+	
+			/* start running SystemTime clock
+				true: SystemTime started
+				false: SystemTime already running */
+		static bool start();
+
+	public /*static*/:
+			/* set the reference (pointer) to the SystemTime object which should be invoken by ISR
+				and start the timer*/
+		inline static void init_timer(SystemTime& sys_time_object){
+			p_activated_instance = &sys_time_object;
+			
+		}
 		
+		inline static SystemTime& get_instance() {	return *p_activated_instance;	}
+		
+		
+			/* stop running SystemTime clock */
+		static void stop();
+
+	private:
+		
+	public:
+			/* method which tells ISR what compare value should be used next */
+		uint16_t get_compare_match_value() {return 0;} //####
+			
+			/* method which is called by ISR every time a compare match occurs */
+		void operator++(){}
 	};
 }
 
