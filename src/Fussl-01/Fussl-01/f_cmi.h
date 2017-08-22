@@ -25,21 +25,34 @@ namespace analyzer {
 /************************************************************************/
 	
 		/* Channeling Measurement Interpreter */
+		/* This class is for analyzing measured raw values
+			and eliminating runaway values which don't represent the average measured value.
+			There are two methods to interact with a CMI cmi,
+			the input(...) to give a cmi measured values and
+			the output() to get the currently evaluated average value inside an area.
+			If you input alternated jumping values with grate distance between them,
+			[like 20, 4590, 20, 4590, 23, 4580, ...], output() may also jump between
+			the two averages of the values in their areas */
+		/*	For details how it works see its source code */
 	template <typename Metric, uint8_t channels>
 	class ChannellingMeasurementInterpreter {
-		static_assert(channels <= 255,"too many channels!");
 	public:
 		class Configuration;
 		static constexpr uint8_t NO_CHANNEL { 255 };
 		
 	private:
 	/* private types */
-	
+			
+			/* a channel represents an area for measured values with an average
+				and a rating how bad the channel is for currently given inputs. */
 		class Channel {
 			/// <<< I don't know very well about compiler optimization,
 			// but when putting class channel's methods directly into CMI,
 			// we would not need to pass config pointers
 			// -> better in storage usage on stack and also execution time (*config derefencing)
+			// one contra: a worse(..) or invalidate(..) function which gets only one parameter now
+			// will get two (the object pointer and the channel array index)
+			// contra-contra: this methods are inline....
 		private:
 			Metric _average;		// average of accumulated values
 			uint8_t _badness;	// channel invalid <=> badness == 255, channel would be best if badness = 0
@@ -51,7 +64,7 @@ namespace analyzer {
 				/* create a valid Channel */
 			Channel(const Metric& initial_value, const Configuration* config);
 			
-				/* returns reference to best average */
+				/* returns reference to average of this channel */
 			inline const Metric& get_average() { return _average; }
 				
 				/* make the Channel 'worse' */
@@ -70,6 +83,7 @@ namespace analyzer {
 				   on mismatch:	makes channel worse, returns false
 				   invalid channel means always mismatch */
 			inline bool accumulate(const Metric& value, Configuration* config);
+				// <<< ancapsulate an inline function for bool matching(const Metric& value) !!!! to make code more readable
 			
 				/* comparison by badness */
 			inline bool operator < (const Channel& op) const { return _badness < op._badness; }
@@ -79,17 +93,21 @@ namespace analyzer {
 			
 				/* destroy a channel, actually the same as invalidate() */
 			inline ~Channel() {	invalidate(); }
+				// <<< there is another <<< which says to put methods from this class in nesting class.
+				// then please only keep this one invalidate function.
 		};
 		
 	/* private data */
 	
-			/*	channels of the interpreter should be sorted ascending by the badness
-				best channel is at index 0 */
+			/*	channels of the interpreter must be sorted ascending by the badness
+				best channel is at index 0. i.e. (i<=j => _ch[i] <= _ch[j]) (compare by badness)
+				invalidness is defined by badness==255, so invalid channels are automatically worst */
 		Channel _ch[channels];
 		
 	/* private methods */
 	
 			/* swap a channel array entry with its predecessor */
+			/* param must be 0< channel < channels, otherwise behaviour is undefined. */
 		inline void swap_with_previous(uint8_t channel);
 		
 			/* only look for the given channel array position
@@ -106,8 +124,14 @@ namespace analyzer {
 				/* You should choose the weights and the type 'Metric' such way
 				   that neither (weight_old * average) nor (weight_new * average)
 				   nor their sum will cause an overflow within type Metric.
-				   Otherwise the behavior is undefined. */
-
+				   Otherwise the behavior is undefined for big values. */
+				
+				/* together with weight_new it is used to calculate the new average
+				   the proportion of old average : new value is weigth_old : weight_new */
+				/* decrease this proportion if you have fast changing values
+				   to avoid a kind of discrete output jumping from one channel to the next
+				   which also comes with a time lag where output can slowly follow input,
+				   increase if the values only change slowly */
 				/* weight of the old values */
 			Metric weight_old;
 				/* weight to accumulate the new values */
@@ -117,22 +141,34 @@ namespace analyzer {
 			inline Metric weight_sum(){ return weight_new + weight_old; }
 			
 				/* badness for a new created Channel*/
+				/* badness range is [0..254], 0 is best, 254 is worst, 255 is invalid
+				   if you set 255, CMI will treat it as a 254 internally */
+				/* use this to tell cmi how long it takes until a new channel can become best,
+				   just in case it is 0 every new channel will immediately be on top of the list
+				   and define the new average value (not recommended) */
 			uint8_t initial_badness;
-				/* badness will be reduced on match by factor ~ / (~ + 3) */
+			
+				/* badness will be reduced on match by factor ~ / (~ + 3) (cmi cares about overflow) */
+				/* use it to specify how long it takes until a bad channel can grow up
+				   to be a good channel (and better than the others). */
+				/* badness increment is done internally by adding 1 to badness. */
 			uint8_t badness_reducer;
 			
-				/* tells you the allowed delta to the average for which new values are accepted and accumulated */
+				/* tells cmi the allowed delta to the average for which new values are accepted and accumulated to existing channels */
 				/* this function must be overridden by an inheriting class */
 				/* if you prefer const, and from value independent delta, you can use predefined ConstDeltaConfiguration */
 			virtual const Metric& delta(const Metric& value) = 0;
 		};
 			
 			/* Configuration class for const delta */
+			/* also see description of class Configuration */
 		class ConstDeltaConfiguration : public Configuration {
 		private:
-			const Metric _delta;
+			Metric _delta;
 		public:
-			ConstDeltaConfiguration(const Metric& const_delta) : _delta(const_delta) {}
+			inline ConstDeltaConfiguration(const Metric& const_delta) : _delta(const_delta) {}
+			inline void set_delta(const Metric& new_delta){	_delta = new_delta;	}
+			inline const Metric& get_delta() {	return _delta;	}
 			const Metric& delta(const Metric&) override { return _delta; }
 		};
 		
@@ -140,15 +176,18 @@ namespace analyzer {
 		using CDConfig = ConstDeltaConfiguration;
 		using CDC = ConstDeltaConfiguration;
 		
-		template<typename multiplicator>
+			/* configuration class for a delta proportional to average value
+			   given in percent */
+		template<typename multiplicator, typename PromotedMetric = Metric>
 		class LinearPercentageDeltaConfiguration : public Configuration {
 		private:
 			multiplicator _mult;
 		public:
-				/* you have to ensure by your self that value multiplied with percentage won't overflow! */
+				/* you have to ensure by your self that value multiplied with percentage won't overflow!
+				   you may used your own promotion type instead of Metric*/
 			LinearPercentageDeltaConfiguration(multiplicator percentage) : _mult(percentage) {}
 			const Metric& delta(const Metric& value) override {
-				return ((value<0 ? -value : value) * _mult) / 100;  
+				return (   ( PromotedMetric(value<0 ? -value : value) ) * _mult   ) / 100;  
 			}
 		};
 		template<typename multiplicator>
@@ -159,7 +198,7 @@ namespace analyzer {
 		using LPDC = LinearPercentageDeltaConfiguration<multiplicator>;
 		
 		/*class AffineDeltaConfiguration {
-			uint16_t _factor;
+			uint16_t _factor; 
 			uint16_t _divisor;
 			Metric _abs_delta;
 			//make c-tor...
@@ -174,7 +213,7 @@ namespace analyzer {
 	
 			/* enter a new measured value */
 			/* returns the Channel {0, ... ,channels-1} which matched,
-			   returns NO_CHANNEL iff no channel matched and creates a new channel */
+			   returns NO_CHANNEL if no channel matched and creates a new channel */
 		uint8_t input(const Metric& value);
 		
 			/* return current measurement result */
@@ -193,8 +232,14 @@ namespace analyzer {
 		ChannellingMeasurementInterpreter& operator = (const ChannellingMeasurementInterpreter&) = delete;
 		ChannellingMeasurementInterpreter& operator = (ChannellingMeasurementInterpreter&&) = delete;
 		
-		~ChannellingMeasurementInterpreter(){
+			/* makes all channels invalid
+			   you can use it together with config to reset the cmi */
+		inline void invalidate(){
 			for (uint8_t i = 0; i < channels; ++i) _ch[i].invalidate();
+		}
+		
+		inline ~ChannellingMeasurementInterpreter(){
+			// invalidate(); // this should not be needed.
 		}
 		
 	};
