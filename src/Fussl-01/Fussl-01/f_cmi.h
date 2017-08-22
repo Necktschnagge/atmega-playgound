@@ -6,9 +6,6 @@
  
  *		FPS:
 		everything was checked a few times and is supposed to be stable.
-		
-		improve descriptions, especially at the configuration stuff which has to be implmented by the uprogrammer
-		
 		some <<< for optimisation or additional stuff is present and can be done later.
  */ 
 
