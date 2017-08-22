@@ -4,8 +4,14 @@
  * Created: 05.08.2017 20:11:54
  *  Author: Maximilian Starke
  
- *		FPS:	make a whole check. one check after getting ready is done. maybe restructure by function implementations
- *				search for ### (one of these was fixed: it was about access to latest_zone from nest>>ing<< class.)
+ *		FPS:	one check after getting ready is done.
+				second check which I forced done.
+				CMR is supposed to be stable. but until now there are no test.
+
+				some <<< for later improvements. not important. no semantic changes.
+				
+				// <<< check sizeof( class ...::Event )! it should be 2 at max. otherwise change design!!!
+				// <<< check behaviour of put() once again against the description.
  */ 
 
 
@@ -20,9 +26,13 @@ namespace analyzer {
 /* Type and Function Declaration                                        */
 /************************************************************************/
 
-			/* channeling movement recognizer */
+		/* channeling movement recognizer */
+		/* A class you feed with measured and cleaned (like with f_cmi) values
+		   and predefined value zones. It tells you if the input list of values
+		   moved from one zone to another zone.
+		   Therefore it gives you zone numbers back. */	
 	template<typename Metric, uint8_t channels>
-	class CMR {
+	class ChannellingMovementRecognizer {
 	public:
 		/* Forward declarations */
 		static constexpr uint8_t NO_ZONE {255};
@@ -33,17 +43,17 @@ namespace analyzer {
 		/* private types */
 		class Channel {
 		private:
-				/* 0 is faded out, that means we invalidate() the channel */
+				/* fading == 0 <=> Channel is invalid, otherwise Channel is valid */
+				/* 0 is faded out, that means we invalidate() the channel if we get there */
 				/* max is 255. it has to be set to 255 every time we get a match with new measured value */
 				/* it may be decreased from extern when calling the fade_out() method */
 				/* this method is to allow a kind of "timeout" to all channels */
 				/* the fade_out() is not need to be called */
-				/* fading == 0 <=> Channel is invalid, otherwise Channel is valid */
 			uint8_t fading;
 				
 				/* badness will be increased at mismatch and decreased at match by several functions */
 				/* between valid channels it says how bad the channel represents the recent inputs */
-				/* the smaller badness the better approaches the reality */
+				/* the smaller badness the better the channel approaches the reality */
 			uint8_t badness;
 			
 				/* latest distance from input which matched to this and no better channel */
@@ -86,33 +96,35 @@ namespace analyzer {
 			inline Channel(uint8_t start_zone, const Metric& start_value, Configuration* config) :
 				Channel(start_zone,start_value,config->initial_badness) {}
 			
-				/* create new valid Channel where start_zone is calculated by start_value and config */
+				/* create new valid Channel where everything is calculated by sart_Value and config
+					(start_zone is calculated by start_value and config) */
 			inline Channel(const Metric& start_value, Configuration* config) :
 				Channel(get_zone(start_value,config),start_value,config->initial_badness) {}
 			
-				/* get an reference to latest_zone of this channel */
-			inline const uint8_t& get_latest_zone(){ return latest_zone; }
+				/* get the latest_zone of this channel */
+			inline uint8_t get_latest_zone(){ return latest_zone; }
 
 				/* make the Channel worse */
 			inline void worse(Configuration* config);
 			
 				/* compare two channels by comparing their badness and whether they are valid,
 				   a channel is smaller (i.e. better) than another,
-				   if it is ( less bad and both are valid ) or more valid */
+				   if it is ( less bad and both are valid ) or strict more valid */
 			bool operator < (const Channel& op);
 			
-			/* a channel is strict greater than another if it is more invalid or more bad when both are valid*/
+			/* a channel is strict greater than another if it is (strict more invalid) or (more bad when both are valid) */
 			inline bool operator > (const Channel& op){	return op < *this;	}
 
 				/*	checks whether given value matches to this Channel
 					if matching and channel valid:
+						unworse() and better() this channel
 						apply the value, write Event (zone, zone) / (old, new), return true
 					if not matching or Channel invalid return false;
 						In this case event won't be touched anyway. */
 			bool accumulate(const Metric& new_value, Configuration* config, Event& event);
 			
 				/*	it decreases fading by amount. It will be set to zero if it underflows
-					if it becomes zero, the channel will automatically become invalid
+					if it becomes zero, the channel will automatically become invalid.
 					returns true if and only if the channel was faded out,
 					i.e. became 0 but wasn't before, just to mark you may need to sort array */
 			inline bool fade_out(uint8_t amount = 1);
@@ -138,6 +150,11 @@ namespace analyzer {
 				zone table will be read from config.
 				if no zone matches, NO_ZONE will be returned */
 		static uint8_t get_zone(const Metric& distance, Configuration* config);
+		// <<<< this is a kind of extern defined method of class Configuration.
+		// I think this is the better way like done here,
+		// because no user is wondering about creepy methods in his config object.
+		// so ... well, see cmi because there is a weight_sum function in config.
+		// maybe there could be done the same as a static method of cmi.
 				
 			/* sorts the channel array (ch) when one array element got better or worse
 				takes the channel that has to be toggled to the front / back until order is correct */
@@ -148,16 +165,16 @@ namespace analyzer {
 		
 			/* represents the transition from one zone to another */
 		class Event {
-			uint8_t array[2];
+			uint8_t array[2]; // 0..from_zone, 1..to_zone
 		public:
-			uint8_t& from {array[0]};
-			uint8_t& to   {array[1]};
-			Event() : array{NO_ZONE,NO_ZONE} {}
-			Event(uint8_t from, uint8_t to) : array{from, to} {}
+			uint8_t& from {array[0]}; // reference to from-zone
+			uint8_t& to   {array[1]}; // reference to to-zone
+			inline Event() : array{NO_ZONE,NO_ZONE} {}
+			inline Event(uint8_t from, uint8_t to) : array{from, to} {}
 			inline uint8_t& operator[](uint8_t index){	return array[index];	}
 		};
 		
-			/* represents a zone by its borders */
+			/* represents a zone via its borders */
 		struct Zone {
 		public:
 				/*	lower_border must be <= upper_border
@@ -170,21 +187,22 @@ namespace analyzer {
 		class Configuration {
 		public:
 				/*	the maximum distance a new value may have
-					to the old value to allow accumulating to its channel*/
+					to the old value to allow accumulating to its channel
+					must be positive ! */
 			Metric epsilon;
 			
 			// notice: overlapping zones may be possible but always the first zone in array will be chosen:
 				/*	pointer to the first zone of an Zone[count_zones] - array.
-					you have to build this array and provide its memory by your own. */
+					you have to build this array and provide its memory on your own. */
 			Zone* pZones;
 			
 				/*	number of zones in the zone array.
 					you can set it to any value {0..255}.
 					if 0 then pZones may be anything since it won't be touched.
-						this case can't produce any output with information */
+						this case put() can't produce any output with information */
 			uint8_t rgZones;
 
-				/* maximum badness a channel can get */			
+				/* maximum badness a channel can reach */			
 			uint8_t max_badness;
 			
 				/* initial badness which new channels will get */
@@ -209,59 +227,55 @@ namespace analyzer {
 															-> in this case old_zone@next_time will be new_zone@now */
 		void put(const Metric& value, uint8_t& from, uint8_t& to);
 		
-		// ### here move on:
-		
-		
-			/* this is for the programmer to allow a kind of timeout to channels
-			   if they don't recieve any matching values for some time */
+			/* fade_out allows the programmer a kind of timeout for channels
+			   if they don't receive any matching values for some time */
 			/* every channel has a fading, a value from 0 to 255.
 			   every time a channel match occurs fading is reset to 255,
-			   you can decrease fading with this function
-			   if it was decerased to 0 the channel will be made invalid */
-		void fade_out(uint8_t amount = 1){
-			for (uint8_t c = channels; c !=0;){
-				--c;
-				if (ch[c].fade_out(amount)) smart_sort(c);
-					// when faded out we might need to refresh array order (shuffle to back)
-			}
-		}
+			   you can decrease fading with this function by amount
+			   if it was decreased to 0 the channel will be made invalid */
+		void fade_out(uint8_t amount = 1);
 		
-		CMR(Configuration& config){
+		ChannellingMovementRecognizer(Configuration& config){
 			this->config = &config;
 		}
 	}; // CMR
+	
+	/* definition of shorter synonyms */
+	
+	template<typename Metric, uint8_t channels>
+	using CMR = ChannellingMovementRecognizer<Metric,channels>;
+
+
 
 /************************************************************************/
 /* Function Implementation                                              */
 /************************************************************************/
 
 	template<typename Metric, uint8_t channels>
-	inline bool CMR<Metric,channels>::Channel::fade_out(uint8_t amount){
-				if (is_valid()) { // we have to fade
-					if (amount < fading ){
-						// we don't fade out
-						fading -= amount;
-						} else {
-						// we fade out
-						fading = 0;
-						// this.~Channel(); // does nothing
-						return true;
-					}
-				}
-				// else channel invalid / already faded out
-				return false;
-			}
-
-	template<typename Metric, uint8_t channels>
-	inline void CMR<Metric,channels>::Channel::worse(Configuration* config){
+	inline void ChannellingMovementRecognizer<Metric,channels>::Channel::worse(Configuration* config){
 		badness = (badness - (badness == 255)) + 1;
 		if (badness > config->max_badness) badness = config->max_badness;
 	}
 
 	template<typename Metric, uint8_t channels>
-	bool CMR<Metric,channels>::Channel::accumulate(const Metric& new_value, Configuration* config, Event& event){
-		if (is_invalid()) return false;
-		if ((current_value - config->epsilon <= new_value) && (new_value <= current_value + config->epsilon)){
+	bool ChannellingMovementRecognizer<Metric,channels>::Channel::operator < (const Channel& op){
+		return (this->is_valid()) && ( (op.is_invalid()) || (this->badness < op.badness) );
+		
+		/*						badness
+			this	op			<		result	i.e.
+			valid | valid  | true		true	<
+			valid | valid  | false		false	>=
+			valid | invalid| *			true	<
+			invalid| *	   | *			false	>=
+		*/
+	}
+
+	template<typename Metric, uint8_t channels>
+	bool ChannellingMovementRecognizer<Metric,channels>::Channel::accumulate(const Metric& new_value, Configuration* config, Event& event){
+		if (	(is_valid())
+					&&
+				(current_value - config->epsilon <= new_value) && (new_value <= current_value + config->epsilon)
+					){
 			current_value = new_value;
 			event[0] = latest_zone;
 			event[1] = get_zone(new_value,config);
@@ -275,20 +289,24 @@ namespace analyzer {
 	}
 
 	template<typename Metric, uint8_t channels>
-	bool CMR<Metric,channels>::Channel::operator < (const Channel& op){
-		return (this->is_valid()) && ( (op.is_invalid()) || (this->badness < op.badness) );
-		
-		/*						badness
-			this	op			<		result	i.e.
-			valid | valid  | true		true	<
-			valid | valid  | false		false	>=
-			valid | invalid| *			true	<
-			invalid| *	   | *			false	>=
-		*/
-	}
+	inline bool ChannellingMovementRecognizer<Metric,channels>::Channel::fade_out(uint8_t amount){
+				if (is_valid()) { // we have to fade
+					if (amount < fading ){
+						// we don't fade out
+						fading -= amount;
+						} else {
+						// we fade out
+						fading = 0; // <==> marked as invalid
+						// this.~Channel(); // does nothing, is already invalid
+						return true;
+					}
+				}
+				// else channel invalid / already faded out
+				return false;
+			}
 
 	template<typename Metric, uint8_t channels>
-	uint8_t CMR<Metric,channels>::get_zone(const Metric& distance, Configuration* config){
+	uint8_t ChannellingMovementRecognizer<Metric,channels>::get_zone(const Metric& distance, Configuration* config){
 		Zone* zptr = config->zones;
 		for (uint8_t zone = 0; zone < config->count_zones; ++zone){
 			if ((zptr[zone].lower_border <= distance) && (distance <= zptr[zone].upper_border)){
@@ -299,7 +317,7 @@ namespace analyzer {
 	}
 	
 	template<typename Metric, uint8_t channels>	
-	void CMR<Metric,channels>::smart_sort(uint8_t channel){
+	void ChannellingMovementRecognizer<Metric,channels>::smart_sort(uint8_t channel){
 		uint8_t i_channel {channel};
 		// shuffle to the front:
 		while (1){
@@ -312,6 +330,7 @@ namespace analyzer {
 			ch[channel-1] = ch[channel];
 			ch[channel] = swap;
 			--channel;
+			// <<< better bytewise swapping!! add such function in hardware.h of fussel fframework
 		}
 		part2:
 		//shuffle to the back:
@@ -328,7 +347,7 @@ namespace analyzer {
 	}
 
 	template<typename Metric, uint8_t channels>
-	void CMR<Metric,channels>::put(const Metric& value, uint8_t& from, uint8_t& to){
+	void ChannellingMovementRecognizer<Metric,channels>::put(const Metric& value, uint8_t& from, uint8_t& to){
 		Event my_event;
 		for (uint8_t i = 0; i<channels; ++i){
 			ch[i].worse(config);
@@ -350,7 +369,20 @@ namespace analyzer {
 		smart_sort(channels-1);
 	}
 	
-} // namespace
+	template<typename Metric, uint8_t channels>
+	void ChannellingMovementRecognizer<Metric,channels>::fade_out(uint8_t amount){
+		// when fading out, the only change with effects to array order is
+		// that a channel can become invalid and has to be toggled to the end.
+		// When beginning at the end of the array,
+		// we don't risk that a Channel will be left out because of sorting / toggelling.
+		for (uint8_t c = channels; c !=0;){
+			--c;
+			if (ch[c].fade_out(amount)) smart_sort(c);
+			// when faded out we might need to refresh array order (shuffle to back)
+		}
+	}
+
+} // namespace analyzer
 
 
 
