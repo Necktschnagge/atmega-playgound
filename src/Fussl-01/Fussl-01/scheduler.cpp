@@ -23,7 +23,7 @@ using namespace time;
 namespace scheduler {
 	SystemTime_OLD SystemTime_OLD::instance{}; // default constructor
 }
-
+#if false // only because I write a new library defining the same ISR
 ISR (TIMER1_COMPA_vect){
 	// set the compare-match value for the next interrupt
 	// update the SystemTime::instance
@@ -36,6 +36,7 @@ ISR (TIMER1_COMPA_vect){
 	
 	++scheduler::SystemTime_OLD::instance;
 }
+#endif
 
 scheduler::SystemTime_OLD::SystemTime_OLD() : refinement(0), now(0), ref_time(0) {
 	init(DEFAULT_PRECISION,DEFAULT_OSC_FREQUENCY,0.0L);
