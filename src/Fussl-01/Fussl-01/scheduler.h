@@ -21,7 +21,7 @@
 #define SCHEDULER_H_
 //#include <avr/interrupt.h>
 
-#include <stdint.h> // by the way... it is already included by f_time.h
+#include <stdint.h>
 #include <math.h>
 #include "f_time.h"
 
@@ -30,7 +30,7 @@
 namespace scheduler {
 	
 		/* Singleton */
-	class SystemTime {
+	class SystemTime_OLD {
 		
 			// 32768Hz external oscillator for timing clock
 		static constexpr uint32_t DEFAULT_OSC_FREQUENCY { 1u << 15 };
@@ -68,16 +68,16 @@ namespace scheduler {
 				in order to calculate the Compare-Match-Value.
 				That (necessary) fix is already treated by get_time_padding() */
 		long double refinement;
-			// ä## must be changed i.e. adapted when precision is changed!!!
+			// ## must be changed i.e. adapted when precision is changed!!!
 		
 			/* when the controller starts (booting process) 'now' should be initialized to zero
 			   then it values the distance from now to the begin of computing time
 			   since now is changed by an ISR you must deactivate interrupts when accessing now */
-		time::ExtendedMetricTime now;
+		time::ExtendedMetricTime now; 
 			/* last time of setting RTC as refinement reference */
 		time::ExtendedMetricTime ref_time;
 		
-		SystemTime();
+		SystemTime_OLD();
 		
 		inline uint16_t get_normal_TCNT_compare_value(){ // Timer Counter
 			return osc_frequency / (static_cast<uint16_t>(1) << precision);
@@ -93,13 +93,13 @@ namespace scheduler {
 	public:
 		
 		/* singleton instance */
-		static SystemTime instance;
+		static SystemTime_OLD instance;
 	
 		/* deleted constructors / operators */
-		SystemTime(const SystemTime&) = delete;
-		const SystemTime& operator = (const SystemTime&) = delete;
-		SystemTime(SystemTime&&) = delete;
-		const SystemTime& operator = (SystemTime&&) = delete;
+		SystemTime_OLD(const SystemTime_OLD&) = delete;
+		const SystemTime_OLD& operator = (const SystemTime_OLD&) = delete;
+		SystemTime_OLD(SystemTime_OLD&&) = delete;
+		const SystemTime_OLD& operator = (SystemTime_OLD&&) = delete;
 		
 		/* only to call by ISR (interrupt routine) or timer start function
 			meta: even if declared public it is for lib internal purpose.
@@ -149,7 +149,7 @@ namespace scheduler {
 
 			/* increase the instance's now time by the time delta given indirect by precision */
 			/* more exactly: given by old_precision and set the old_precision to precision */
-		const SystemTime& operator ++ ();
+		const SystemTime_OLD& operator ++ ();
 				
 			/* stops the timer / SystemTime if it is running (anyway)
 			   tries to set frequency, precision and refinement */

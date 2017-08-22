@@ -6,12 +6,13 @@
  
  *		FPS:	one check after getting ready is done.
 				second check which I forced done.
-				CMR is supposed to be stable. but until now there are no test.
+				CMR is supposed to be stable. but until now there are no tests aviable.
 
 				some <<< for later improvements. not important. no semantic changes.
 				
 				// <<< check sizeof( class ...::Event )! it should be 2 at max. otherwise change design!!!
 				// <<< check behaviour of put() once again against the description.
+				// <<< maybe come better explaining comments at config.
  */ 
 
 
