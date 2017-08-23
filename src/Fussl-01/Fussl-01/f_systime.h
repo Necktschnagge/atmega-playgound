@@ -101,6 +101,7 @@ Evaluation of constraints:
 		if not e:
 			log illegal precision_log wish
 			set e := max := 16 // max precision
+			// no i decided to abort at this point
 		2^8: counter
 		while (!e or !f or !g):
 			if not e or counter > 16:
@@ -148,6 +149,8 @@ namespace scheduler {
 	
 			/* pointer to the one and only class instance which is encountered by ISR */
 		static SysTime* p_instance;
+		
+		static uint8_t anti_racing_factor;
 	
 	public /*static*/:
 		
@@ -181,23 +184,36 @@ namespace scheduler {
 		/******************   NON-STATIC STUFF   **********************/
 	private:
 			/* the real oscillator frequency / Hz, critical since ISR access */
-		long double osc_frequency;
+		long double osc_frequency {1};
 		
 			/* the truncated / broken part of the last compare match value, critical since ISR access */
-		long double residual_ticks;
+		long double residual_ticks {0};
 		
 			/* logarithmic value of precision, critical since ISR access */
-		uint8_t log_precision;
+		uint8_t log_precision {0};
 		
 			/* now is accessed by ISR and user/operating system. it is critical */
-		time::ExtendedMetricTime now;
+		time::ExtendedMetricTime now {0};
 		
 		// <<< if ready just look how it works. maybe festkomma floats stored in integers are better....
 		// <<< try this later.
 		
 			/* precision / Hz, critical since ISR access */
 		inline long double precision(){ return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision); }
+		
+			/* try to set osc_frequency and log_precision to given values */
+			/* returns error codes:
+				0	...		no error
+				1	...		given log_precision out of range {0,1,...,16}
+				2	...		no possible adapted log_precision, more detail: log_p is toggeled between two values either (f) or (g) evaluates false, but !f and !g are not overlapping
+				3	...		no possible adapted log_precision, more detail: tabu zones of (!f) and (!g) overlapping
+				4	...		no possible adapted log_precision, more detail: either !f or !g covers whole range of log_precision
 			
+			   if 0 was returned osc_frequency and log_precision are set to your given osc_frequency and some
+			   log_precision that is valid for the osc_freq and is nearest to your wished value
+			   otherwise osc_frequency and log_precision are not modified. */
+		uint8_t try_to_set(const long double& osc_frequency_new, uint8_t log_precision_wish);
+		
 	public:
 	/******* constructors *************************************************************************/
 		SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code);
