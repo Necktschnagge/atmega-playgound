@@ -274,6 +274,7 @@ namespace time {
 		inline ExtendedMetricTime& operator = (const HumanTime& time);
 
 		/* c-tors */
+		inline constexpr ExtendedMetricTime() : value(0) {}
 		inline constexpr ExtendedMetricTime(int64_t value) : value(value) {}	// implicit conversion int64 ->  EMT
 		inline ExtendedMetricTime(const HumanTime& time, const HumanTime& perspective = CHRIST_0);
 

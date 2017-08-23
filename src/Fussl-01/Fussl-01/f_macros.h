@@ -11,7 +11,7 @@
 
 #define macro_interrupt_critical_begin		uint8_t __sreg__ = SREG; cli() // rename this shit!!! to something like macro_critical_begin
 #define macro_interrupt_critical_end		SREG = __sreg__
-#define macro_interrupt_critical(code)		critical_begin; { code } critical_end
+#define macro_interrupt_critical(code)		macro_interrupt_critical_begin; { code } macro_interrupt_critical_end
 
 
 
