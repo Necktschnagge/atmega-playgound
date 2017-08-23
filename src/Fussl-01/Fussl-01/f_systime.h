@@ -131,47 +131,141 @@ So I am for a public constructor and
 /************************************************************************/
 
 #include "f_macros.h"
+#include "f_time.h"
 
-
+/************************************************************************/
+/* TYPE AND FUNCTION DECLARATION
+                                                                        */
+/************************************************************************/
 
 
 namespace scheduler {
 	
-	class SystemTime {
+	class SysTime {
+		
+		/******************   STATIC STUFF   **********************/
 	private /*static*/:
-			/* pointer to the one and only class instance which is encountered by ISR */
-		static SystemTime* p_activated_instance;
 	
-			/* start running SystemTime clock
-				true: SystemTime started
-				false: SystemTime already running */
-		static bool start();
-
+			/* pointer to the one and only class instance which is encountered by ISR */
+		static SysTime* p_instance;
+	
 	public /*static*/:
-			/* set the reference (pointer) to the SystemTime object which should be invoken by ISR
-				and start the timer*/
-		inline static void init_timer(SystemTime& sys_time_object){
-			p_activated_instance = &sys_time_object;
-			
-		}
 		
-		inline static SystemTime& get_instance() {	return *p_activated_instance;	}
+			/* return reference to the instance which is / has to be clocked by ISR */
+		inline static SysTime& get_instance() {	return *p_instance;	}
 		
-		
-			/* stop running SystemTime clock */
-		static void stop();
+			/* set reference (pointer) to the SystemTime object which should be clocked by ISR */
+			/* deactivates interrupts during replacing of reference */
+		inline static void link(SysTime& instance){	macro_interrupt_critical( p_instance = &instance; ); }
 
-	private:
+			/*	start running SysTime clock and return true, if timer wasn't running and reference is non-null
+				returns false, if timer already running from some clock source or instance pointer is nullptr
+				in this way... a save maybe-start */
+		static bool start();
+			
+			/* pause the SysTime clock
+			   i.e. just deactivate clock source */
+		inline static void pause();
 		
+			/* start SysTime clock again after a pause()
+			   i.e. just activate clock source */
+		inline static void resume();
+		
+			/* stop running SysTime clock */
+		inline static void stop();
+		
+			/* returns true if the timer used by SysTime is running (in anyone's context) */
+		inline static bool is_running(){	return (TCCR1B & 0b00000111);	}
+		
+		
+		/******************   NON-STATIC STUFF   **********************/
+	private:
+			/* the real oscillator frequency / Hz, critical since ISR access */
+		long double osc_frequency;
+		
+			/* the truncated / broken part of the last compare match value, critical since ISR access */
+		long double residual_ticks;
+		
+			/* logarithmic value of precision, critical since ISR access */
+		uint8_t log_precision;
+		
+			/* now is accessed by ISR and user/operating system. it is critical */
+		time::ExtendedMetricTime now;
+		
+		// <<< if ready just look how it works. maybe festkomma floats stored in integers are better....
+		// <<< try this later.
+		
+			/* precision / Hz, critical since ISR access */
+		inline long double precision(){ return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision); }
+			
 	public:
+	/******* constructors *************************************************************************/
+		SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code);
+		
+		
+	/******* modifiers  **************************************************************************/
+	
+			/* change osc_frequency */
+		inline void set_osc_frequency(const long double& osc_frequency) = delete;
+		// {	/*macro_interrupt_critical( this->osc_frequency = osc_frequency );*/	} //## reconstruct because of restictions necessary
+			
+			/* try to change precision to wish-value */
+		inline uint8_t change_log_precision() = delete; //{	macro_interrupt_critical( /* */ );	} //#### see set_osc_freq.
+		
+		
+	/****** interrupt methods ******************************************************************/
+				
 			/* method which tells ISR what compare value should be used next */
-		uint16_t get_compare_match_value() {return 0;} //####
+			/* only to call by ISR */
+		uint16_t get_compare_match_value_only_call_by_IRS();
 			
 			/* method which is called by ISR every time a compare match occurs */
-		void operator++(){}
+			/* should only called by ISR */
+		void operator++(){}; //###
+		
+		
+	/****** getters for now time *************************************************************/
+			
+			/* read only access to raw now value. attention. access is interrupt-critical! */
+		inline const time::ExtendedMetricTime& get_reference_to_critical_now_time(){	return now;	}
+		
+			/* get system time (same as operator()) */
+		inline time::ExtendedMetricTime get_now_time();
+		
+			/* get system time (same as get_now_time) */
+		inline time::ExtendedMetricTime operator()() { return get_now_time(); }
 	};
-}
 
 
 
+/************************************************************************/
+/* INLINE FUNCTION IMPLEMENTATION
+                                                                        */
+/************************************************************************/
+	
+	/* static class member */
+	inline void SysTime::pause(){
+		TCCR1B &= 0b11111000; // timer stopped. because of no clock source
+	}
+	
+	inline void SysTime::resume(){
+		TCCR1B = 0b00001111; // start timer. set clock source to extern oscillator.
+		// (also activates CTC again, which is not deactivated by pause() )
+	}
+	
+	inline void SysTime::stop(){
+		TCCR1B = 0b00000000; // timer stopped. because of no clock source
+		TIMSK &= 0b11000011; // deactivate interrupt flag for CompareMatch A
+	}
+	
+	/* non-static class member */
+	
+	inline time::ExtendedMetricTime SysTime::get_now_time(){
+		time::ExtendedMetricTime copy;
+		macro_interrupt_critical(copy = now;);
+		return copy;
+	}
+
+	
+} // namespace
 #endif /* F_SYSTIME_H_ */
