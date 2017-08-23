@@ -131,6 +131,11 @@ namespace scheduler {
 		return 0; // successful
 	}
 	
+	SysTime::SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code){
+		error_code = try_to_set(osc_frequency,log_precision);
+		log_precision = this->log_precision;
+	}
+
 	uint16_t SysTime::get_compare_match_value_only_call_by_IRS(){
 		long double exact = (osc_frequency / precision()) + residual_ticks; // always positive
 		long double floored = floor(exact); // round down
