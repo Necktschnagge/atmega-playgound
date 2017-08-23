@@ -3,6 +3,9 @@
  *
  * Created: 22.08.2017 18:41:29
  *  Author: Maximilian Starke
+ 
+ FPS:
+		<<< see modifier in class: they are declkared asa = delete. this can be done in future
  */ 
 
 
@@ -120,7 +123,7 @@ Evaluation of constraints:
 		
 
 C++ DESIGN				
-what abóut the static and the non-static stuff ???
+what about the static and the non-static stuff ???
 
 if singleton, the instance must be a static class member not a static function local var because of this interrupt problem
 
@@ -128,7 +131,36 @@ I want a constructor where you pass the osc_freq and
 		neither a macro passing to header file nor changing any constexpr in the library
 So I am for a public constructor and
 	a way that only one (of maybe n constructed SysTime objects) can be "linked" to the interrupt routine
-                                                     */
+                                                     
+documentation:
+
+how to use this library:
+
+This library offers two main things.
+	I	creating / handling a SysTime object
+	II	activate / deactivate 16bit Timer1 of the controller and link it to a SysTime object.
+
+(I) is represented by all non-static members of class SysTime, (II) by all static ones.
+
+Steps to do, in order to build a running SysTime clock:
+	1	First create a SysTime object
+		(! check ctor description and check error information returned )
+	2	use the (static) link(..) method to tell the timer engine about your SysTime object.
+		it gets a persistent reference to your object.
+	3	start() the time with static start() method
+		(! check the return value of start() and it's description of course )
+	4	Get the sysTime value whenever you want by using operator() of your SysTime object.
+		e.g.
+		time::EMT before = my_sysTime();
+		some_method_which_needs_some_time();
+		auto after  my_sysTime();
+		// duration of function: after - before
+
+There are a few other methods you may use, but in normal / easy cases,
+where you just want to start a SysTime once and recurrently get the now time,
+you will not need them.
+		
+													 */
 /************************************************************************/
 
 #include "f_macros.h"
@@ -149,7 +181,9 @@ namespace scheduler {
 	
 			/* pointer to the one and only class instance which is encountered by ISR */
 		static SysTime* p_instance;
-		
+			
+			/* a factor which makes a condition stronger for a SysTime to be valid.
+			   it says what the Compare Match Value can be at minimum */
 		static uint8_t anti_racing_factor;
 	
 	public /*static*/:
@@ -158,23 +192,30 @@ namespace scheduler {
 		inline static SysTime& get_instance() {	return *p_instance;	}
 		
 			/* set reference (pointer) to the SystemTime object which should be clocked by ISR */
-			/* deactivates interrupts during replacing of reference */
+			/* deactivates interrupts during replacing of reference, just in case timer is already running
+			   and someone tries to change the affected SysTime object (despite this should not be done) */
 		inline static void link(SysTime& instance){	macro_interrupt_critical( p_instance = &instance; ); }
 
-			/*	start running SysTime clock and return true, if timer wasn't running and reference is non-null
-				returns false, if timer already running from some clock source or instance pointer is nullptr
+			/*	start running SysTime clock and return true, if timer wasn't running and reference ptr is non-null
+				(only) returns false, if timer already running from some clock source or instance pointer is nullptr
 				in this way... a save maybe-start */
 		static bool start();
 			
 			/* pause the SysTime clock
-			   i.e. just deactivate clock source */
+			   i.e. just deactivate clock source
+			   you should know in general in what state your timer are, since it doesn't check before situation */
+			/* pause [may be used / should be used only] sometimes after a start(), but before stop() */
 		inline static void pause();
 		
 			/* start SysTime clock again after a pause()
-			   i.e. just activate clock source */
+			   i.e. just activate clock source to external input
+			   you should know in general in what state your timer are, since it doesn't check before situation */
 		inline static void resume();
 		
 			/* stop running SysTime clock */
+			/* i.e. deactivate clock source and clear the flags for CompareMatch Interrupt
+			   it is not possible to restart a stop()ped SysTime via resume()
+			   but you can call start() again, it will do this "resume after a stop()" */
 		inline static void stop();
 		
 			/* returns true if the timer used by SysTime is running (in anyone's context) */
@@ -216,6 +257,12 @@ namespace scheduler {
 		
 	public:
 	/******* constructors *************************************************************************/
+		
+			/* tries to construct a SysTime object with given values 
+			   "returns" an error code. for detail see description of try_to_set(..).
+			   the constructed object is only valid and usable if error_code returns 0
+			   the log_precision passed might be changed in order to construct a valid SysTime
+			   so the final value of log_precision is passed back. */
 		SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code);
 		
 		
@@ -223,10 +270,10 @@ namespace scheduler {
 	
 			/* change osc_frequency */
 		inline void set_osc_frequency(const long double& osc_frequency) = delete;
-		// {	/*macro_interrupt_critical( this->osc_frequency = osc_frequency );*/	} //## reconstruct because of restictions necessary
+		// {	/*macro_interrupt_critical( this->osc_frequency = osc_frequency );*/	} //<<< reconstruct because of restictions necessary
 			
 			/* try to change precision to wish-value */
-		inline uint8_t change_log_precision() = delete; //{	macro_interrupt_critical( /* */ );	} //#### see set_osc_freq.
+		inline uint8_t change_log_precision() = delete; //{	macro_interrupt_critical( /* */ );	} //<<<<<see set_osc_freq.
 		
 		
 	/****** interrupt methods ******************************************************************/
