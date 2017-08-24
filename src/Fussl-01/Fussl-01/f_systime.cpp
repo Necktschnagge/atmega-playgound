@@ -61,39 +61,7 @@ namespace scheduler {
 	}
 	
 	uint8_t SysTime::try_to_set(const long double& osc_frequency_new, uint8_t log_precision_wish){
-			/**	
-				SUMMARY:::
-				with (e) ^ (f) ^ (g) we get a, b and c.
-				
-				select any precision_log such that (e) is fulfilled // wish of OS programmer / user
-				if not g:	precision(_log) must be chosen greater
-				if not f:	precision(_log) must be chosen smaller
-
-				this all has to be checked when creating a SystemTime object!
-				algorithm:
-				get osc_freq (as copy);
-				get wish_precision_log;
-				
-				if not e:
-				log illegal precision_log wish
-				set e := max := 16 // max precision
-				2^8: counter
-				while (!e or !f or !g):
-				if not e or counter > 16:
-				"return" error, no possible systime object.
-				if not f and not g:
-				"return" error, no possible systime object.
-				if !f:
-				--precision_log // this might change value of !g
-				if !g: (else to !f)
-				++precision_log
-				++counter;
-				whileEND
-				
-				construction complete
-				"return" resulting precision_log
-				
-				*/
+		if (!(osc_frequency_new > 0.0)) return 5;
 		/* local copies: */
 		long double n_osc_freq = osc_frequency_new;
 		uint8_t& n_log_pre = log_precision_wish; // call-by-value in function. no copy necessary
@@ -133,10 +101,17 @@ namespace scheduler {
 	
 	SysTime::SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code){
 		error_code = try_to_set(osc_frequency,log_precision);
+		if (error_code){ // mark object as internally invalid
+			this->log_precision = INVALID_log_precision;
+		}
 		log_precision = this->log_precision;
 	}
 
 	uint16_t SysTime::get_compare_match_value_only_call_by_IRS(){
+		if (log_precision == INVALID_log_precision){
+			pause();
+			return 0xFFFF;
+		}
 		long double exact = (osc_frequency / precision()) + residual_ticks; // always positive
 		long double floored = floor(exact); // round down
 		residual_ticks = exact - floored; // residual ticks left out by round down
