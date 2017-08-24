@@ -13,7 +13,6 @@
 #include "f_arch.h"
 #include "f_gui.h"
 #include "f_test.h"
-#include "scheduler.h"
 #include "f_hcsr04.h"
 #include "stdint.h"
 #include "f_cmr.h"
