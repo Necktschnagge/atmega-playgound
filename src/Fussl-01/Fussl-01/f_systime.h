@@ -10,6 +10,7 @@
 		<<< see modifier in class: they are declkared asa = delete. this can be done in future
 		<<< make descriptions ya bit better / more details
 		<<< make another theoretical check of lib.
+		<<< docu seem somewhere lost, also cponcept stuff in *cpp file.
 		
  */ 
 

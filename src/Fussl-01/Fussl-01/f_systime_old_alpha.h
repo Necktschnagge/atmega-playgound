@@ -1,5 +1,5 @@
 /*
- * scheduler.h
+ * f_systime_old_alpha.h
  *
  *  Created: 07.03.2017 18:16:16
  *  Author: Maximilian Starke
@@ -8,15 +8,14 @@
  *
  *
  *
- FPS:		everything needs to be completed of course....
+ FPS:		This unit maily contains an old implementation of an SysTime.
+			I created a new one. so this is only containing historical files.
 			
-			... make a short prototype of the scheduler to follow our issues.
-			
-				/// ### think about which procedures must deactivate interrupts during their execution
-
+			There are also some conceptions about the real scheduler.
+			So... treat this as a book of some ideas!
  */ 
 
-
+#if false
 #ifndef SCHEDULER_H_
 #define SCHEDULER_H_
 //#include <avr/interrupt.h>
@@ -282,3 +281,5 @@ uint16_t test(){
 #endif
 
 #endif /* SCHEDULER_H_ */
+
+#endif

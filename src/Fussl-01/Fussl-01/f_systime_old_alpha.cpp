@@ -1,5 +1,5 @@
 /*
- * scheduler.cpp
+ * f_systime_old_alpha.cpp
  *
  * Created: 07.03.2017 18:15:40
  *  Author: Maximilian Starke
@@ -7,6 +7,8 @@
  FPS:	see at .h file
  
  */
+
+#if false 
 
 #define critical_begin		uint8_t __sreg__ = SREG; cli() // rename this shit!!! to something like macro_critical_begin
 #define critical_end		SREG = __sreg__
@@ -320,3 +322,4 @@ namespace month_string {
 
 
 
+#endif
