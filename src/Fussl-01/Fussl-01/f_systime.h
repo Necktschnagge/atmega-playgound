@@ -4,134 +4,20 @@
  * Created: 22.08.2017 18:41:29
  *  Author: Maximilian Starke
  
- FPS:
+ FPS:	Lib is at RC state. It is suposed to be stable. No bugs found yet.
+		do the following enhancements:
+ 
 		<<< see modifier in class: they are declkared asa = delete. this can be done in future
+		<<< make descriptions ya bit better / more details
+		<<< make another theoretical check of lib.
+		
  */ 
 
 
 #ifndef F_SYSTIME_H_
 #define F_SYSTIME_H_
 
-/************************************************************************/
-/* 
-history:
-	There was a previous half-ready implementation before.
-	But I decided to renew this one, because it used a kind of 'refinement'
-	which was an additional frequency = real freq. - ideal freq. 
-	after all implementing, I found this kinda weird.
-	So this is a new implementation with only one frequency value for oscillator
-
-
-concept:
-
-there are 3 main entities to deal with:
-	osc_freq:
-		Frequency of the oscillator.
-		Unit: Hz
-	
-	precision:
-		Frequency on which the system now time is updated
-		Unit: Hz
-	
-	Compare Match Value (CMV):
-		The Value on which the timer must cause an interrupt
-		definition equation:
-			CMV := round_down( osc_freq / precision + residual_ticks )
-		Unit: uint16_t (via TCNT...) 
-		
-	residual_ticks:
-		Ideally CMV would be (osc_freq / precision), but CMV has to be integral.
-		So we round_down CMV to be integral and need to carry broken part.
-		definition equation:
-			residual_ticks@after := trunc(osc_freq / precision + residual_ticks@before)
-		it is alway a value in interval [0,1), exactly [0,1] because of technical floating point format
-		Unit: 1 (no Unit)
-
-Constraints:
-	osc_freq			is given by hardware. programmer has no influence
-	
-	precision			may be a wish of operating system designer
-					(a)	must be chosen such that we can add 1/precision to an ExtendedMetricTime
-	
-	CMV				(b)	must be an unsigned 16 bit integer [1,...,2^16 -1]
-					(c)	it should be not too small (1,2,3..??) because ISR needs some time to be executed.
-	residual_ticks		(no restrictions)
-	
-Evaluation of constraints:
-	(d) => (a) where
-		(d)	precision in {2^0, 2^1, 2^2, ..., 2^16}
-			because:	EMT enables refinement up to 1/2^16 second
-						the potencies of 2 are not all possible values but enough, I think,
-						and easy to work with when increasing system now time
-						1s (=2^0) is no necessary l_border, but nobody wan't schedulers with
-						operating in 1s tact.
-						
-			so we use a var named precision_log of type uint8_t
-	(def)		we define precision := 2^precision_log
-	(e) => (d)   and   (d) => (a) where
-		(e)	precision_log in {0,1,.., 16}
-			
-	(f) and (g)  =>  (b) and (c) where
-		(get f via...)				1*x <= CMV
-			<==			x <= round_down( osc_freq / precision + residual_ticks )
-			<==			x <= round_down( osc_freq / precision ) // residual is 0..1
-			<==			x <= osc_freq / precision
-			<==			x * precision <= osc_freq
-		(f)		// via x which should be any integer value >=1 (but not too large) we provide
-				// the constraint (c) depending on a parameter.
-		
-		(get g via...)				CMV  <=  2^16 - 1
-			<==			round_down( osc_freq / precision + residual_ticks ) <= 2^16 - 1	
-			<==			round_down( osc_freq / precision + 1 ) <= 2^16 - 1
-			<==			round_down( osc_freq / precision ) + 1 <= 2^16 - 1
-			<==			round_down( osc_freq / precision ) <= 2^16 - 2
-			<==			osc_freq / precision <= 2^16 - 2
-			<==			osc_freq <= (2^16 - 2) * precision
-		(g)
-		
-	SUMMARY:::
-		with (e) ^ (f) ^ (g) we get a, b and c.
-		
-		select any precision_log such that (e) is fulfilled // wish of OS programmer / user
-		if not g:	precision(_log) must be chosen greater
-		if not f:	precision(_log) must be chosen smaller
-
-	this all has to be checked when creating a SystemTime object!
-	algorithm:
-		get osc_freq (as copy);
-		get wish_precision_log;
-		
-		if not e:
-			log illegal precision_log wish
-			set e := max := 16 // max precision
-			// no i decided to abort at this point
-		2^8: counter
-		while (!e or !f or !g):
-			if not e or counter > 16:
-				"return" error, no possible systime object. 
-			if not f and not g:
-				"return" error, no possible systime object.
-			if !f:
-				--precision_log // this might change value of !g
-			if !g: (else to !f)
-				++precision_log
-			++counter;
-		whileEND
-		
-		construction complete
-		"return" resulting precision_log
-		
-
-C++ DESIGN				
-what about the static and the non-static stuff ???
-
-if singleton, the instance must be a static class member not a static function local var because of this interrupt problem
-
-I want a constructor where you pass the osc_freq and
-		neither a macro passing to header file nor changing any constexpr in the library
-So I am for a public constructor and
-	a way that only one (of maybe n constructed SysTime objects) can be "linked" to the interrupt routine
-                                                     
+ /*                                                   
 documentation:
 
 how to use this library:
@@ -261,6 +147,7 @@ namespace scheduler {
 			   if 0 was returned osc_frequency and log_precision are set to your given osc_frequency and some
 			   log_precision that is valid for the osc_freq and is nearest to your wished value
 			   otherwise osc_frequency and log_precision are not modified. */
+			/* this function is not interrupt critical. It cares about this itself. */
 		uint8_t try_to_set(const long double& osc_frequency_new, uint8_t log_precision_wish);
 		
 	public:
@@ -281,11 +168,13 @@ namespace scheduler {
 			/* change osc_frequency */
 		inline uint8_t set_osc_frequency(const long double& new_osc_frequency){
 			return try_to_set(new_osc_frequency,log_precision);
+			// directly using log_precision is okay since it is one byte only and ISR only reads it
 		}
 			
 			/* try to change precision to wish-value */
-		inline uint8_t change_log_precision() = delete; //{	macro_interrupt_critical( /* */ );	} //<<<<<see set_osc_freq.
-		
+		inline uint8_t change_log_precision(uint8_t& new_log_recision){
+			return try_to_set(osc_frequency,new_log_recision); // read - read acccess means no interrupt conflicts
+		}
 		
 	/****** interrupt methods ******************************************************************/
 				
@@ -340,7 +229,7 @@ namespace scheduler {
 	inline void SysTime::operator ++(){
 		if (log_precision == INVALID_log_precision) return; // <<< make an inline is_valid function!
 			// necessary since we cannot << to a negative number .... i suppose
-		this->now += 1LL << (16 - log_precision);
+		this->now = this->now + (1LL << (16 - log_precision)); // <<<< wait for += operator in f_time and change it then
 	}
 	
 	inline time::ExtendedMetricTime SysTime::get_now_time(){
