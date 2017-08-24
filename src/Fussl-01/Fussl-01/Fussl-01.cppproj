@@ -218,6 +218,9 @@
     <Compile Include="f_cmr.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_concepts.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_gui.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
@@ -252,6 +255,13 @@
     <Compile Include="f_macros.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_scheduler.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_scheduler.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_systime.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
@@ -278,11 +288,11 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
-    <Compile Include="scheduler.cpp">
+    <Compile Include="f_systime_old_alpha.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
-    <Compile Include="scheduler.h">
+    <Compile Include="f_systime_old_alpha.h">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
