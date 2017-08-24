@@ -42,7 +42,7 @@ namespace scheduler {
 	
 	class UnionCallback {
 	public:
-		using FunctionPtr = void(*)();
+		using FunctionPtr = void(*)(); // mybe this type def can also be put in f_concepts
 	private:
 		union InternUnion {
 				FunctionPtr function_ptr;
@@ -57,14 +57,41 @@ namespace scheduler {
 		
 	};
 	
+	class Flags {
+	private:
+		uint8_t container; 
+			//	bit:			3					2			1			0
+			// meaning:		is_interrupting :: is_callable :: is_timer :: is_valid
+			
+			// the flags are in such semantic that the unexpected case is '1', the normal/ most occurring case is '0';
+	public:
+			/* creates an flag object, which contains property is_invalid */
+		Flags() : container(0) /* especially invalid */ {}
+			
+		/* getter */
+		
+		inline bool is_valid(){ return container&1; }
+		inline bool is_invalid() { return !is_valid(); }
+		inline bool is_timer(){ return container&2; }
+		inline bool is_task(){ return !is_timer(); }
+		inline bool is_callable_ptr(){ return container&4; }
+		inline bool is_function_ptr(){ return !is_callable_ptr(); }
+		inline bool is_interrupting(){ return container&8; }
+		inline bool is_not_interrupting(){ return !is_interrupting(); }
+			
+		/* setter */
+		
+		inline void set_valid(){ container|=1; }
+		inline void set_invalid(){ container&=255-1; }
+		inline void set_timer(){ container|=2; }
+		inline void set_task(){ container&=255-2; }
+	};
 	
 	class SchedulerMemoryLine {
 		SchedulerHandle handle;
 		UnionCallback callback;
 		
-		uint8_t priority;
-		//ExecutionTime exeTime;
-		uint8_t flags;
+		Flags flags;
 	};
 	
 };
