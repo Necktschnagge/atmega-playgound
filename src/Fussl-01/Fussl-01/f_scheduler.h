@@ -12,13 +12,15 @@
 #include <stdint.h>
 
 #include "f_concepts.h"
+#include "f_time.h"
 
 namespace scheduler {
 
 	class SchedulerHandle;
 	class UnionCallback;
+	class Specifics;
+	class Flags;
 	class SchedulerMemoryLine;
-	//using PSchedulerMemoryLine = SchedulerMemoryLine*;
 
 	extern SchedulerMemoryLine* p_table;
 	extern uint8_t table_size;
@@ -28,7 +30,7 @@ namespace scheduler {
 	public:
 		using HType = uint8_t;	
 	private:
-		HType handle; // we want to use 8 bit, because 4KB Ram you wont have space for much more than 255 Scheduler lines.
+		HType handle; // we want to use 8 bit, because in 4KB Ram you wont have space for much more than 255 Scheduler lines.
 	public:
 		inline SchedulerHandle() : handle(0) {}
 		inline explicit SchedulerHandle(const HType& id) : handle(id) {}
@@ -57,21 +59,50 @@ namespace scheduler {
 		
 	};
 	
+	class Priority {
+		uint8_t value;
+	};
+	
+	class Progress {
+		uint8_t value;	
+	};
+	
+	class TaskSpecifics {
+		Priority priority;
+		Progress progress;
+	};
+	
+	class TimerSpecifics {
+		const time::ExtendedMetricTime* event_time;
+	};
+	
+	class UnionSpecifics {
+	public:
+	private:
+		union InternUnion {
+			TaskSpecifics task;
+			TimerSpecifics timer;
+		};
+	};
+	
 	class Flags {
 	private:
 		uint8_t container; 
-			//	bit:			3					2			1			0
-			// meaning:		is_interrupting :: is_callable :: is_timer :: is_valid
+			//	bit:			4				3				2				1			0
+			// meaning:		is_enable :: is_interrupting :: is_callable :: is_timer :: is_valid
 			
 			// the flags are in such semantic that the unexpected case is '1', the normal/ most occurring case is '0';
 	public:
 			/* creates an flag object, which contains property is_invalid */
+			/* other flags are in an valid configuration, so you can set_valid() */
 		Flags() : container(0) /* especially invalid */ {}
 			
 		/* getter */
 		
 		inline bool is_valid(){ return container&1; }
 		inline bool is_invalid() { return !is_valid(); }
+		inline bool is_enabled(){ return container&16; }
+		inline bool is_disabled(){ return !is_enabled(); }
 		inline bool is_timer(){ return container&2; }
 		inline bool is_task(){ return !is_timer(); }
 		inline bool is_callable_ptr(){ return container&4; }
@@ -83,14 +114,22 @@ namespace scheduler {
 		
 		inline void set_valid(){ container|=1; }
 		inline void set_invalid(){ container&=255-1; }
+		inline void set_enabled(){ container|=16; }
+		inline void set_disabled(){ container&=255-16; }
 		inline void set_timer(){ container|=2; }
-		inline void set_task(){ container&=255-2; }
+		inline void set_task(){ container&=255-2; set_not_interrupting(); }
+		inline void set_callable_ptr(){ container|=4; }
+		inline void set_function_ptr(){ container&=255-4; }
+		inline void set_non_interrupting_timer(){ set_timer(); set_not_interrupting(); }
+		inline void set_interrupting_timer(){ set_timer(); container|=8; }
+		inline void set_not_interrupting(){ container&=255-8; }
 	};
 	
 	class SchedulerMemoryLine {
+	public:
 		SchedulerHandle handle;
 		UnionCallback callback;
-		
+		UnionSpecifics specifics;
 		Flags flags;
 	};
 	
@@ -100,42 +139,6 @@ namespace scheduler {
 
 #endif /* F_SCHEDULER_H_ */
 
-#if false
-	typedef uint16_t SCHEDULE_HANDLE; /// no make a wrapper, a class with one uint16_t
-	
-	constexpr SCHEDULE_HANDLE NO_HANDLE {0};
-	
-	//constexpr uint16_t PARTS_OF_SECOND_LOG {5}; // 32 parts of second
-	
-	//constexpr uint16_t PARTS_OF_SECOND {1 << PARTS_OF_SECOND_LOG};
-	
-	class Priority{
-		uint8_t state;
-		
-		void setState(uint8_t priority, uint8_t percentage){
-			
-		}
-		
-	};
-	
-	extern uint16_t divisions_of_second; // 0 ... PARTS_OF_SECOND - 1
-//	extern time::HumanTime now;
-	extern uint16_t nextFreeHandle;
-	extern void* taskTable;
-	extern uint16_t taskTableSize;
-	
-	void init(void* taskTableSpaceJunk, uint16_t taskTableSize);
-	
-	//SCHEDULE_HANDLE addTimer(void (*function)(), const Time& interval, uint16_t repeat /*, Priority priority*/){return 0;};
-	
-	//bool cancelTimer(SCHEDULE_HANDLE handler){return false;};
-	
-		// should return: whether time was increased, exact time after last full second
-	uint16_t updateNowTime();
-	
-		/* central control loop */
-	void run();
-	
 	
 	/************************************************************************/
 	/* 
@@ -158,7 +161,9 @@ namespace scheduler {
 			repeatings ... times to repeat a timer callback
 		percentage ready # tasks only												1-
 		priority # tasks only ??? (or both?)										1-
-		execution time # measured by scheduler	# only timer?			// 8
+		## never:  execution time
+			 # measured by scheduler	# only timer?	
+			 		// 8
 		flags:
 			valid
 			end-of-list???
@@ -168,5 +173,3 @@ namespace scheduler {
 			
 	                                                                     */
 	/************************************************************************/
-	
-#endif
