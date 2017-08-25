@@ -7,3 +7,11 @@
 
 
 #include "f_scheduler.h"
+
+
+namespace scheduler {
+	
+	SchedulerMemoryLine* p_table;
+	uint8_t table_size;
+	
+}
