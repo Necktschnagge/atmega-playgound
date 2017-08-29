@@ -11,29 +11,41 @@
 
 #include <stdint.h>
 
+#include "f_macros.h"
 #include "f_concepts.h"
 #include "f_time.h"
 
 namespace scheduler {
 
+	/* forward declaration: intern classes / structs: */
 	class SchedulerHandle;
 	class UnionCallback;
-	class Specifics;
+			class Priority; // as part of TaskSpecifics
+			class Progress; // as part of TaskSpecifics
+		class TaskSpecifics; // as part of UnionSpecifics
+		class TimerSpecifics; // as part of UnionSpecifics
+	class UnionSpecifics;
 	class Flags;
 	class SchedulerMemoryLine;
 
+	/* interface to u-programmer who must provide RAM space */
 	extern SchedulerMemoryLine* p_table;
-	extern uint8_t table_size;
+	extern uint8_t s_table;
+	extern uint32_t watchdog;
+	extern uint8_t is_active; // 0 not active
+								// 1 just active
+								// 2 still active, but stops (and run() returns) next.
+	extern uint32_t countdown;
 	
 	
 	class SchedulerHandle {
 	public:
-		using HType = uint8_t;	
+		using HType = uint8_t;
 	private:
 		HType handle; // we want to use 8 bit, because in 4KB Ram you wont have space for much more than 255 Scheduler lines.
 	public:
-		inline SchedulerHandle() : handle(0) {}
-		inline explicit SchedulerHandle(const HType& id) : handle(id) {}
+		inline constexpr SchedulerHandle() : handle(0) {}
+		inline constexpr explicit SchedulerHandle(const HType& id) : handle(id) {}
 		
 		inline SchedulerHandle& operator = (const SchedulerHandle& r){ handle = r.handle; return *this; }
 		inline SchedulerHandle& operator = (const HType& id){ handle = id; return *this; }
@@ -41,10 +53,16 @@ namespace scheduler {
 		
 		inline bool operator == (const SchedulerHandle& r){ return this->handle == r.handle; }
 	};
+
+	constexpr SchedulerHandle NO_HANDLE{0}; // conc. there are 255 mem lines at max. so 0 can be the no_handle without problems
+											// a handle which may be used, if there should be no valid entry. // but first therefore we have a valid flag inside flag class
+		
+	constexpr time::ExtendedMetricTime NO_WATCHDOG{0}; // a time for watchdog is rbequired on initialisation. but if you don't want a watchdog, just set it to 0 (NO_WATCHDIG).
+	constexpr int32_t NO_WATCHDOG_COUNTER_FORMAT{0}; // calc by a constexpr function for time-wtchdog -> counter-watchdog
 	
 	class UnionCallback {
 	public:
-		using FunctionPtr = void(*)(); // mybe this type def can also be put in f_concepts
+		using FunctionPtr = void(*)(); // maybe this type def can also be put in f_concepts
 	private:
 		union InternUnion {
 				FunctionPtr function_ptr;
@@ -54,26 +72,44 @@ namespace scheduler {
 	public:
 		inline void set_function_ptr(FunctionPtr ptr){ _union.function_ptr = ptr; }
 		inline void set_callable_ptr(concepts::Callable* ptr) { _union.callable_ptr = ptr; }
-		inline void call_function(){ _union.function_ptr(); }
-		inline void call_callable(){ (*_union.callable_ptr)(); }
+		inline void call_function(){ if (_union.function_ptr != nullptr) _union.function_ptr(); }
+		inline void call_callable(){ if (_union.callable_ptr != nullptr) (*_union.callable_ptr)(); }
 		
 	};
 	
 	class Priority {
+	public:
+			/* 1..200 : least...most important */
+			/* 255 means running exclusive */ 
 		uint8_t value;
+		
+		Priority(){}
 	};
 	
 	class Progress {
-		uint8_t value;	
+	public:
+		uint8_t value; // 0 ..255 : 0%ready .. 100%ready
+		
+		Progress(){}
 	};
-	
+		
 	class TaskSpecifics {
+	public:
 		Priority priority;
 		Progress progress;
+		
+		uint8_t get_importance(){
+			uint16_t wPriority {priority.value};
+			uint16_t wProgress {progress.value};
+			return  wPriority * 255 / 200;
+		}
 	};
 	
 	class TimerSpecifics {
-		const time::ExtendedMetricTime* event_time;
+	private:
+		const time::ExtendedMetricTime* event_time; // earliest time when timer can be executed
+	public:
+		inline const time::ExtendedMetricTime& get_execution_time() const { return *event_time; }
 	};
 	
 	class UnionSpecifics {
@@ -83,6 +119,11 @@ namespace scheduler {
 			TaskSpecifics task;
 			TimerSpecifics timer;
 		};
+		
+		InternUnion _union;
+	public:
+		TaskSpecifics& task() { return _union.task; } // using direct references makes objects become larger by 2*ptrsize, I tried it
+		TimerSpecifics& timer() { return _union.timer; }
 	};
 	
 	class Flags {
@@ -114,6 +155,7 @@ namespace scheduler {
 		
 		inline void set_valid(){ container|=1; }
 		inline void set_invalid(){ container&=255-1; }
+		inline void set_valid_flag(bool is_valid){ container = (container&(255-1)) + 1 * is_valid; }
 		inline void set_enabled(){ container|=16; }
 		inline void set_disabled(){ container&=255-16; }
 		inline void set_timer(){ container|=2; }
@@ -132,6 +174,66 @@ namespace scheduler {
 		UnionSpecifics specifics;
 		Flags flags;
 	};
+	
+	/* aufbau der tabelle.
+	
+	interrupt timer // look on interrupt
+	non interrupt timer // look first on schedule loop
+	tasks // look second in schedule loop
+	
+	
+	*/
+		// intern memory, watchdog time
+	bool init(SchedulerMemoryLine* table_ptr, uint8_t table_size,const time::ExtendedMetricTime& watchdog_restart_time = NO_WATCHDOG){
+		if (is_active) return false; // can't init because already running.
+		scheduler::p_table = table_ptr;
+		scheduler::s_table = table_size;
+		watchdog = 0; // watchdog_restart_time; / (zeit pro SysTime tick)
+		
+		return true;
+	}
+	
+	void set_watchdog(const time::ExtendedMetricTime& watchdog){ scheduler::watchdog = 0; /* watchdog; (zeit pro systime tick ) */ }
+	
+	void interrupt_handler(){
+		if (!is_active) return;
+		
+		--countdown;
+		if ((!watchdog) || (countdown > 0)) {
+			// reset hardware watchdog here
+		}	// else: after short time hardware watchdog will restart controller
+		
+		
+		
+		// called by SysTime, every time
+		// check for interrupting functions in schedule table
+	}
+	
+		// central control loop. called after init and provides the tasks
+	bool run();
+	
+		// make scheduler return after current executed task / timer
+	bool stop(){
+		if (!is_active) return false;
+		is_active = 2;
+		return true;
+	}
+	
+		/* true: task was written into scheduler table. */
+		/* false: table is full. not written into table */
+			// maybe it is because of some disabled timers or tasks, but this has to be checked by u-programmer
+	bool new_task(){
+		return false;
+	}
+	
+		/* write handles of disabled timers / tasks into array handles which has count cells
+		   return count as the number of handles which are disabled. */
+		/* if more than array size, a undefined choice of them is stored into array.
+			if less than only the first count@after entries are filled with handles */
+		/* return also first found handle */
+	uint8_t get_disabled_entries(uint8_t* handles, uint8_t& count){
+		return 0;
+	}
 	
 };
 

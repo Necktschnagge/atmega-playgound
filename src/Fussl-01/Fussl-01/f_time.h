@@ -307,12 +307,12 @@ namespace time {
 		inline friend void div(const ExtendedMetricTime&, const ExtendedMetricTime, T&);
 */
 		/* comparison operators */
-		inline friend bool operator == (const ExtendedMetricTime&, const ExtendedMetricTime&);
+	/*	inline friend bool operator == (const ExtendedMetricTime&, const ExtendedMetricTime&);
 		inline friend bool operator <  (const ExtendedMetricTime&, const ExtendedMetricTime&);
 		inline friend bool operator >  (const ExtendedMetricTime&, const ExtendedMetricTime&);
 		inline friend bool operator <= (const ExtendedMetricTime&, const ExtendedMetricTime&);
 		inline friend bool operator >= (const ExtendedMetricTime&, const ExtendedMetricTime&);
-
+	*/
 		/// <<< add some trunc or round function
 	};
 
