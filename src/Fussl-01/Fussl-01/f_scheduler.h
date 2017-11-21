@@ -30,12 +30,19 @@ namespace scheduler {
 
 	/* interface to u-programmer who must provide RAM space */
 	extern SchedulerMemoryLine* p_table;
-	extern uint8_t s_table;
-	extern uint32_t watchdog;
+	extern uint8_t s_table; // size of table as the number of table lines.
+	
+	extern uint32_t watchdog; // contains indirectly a time distance,
+		// which stands for the time the software watchdog has to wait before rebooting
+						// should not be visible in header
+	
 	extern uint8_t is_active; // 0 not active
 								// 1 just active
 								// 2 still active, but stops (and run() returns) next.
-	extern uint32_t countdown;
+								// means the task runner (i.e. scheduler is running, i.e. executes timers as well as tasks)
+	extern uint32_t countdown; // the countdown is the intern var of software watchdog.
+				// it is set to watchdog on finishing of any task or timer procedure.
+				// it is decreased by 1 on every SysTime interrupt.
 	
 	
 	class SchedulerHandle {
@@ -44,11 +51,14 @@ namespace scheduler {
 	private:
 		HType handle; // we want to use 8 bit, because in 4KB Ram you wont have space for much more than 255 Scheduler lines.
 	public:
+			/* construct a NO_HANDLE */
 		inline constexpr SchedulerHandle() : handle(0) {}
+			/* construct handle with number ID */
 		inline constexpr explicit SchedulerHandle(const HType& id) : handle(id) {}
 		
+		
 		inline SchedulerHandle& operator = (const SchedulerHandle& r){ handle = r.handle; return *this; }
-		inline SchedulerHandle& operator = (const HType& id){ handle = id; return *this; }
+		// inline SchedulerHandle& operator = (const HType& id){ handle = id; return *this; } // it fools the explicit c-tor kinda way
 		inline explicit operator HType() { return handle; }
 		
 		inline bool operator == (const SchedulerHandle& r){ return this->handle == r.handle; }
@@ -57,7 +67,9 @@ namespace scheduler {
 	constexpr SchedulerHandle NO_HANDLE{0}; // conc. there are 255 mem lines at max. so 0 can be the no_handle without problems
 											// a handle which may be used, if there should be no valid entry. // but first therefore we have a valid flag inside flag class
 		
-	constexpr time::ExtendedMetricTime NO_WATCHDOG{0}; // a time for watchdog is rbequired on initialisation. but if you don't want a watchdog, just set it to 0 (NO_WATCHDIG).
+	constexpr time::ExtendedMetricTime NO_WATCHDOG_EMT{0};
+		// a time for watchdog is rbequired on initialisation. but if you don't want a watchdog,
+		// just set it to 0 (NO_WATCHDIG).
 	constexpr int32_t NO_WATCHDOG_COUNTER_FORMAT{0}; // calc by a constexpr function for time-wtchdog -> counter-watchdog
 	
 	class UnionCallback {
@@ -167,12 +179,20 @@ namespace scheduler {
 		inline void set_not_interrupting(){ container&=255-8; }
 	};
 	
+	class GroupCellSize {
+	public:
+		uint8_t cell_items;
+	};
+	
+	
 	class SchedulerMemoryLine {
 	public:
-		SchedulerHandle handle;
-		UnionCallback callback;
-		UnionSpecifics specifics;
-		Flags flags;
+		SchedulerHandle handle; // 1
+		UnionCallback callback; // 2
+		UnionSpecifics specifics; // 2
+		Flags flags; // 1
+		GroupCellSize group_cell_size; // nur für tasks ...könnte man also woanders hinspeichern
+				// Maybe we could reserve some space of the scheduler table for an Byte array for these cell sizes.
 	};
 	
 	/* aufbau der tabelle.
@@ -184,7 +204,7 @@ namespace scheduler {
 	
 	*/
 		// intern memory, watchdog time
-	bool init(SchedulerMemoryLine* table_ptr, uint8_t table_size,const time::ExtendedMetricTime& watchdog_restart_time = NO_WATCHDOG){
+	bool init(SchedulerMemoryLine* table_ptr, uint8_t table_size,const time::ExtendedMetricTime& watchdog_restart_time = NO_WATCHDOG_EMT){
 		if (is_active) return false; // can't init because already running.
 		scheduler::p_table = table_ptr;
 		scheduler::s_table = table_size;
@@ -205,7 +225,7 @@ namespace scheduler {
 		
 		
 		
-		// called by SysTime, every time
+		// called by SysTime, every time an TC Compare Match Interrupt occurs
 		// check for interrupting functions in schedule table
 	}
 	
