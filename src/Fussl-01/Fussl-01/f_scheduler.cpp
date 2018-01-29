@@ -19,13 +19,13 @@
 #ifdef always_completely_go_through_unsorted_timers
 	#error "config macro already defined."
 #endif
-#ifdef 
+#ifdef aaa
 #error "config macro already defined."
 #endif
-#ifdef
+#ifdef aaa
 #error "config macro already defined."
 #endif
-#ifdef
+#ifdef aaa
 #error "config macro already defined."
 #endif
 
@@ -44,7 +44,7 @@
 
 // #define always_completely_go_through_unsorted_timers
 
-
+/*
 #ifndef earliest_non_interrupt_timer
 	#ifndef keep_non_int_timers_sorted
 		#ifndef always_completely_go_through_unsorted_timers
@@ -52,7 +52,7 @@
 		#endif
 	#endif
 #endif
-
+*/
 #ifdef earliest_non_interrupt_timer
 	#ifdef ___doubled___
 		#error "internal confog macro already defined."
@@ -97,7 +97,7 @@ namespace scheduler {
 	SchedulerMemoryLine* &non_int_timer_end{timer_end}; // behind last element
 		
 	GroupCellSize* cell_sizes_begin; // ptr to first group cell size entry
-	GroupCellSize* cell_sizes_end(){return cell_sizes_begin + (task_end() - task_begin); } // ptr behind last element of groupcellsize table
+	GroupCellSize* cell_sizes_end(){return cell_sizes_begin + (/*task_end()#########*/0 /*- task_begin*/); } // ptr behind last element of groupcellsize table
 	
 	SchedulerMemoryLine* task_begin; // first element
 	SchedulerMemoryLine* task_end(){ return p_table + s_table; } // behind last element
