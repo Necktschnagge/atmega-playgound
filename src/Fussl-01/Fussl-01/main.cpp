@@ -110,7 +110,7 @@ void init_port_C_server(){
 inline bool client_data(){ return (PINC & 0b001); }
 inline bool client_latch(){ return (PINC & 0b010); }
 inline void set_confirm(bool value){
-	value ? (PORTC |= 0b100) : (PORTC &= ~0b100);
+	(!value) ? (PORTC |= 0b100) : (PORTC &= ~0b100);
 }
 
 void endless_server_loop(){
