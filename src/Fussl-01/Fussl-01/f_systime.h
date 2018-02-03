@@ -63,7 +63,7 @@ namespace scheduler {
 	
 	class SysTime {
 		
-		/******************   STATIC STUFF   **********************/
+		/**************/****   STATIC STUFF   **********************/
 	private /*static*/:
 	
 			/* pointer to the one and only class instance which is encountered by ISR */
@@ -140,10 +140,10 @@ namespace scheduler {
 			/* returns error codes:
 				0	...		no error
 				1	...		given log_precision out of range {0,1,...,16}
-				2	...		no possible adapted log_precision, more detail: log_p is toggeled between two values either (f) or (g) evaluates false, but !f and !g are not overlapping
-				3	...		no possible adapted log_precision, more detail: tabu zones of (!f) and (!g) overlapping
+				2	...		no possible adapted log_precision, more detail: log_p is toggled between two values either (f) or (g) evaluates false, but !f and !g are not overlapping
+				3	...		no possible adapted log_precision, more detail: taboo zones of (!f) and (!g) overlapping
 				4	...		no possible adapted log_precision, more detail: either !f or !g covers whole range of log_precision
-				5	...		non-positiv osc_frequency given
+				5	...		non-positive osc_frequency given
 			
 			   if 0 was returned osc_frequency and log_precision are set to your given osc_frequency and some
 			   log_precision that is valid for the osc_freq and is nearest to your wished value
@@ -169,12 +169,12 @@ namespace scheduler {
 			/* change osc_frequency */
 		inline uint8_t set_osc_frequency(const long double& new_osc_frequency){
 			return try_to_set(new_osc_frequency,log_precision);
-			// directly using log_precision is okay since it is one byte only and ISR only reads it
+			// directly using log_precision is non-critical since (it is one byte only and) ISR only reads it
 		}
 			
 			/* try to change precision to wish-value */
 		inline uint8_t change_log_precision(uint8_t& new_log_recision){
-			return try_to_set(osc_frequency,new_log_recision); // read - read acccess means no interrupt conflicts
+			return try_to_set(osc_frequency,new_log_recision); // read - read access means no interrupt conflicts
 		}
 		
 	/****** interrupt methods ******************************************************************/
@@ -185,7 +185,7 @@ namespace scheduler {
 		uint16_t get_compare_match_value_only_call_by_IRS();
 			
 			/* method which is called by ISR every time a compare match occurs */
-			/* should only called by ISR */
+			/* should only be called by ISR */
 			/* increases now time by a value depending on (log_)precision */
 		inline void operator++();
 		
