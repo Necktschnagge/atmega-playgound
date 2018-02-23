@@ -37,6 +37,7 @@ SUBDIRS :=
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS +=  \
+../display_server.cpp \
 ../f_arch.cpp \
 ../f_cmi.cpp \
 ../f_cmr.cpp \
@@ -59,6 +60,7 @@ ASM_SRCS +=
 
 
 OBJS +=  \
+display_server.o \
 f_arch.o \
 f_cmi.o \
 f_cmr.o \
@@ -74,6 +76,7 @@ main.o \
 f_systime_old_alpha.o
 
 OBJS_AS_ARGS +=  \
+display_server.o \
 f_arch.o \
 f_cmi.o \
 f_cmr.o \
@@ -89,6 +92,7 @@ main.o \
 f_systime_old_alpha.o
 
 C_DEPS +=  \
+display_server.d \
 f_arch.d \
 f_cmi.d \
 f_cmr.d \
@@ -104,6 +108,7 @@ main.d \
 f_systime_old_alpha.d
 
 C_DEPS_AS_ARGS +=  \
+display_server.d \
 f_arch.d \
 f_cmi.d \
 f_cmr.d \
@@ -132,6 +137,8 @@ LINKER_SCRIPT_DEP+=
 
 
 # AVR32/GNU C Compiler
+
+
 ./f_arch.o: .././f_arch.cpp
 	@echo Building file: $<
 	@echo Invoking: AVR8/GNU C Compiler : 5.4.0
