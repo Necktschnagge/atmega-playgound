@@ -22,7 +22,7 @@ class Callable {
 	public:
 	virtual void operator()() const = 0;
 };
-typedef Callable* PCallable;
+using PCallable = Callable*;
 
 namespace input {
 	/* input (for now) is like a static object (for java people) which holds the information
@@ -66,7 +66,7 @@ namespace input {
 	for callback references input supports two kinds of callbacks:
 		1.:	The (non object orientated) callback function pointer:
 					void (*callbackFunction)();
-					You can  give input a pointer to your void-terminated function to call on event.
+					You can give input a pointer to your void-terminated function to call on event.
 					The functions doesn't get any arguments when called.
 					(Hint: You can get additional information by using getEventCode() or gbutton, gchange)
 		2.:	The (object orientated) callback objects:
@@ -88,7 +88,7 @@ namespace input {
 	In order to this behavior callbacks are nested in a union to save bytes of RAM
 	*/
 	
-	typedef union callback_u* pcallback_t;
+	typedef union callback_u* pcallback_t; // ## change old style
 	typedef union callback_u {
 		void (*callbackProcedure)();		// enabled by 1
 		Callable* callbackObject;			// enabled by 2
@@ -106,10 +106,10 @@ namespace input {
 		enable == -2: there is a Callable* callback, but diabled
 	
 	Notice: In case enable<0 it is possible to just enable the stored callback reference.
-			in case enable == 0 this process will be going to fail.
+			in case enable == 0 this process will fail.
 	*/
 	
-	typedef struct event_s* pevent_t;
+	typedef struct event_s* pevent_t; // change old style ###
 	typedef struct event_s {
 		callback_t callbackReference;
 		int8_t enable;
@@ -122,7 +122,7 @@ namespace input {
 		};
 	typedef EventContainer* PEventContainer;
 	
-	extern uint8_t gbutton; // current button state
+	extern uint8_t gbutton; // current button state (last captured button state)
 	extern uint8_t gchange; // current button changes (difference between gbutton and gbutton @ before)
 	extern EventContainer inputEvents; // events to be executed when someone calls exec
 	
@@ -235,8 +235,8 @@ namespace input {
 		for (int8_t i = (up_down_both == -1); i<10; i = i + 1 + (up_down_both != 0)) setEvent(i, callback, enabled);
 	}
 	
-	/* enables event of given eventId*/
-	/* returns true if it was possible to enable, otherwise false*/
+	/* enables event of given eventId */
+	/* returns true if it was possible to enable, otherwise false */
 	/* with illegal eventId nothing will be done and false will be returned */
 	bool enableEvent(int8_t eventId);
 	
