@@ -63,7 +63,7 @@ namespace scheduler {
 	
 	class SysTime {
 		
-		/**************/****   STATIC STUFF   **********************/
+		/******************   STATIC STUFF   **********************/
 	private /*static*/:
 	
 			/* pointer to the one and only class instance which is encountered by ISR */

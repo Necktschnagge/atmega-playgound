@@ -294,6 +294,14 @@ void led::printString(const char * const string){
 	}
 }
 
+void led::printString(const char* string, uint8_t length){
+	uint8_t i {0};
+	while ((string[i]!='\0') && (i < length)){
+		led::printSign(string[i]);
+		++i;
+	}
+}
+
 void led::clear(){
 	for(uint8_t i = 0; i<LINELENGTH; ++i){
 		led::pushByte(0);
@@ -320,6 +328,11 @@ void led::LFPrintString(const char* const string){
 	// <<<<<<<< change this back some day
 	led::clear();
 	led::printString(string);
+}
+
+void led::LFPrintString(const char* string, uint8_t length){
+	led::clear();
+	led::printString(string,length);
 }
 
 void led::printDotsOnly(const uint8_t dotCode){//<<<<<< this function isnt ready for scalable linelength, please change sometime

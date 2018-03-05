@@ -6,8 +6,6 @@
  *
  *	FILE PROGRESS STATE:
  *	namespace input is ready and prg logic was checked again
- * ItemSelector was checked but do this once again
- *	ItemMangaer checked but do this once again
  *	
  */ 
 
@@ -16,14 +14,11 @@
 #define F_GUI_H_
 
 #include "f_arch.h"
-#include "f_hardware.h"
+#include "f_concepts.h"
 
-class Callable {
-	public:
-	virtual void operator()() const = 0;
-};
-using PCallable = Callable*;
+using PCallable = concepts::Callable*;
 
+/// <<<< this may better be converted into a class, and add some PIN references to the class.
 namespace input {
 	/* input (for now) is like a static object (for java people) which holds the information
 	which buttons are pressed or released and what changed from last look up*/
@@ -91,7 +86,7 @@ namespace input {
 	typedef union callback_u* pcallback_t; // ## change old style
 	typedef union callback_u {
 		void (*callbackProcedure)();		// enabled by 1
-		Callable* callbackObject;			// enabled by 2
+		concepts::Callable* callbackObject;			// enabled by 2
 		} callback_t;
 	
 	/*
@@ -213,7 +208,7 @@ namespace input {
 	
 	//	set callback reference (Callable*) and enable flag for given eventID
 	// with an illegal eventId it does nothing
-	void setEvent(int8_t eventId, Callable* callback, bool enabled = true);
+	void setEvent(int8_t eventId, concepts::Callable* callback, bool enabled = true);
 	
 	//	set callback reference (function*) and enable flag for given eventID
 	// with an illegal eventId it does nothing
@@ -269,250 +264,6 @@ namespace input {
 	
 }
 
-/*********************************************************************************************************************************************************************************************************************/
-class ItemManager;
-class ItemSelector;
-
-
-class ItemSelector final {
-	
-	/************************************************************************/
-	/* HOW TO USE:
-		1.	Create an ItemSelector.
-		2.	init() the ItemSelector.
-		3.	run() the ItemSelector
-		[	you may pause() and resume() the ItemManager several times	]
-		4.	finalize the ItemSelector yourself or
-			let it be finalized automatically by an okay button event.
-			                                                                */
-	/************************************************************************/
-	
-	public:
-	
-	static constexpr uint8_t NO_BUTTON {255};
-	
-	private:
-	class OkayCall final : public Callable {
-		private:
-		ItemSelector* host;
-		
-		public:
-		OkayCall(ItemSelector* itemSelector) : host(itemSelector) {}
-		
-		virtual void operator()() const final override;
-	};
-	
-	class NextCall final : public Callable {
-		private:
-		ItemSelector* host;
-		
-		public:
-		NextCall(ItemSelector* itemSelector) : host(itemSelector) {}
-		
-		virtual void operator()() const final override;
-	};
-	
-	class PreviousCall final : public Callable {
-		private:
-		ItemSelector* host;
-		
-		public:
-		PreviousCall(ItemSelector* itemSelector) : host(itemSelector) {}
-		
-		virtual void operator()() const final override;
-	};
-	
-	OkayCall okayCall {this};
-	NextCall nextCall {this};
-	PreviousCall previousCall {this};
-	
-	ItemManager* itemManager {nullptr} ;
-	uint8_t button_okay {NO_BUTTON};
-	uint8_t button_next {NO_BUTTON};
-	uint8_t button_prev {NO_BUTTON};
-	
-	uint8_t ok_pressed;
-	
-	/* check whether buttons and PItemManager are valid */
-	inline bool isConfigValid();
-	
-	/* enable button events (for internal use only) */
-	/* setEvent for ok_bttn AND (next_bttn OR prev_bttn) */
-	/* button_down is used. the button_ups will be disabled */
-	void occupyButtons();
-	
-	/* disable the NEXT, PREVIOUS & OKAY methods associated to the buttons (for internal use only) */
-	void freeButtons();
-	
-	public:
-	
-	/* minimalistic constructor. please init data via init() */
-	ItemSelector(){};
-	
-	/* init variables, the ItemManager* is just a pointer to an ItemManager. You have to care about construction, destruction yourself */
-	inline void init(ItemManager* itemManager, uint8_t button_okay, uint8_t button_next, uint8_t button_prev);
-	// checkout bevaviour button = 7;
-	
-	/* stop the ItemSelector */
-	/* disable button events (for using programmer) */
-	inline void finalize(){
-		freeButtons();
-		button_okay = NO_BUTTON;
-		//button_next = NO_BUTTON;
-		//button_prev = NO_BUTTON;
-		//itemManager = nullptr;
-		// it is enough to make the ItemSelector invalid.
-	}
-	
-	/* stop the ItemSelector but keep all data to start running again from current state */
-	inline void pause(){
-		freeButtons();
-	}
-	
-	/* wrapper: resume after pause() [means calling run() again] */
-	inline bool resume(){
-		return run();
-	}
-	
-	/* print the current item label (...where position of ItemManager is pointing to) */
-	///<<<<<< make this function virtual, create a new class for ledline-printing ItemSelectors
-	// you are not supposed to use this. But maybe it could be useful if you build an extern screen saver.
-	void printItem();
-
-	/* method for the user programmer to call to start the selecting engine */
-	/* returns false if there is no item given and no valid cancel_procedure */
-	/* returns false if you [init()]ed illegal buttons */
-	/* returns true if the selector was started */
-	bool run();
-	
-};
-
-
-class ItemManager {
-	
-	/************************************************************************/
-	/*	ItemManager is an abstract class which is supposed to be base class
-		of any further item manager.
-		
-		pure virtual functions that you need to override are:
-			getItemLabelInternal
-			runItemProcedureInternal
-			getSize
-			[maybe] init
-			overwritten init has to init its own stuff first and call init of super class afterwards.
-		                                                                     */
-	/************************************************************************/
-	
-	private:
-	/* return whether the selected item is the cancel item*/
-	inline bool onCancelItem(){
-		return (canCancel()) && (position == countItems()-1);
-	}
-	
-	void (*cancelProcedure)(); /* pointer to void terminated cancel function */
-	
-	/* return the amount of items (inclusive cancel item if present) (the mod to iterate) */
-	inline int16_t countItems(){
-		return canCancel() + getSize();
-	}
-	
-	/* return true <=> existing cancel procedure as item <=> cancelProcedure!=nullptr */
-	inline bool canCancel(){
-		return cancelProcedure!=nullptr;
-	}
-	
-	protected:
-	
-	/* selection position / item position */
-	/* standard constraints: 0 <= position <= 32.001 */
-	int16_t position;
-	
-	/* read the position and write the matching label to given pointer */
-	virtual void getItemLabelInternal(char* string_8_chars) = 0;
-	
-	/* read the position and execute the matching item procedure */
-	virtual void runItemProcedureInternal() = 0;
-	
-	/* constraint:  0 <= getSize() <= 32.000 */
-	/* returns the amount of items (except the cancelItem)*/
-	virtual int16_t getSize() = 0;
-		// explained: (2^15 - 3) (productive items) + 1 cancelItem + 1 (increasing) = must be less than 2^15 //
-		// constraint:  0 <= getSize() <= 32.765 = 2^15 -3 to avoid fatal overflows //
-	
-	public:
-	
-	/* minimalistic constructor. You need to init data with init() */
-	ItemManager() : cancelProcedure(nullptr), position(0) {}
-
-	/* set the cancel procedure and maybe the starting position for selecting */
-	inline virtual void init(void (*cancelProcedure)(), int16_t std_position = 0){
-		this->cancelProcedure = cancelProcedure;
-		this->position = std_position % countItems();// ### it shoud fall under a % first before saving into var. !!! but getSize can only run if subclass was init..ed
-	}
-	
-	/* return true if there isn't any item, even no cancelItem */
-	inline bool isEmpty() {
-		return countItems()==0;
-	}
-	
-	/* run the cancel procedure if possible and return canCancel() */
-	inline bool runCancelProcedure();
-	
-	/* increase the item position, warning: screen update is task of ItemSelector*/
-	ItemManager& operator++(); 
-	
-	/* decrease the item position, warning: screen update is task of ItemSelector*/
-	ItemManager& operator--();
-	
-	/* writes the current item label to the pointer position, string might be non-(null terminated) */
-	void getItemLabel(char* string_8_bytes);
-	
-	/* run the procedure of the selected item*/
-	void runItemProcedure();
-};
-
-/*
-class ListItemManager final: public ItemManager{
-	
-	private:
-	
-	t_item (*itemMemory)(uint8_t index);
-	uint8_t size;
-	
-	protected:
-	
-	virtual void getItemLabelInternal(char* string_8_bytes) override {
-		hardware::copyString(string_8_bytes,itemMemory(position).label,8,false);//this copying should be done in the item array
-	}
-	
-	virtual void runItemProcedureInternal() override {
-		itemMemory(position).procedure();
-	}
-	
-	virtual uint8_t getSize() override {
-		return size;
-	}
-	
-	public:
-	
-	ListItemManager() : ItemManager() , itemMemory(nullptr), size(0){}
-	
-	virtual void init(void (*cancelProcedure)(),t_item (*itemMemory)(uint8_t index), uint8_t size){
-		ItemManager::init(cancelProcedure);
-		this->itemMemory = itemMemory;
-		this->size = size;
-	}
-	
-	virtual void finalize(){
-		size = 0;
-		itemMemory = nullptr;
-		ItemManager::finalize();
-	}
-	
-	
-	virtual ~ListItemManager(){}
-};
-*/
 
 #ifdef ARCH_MAYBE_NOT_READY
 
