@@ -1,9 +1,11 @@
 /*
- * f_test.cpp
- *
- * Created: 18.09.2016 12:50:16
- *  Author: F-NET-ADMIN
- */ 
+* f_test.cpp
+*
+* Created: 18.09.2016 12:50:16
+* Author: Maximilian Starke
+*
+*
+*/ 
 #include "f_ledline.h"
 #include "f_hardware.h"
 #include "f_test.h"

@@ -50,6 +50,7 @@ C_SRCS +=  \
 ../f_list_item_manager.cpp \
 ../f_scheduler.cpp \
 ../f_systime.cpp \
+../f_task_runner.cpp \
 ../f_test.cpp \
 ../f_time.cpp \
 ../main.cpp \
@@ -76,6 +77,7 @@ f_ledline.o \
 f_list_item_manager.o \
 f_scheduler.o \
 f_systime.o \
+f_task_runner.o \
 f_test.o \
 f_time.o \
 main.o \
@@ -95,6 +97,7 @@ f_ledline.o \
 f_list_item_manager.o \
 f_scheduler.o \
 f_systime.o \
+f_task_runner.o \
 f_test.o \
 f_time.o \
 main.o \
@@ -114,6 +117,7 @@ f_ledline.d \
 f_list_item_manager.d \
 f_scheduler.d \
 f_systime.d \
+f_task_runner.d \
 f_test.d \
 f_time.d \
 main.d \
@@ -133,6 +137,7 @@ f_ledline.d \
 f_list_item_manager.d \
 f_scheduler.d \
 f_systime.d \
+f_task_runner.d \
 f_test.d \
 f_time.d \
 main.d \
@@ -222,6 +227,8 @@ LINKER_SCRIPT_DEP+=
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++14 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
 	@echo Finished building: $<
 	
+
+
 
 ./f_test.o: .././f_test.cpp
 	@echo Building file: $<

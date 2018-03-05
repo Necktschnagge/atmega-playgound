@@ -8,7 +8,7 @@
 		do the following enhancements:
  
 		<<< see modifier in class: they are declkared asa = delete. this can be done in future
-		<<< make descriptions ya bit better / more details
+		<<< make descriptions a bit better / more details
 		<<< make another theoretical check of lib.
 		<<< docu seem somewhere lost, also cponcept stuff in *cpp file.
 		
@@ -130,7 +130,7 @@ namespace scheduler {
 			/* now is accessed by ISR and user/operating system. it is critical */
 		time::ExtendedMetricTime now {0};
 		
-		// <<< if ready just look how it works. maybe festkomma floats stored in integers are better....
+		// <<< if ready just look how it works. maybe fixed point floats stored in integers are better....
 		// <<< try this later.
 		
 			/* precision / Hz, critical since ISR access */
