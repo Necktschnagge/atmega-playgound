@@ -149,12 +149,18 @@ namespace led {
 	
 		/* print a string to the led output (also supports implicit dotting ) */
 	void printString(const char* string);//for user
+
+		/* print a string to the led output with given length (also supports implicit dotting ) */	
+	void printString(const char* string, uint8_t length); // for user
 	
 		/* clear the LED line */
 	void clear();//for user
 	
 		/* print the given string and (at least) as much as needed space signs before to push the previous string away */
 	void LFPrintString(const char* string);//for user
+
+		/* print the given string and (at least) as much as needed space signs before to push the previous string away */
+	void LFPrintString(const char* string, uint8_t length);//for user
 	
 		/* print only the dots by the given binary code and leave everything else unchanged */
 	void printDotsOnly(uint8_t dotCode);

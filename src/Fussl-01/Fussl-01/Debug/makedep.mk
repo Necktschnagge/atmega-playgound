@@ -16,7 +16,13 @@ f_hardware.cpp
 
 f_hcsr04.cpp
 
+f_item_manager.cpp
+
+f_item_selector.cpp
+
 f_ledline.cpp
+
+f_list_item_manager.cpp
 
 f_scheduler.cpp
 

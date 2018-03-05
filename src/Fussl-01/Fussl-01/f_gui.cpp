@@ -9,7 +9,6 @@
  */ 
 #include <stdlib.h>
 #include "f_gui.h"
-#include "f_ledline.h"
 
 /************************************************************************/
 /* namespace input                                                      */
@@ -60,7 +59,7 @@ bool input::exec(bool all /* = false */){
 	return result;
 }
 
-void input::setEvent(int8_t eventId, Callable* callback, bool enabled /* = true */){
+void input::setEvent(int8_t eventId, concepts::Callable* callback, bool enabled /* = true */){
 	if ( (eventId >= 10) || (eventId < 0) ){ // illegal eventId
 		return;
 	}
@@ -107,140 +106,6 @@ int8_t input::getEventCode(){
 	return 2*button + !!(gchange & gbutton);
 }
 
-/************************************************************************/
-/* ItemSelector                                                         */
-/************************************************************************/
-
-void ItemSelector::OkayCall::operator ()() const {
-	using namespace input;
-	if (host->ok_pressed == 0){
-		host->freeButtons();
-		led::printDotsOnly(0xFF);
-		hardware::delay(300);
-		setEvent(host->button_okay,BUTTON_UP,&host->okayCall);
-		host->ok_pressed = 1;
-		} else {
-		led::printDotsOnly(0x00);
-		host->itemManager->runItemProcedure();
-		host->finalize();
-	}
-}
-
-void ItemSelector::NextCall::operator ()() const {
-	++(*host->itemManager);
-	host->printItem();
-}
-
-void ItemSelector::PreviousCall::operator ()() const {
-	--(*host->itemManager);
-	host->printItem();
-}
-
-bool ItemSelector::isConfigValid(){
-	return
-		(button_okay < 5) &&
-		((button_next < 5) || (button_prev < 5)) &&
-			(
-				(button_next < 5) + (button_next == NO_BUTTON) + (button_prev < 5) + (button_prev == NO_BUTTON) == 2
-			) &&
-		(itemManager != nullptr)
-	;
-}
-
-void ItemSelector::occupyButtons(){
-	using namespace input;
-	ok_pressed = 0;
-	deleteEvent(makeEvent(button_okay,BUTTON_UP));
-	setEvent(button_okay,BUTTON_DOWN,&okayCall);
-	if (button_next != NO_BUTTON){
-		deleteEvent(makeEvent(button_next,BUTTON_UP));
-		setEvent(button_next,BUTTON_DOWN,&nextCall,true);
-	}
-	if (button_prev != NO_BUTTON){
-		deleteEvent(makeEvent(button_prev,BUTTON_UP));
-		setEvent(button_prev,BUTTON_DOWN,&previousCall,true);
-	}
-}
-
-void ItemSelector::freeButtons(){
-	using namespace input;
-	deleteEvent(makeEvent(button_okay,BUTTON_DOWN));
-	deleteEvent(makeEvent(button_okay,BUTTON_UP));
-	if (button_next != NO_BUTTON){
-		deleteEvent(makeEvent(button_next,BUTTON_DOWN));
-		//disableEvent(makeEvent(button_next,BUTTON_UP)); //not needed because it was disabled when occupying buttons
-	}
-	if (button_prev != NO_BUTTON){
-		deleteEvent(makeEvent(button_prev,BUTTON_DOWN));
-		//disableEvent(makeEvent(button_prev,BUTTON_UP)); //not needed
-	}
-}
-
-void ItemSelector::init(ItemManager* itemManager, uint8_t button_okay, uint8_t button_next, uint8_t button_prev){
-	ItemSelector::itemManager = itemManager;
-	ItemSelector::button_okay = button_okay;
-	ItemSelector::button_next = button_next;
-	ItemSelector::button_prev = button_prev;
-	/* it may not be necessary to check here whether b#########uttons are valid but we need to do sometime */
-}
-
-void ItemSelector::printItem(){
-	char label[9];
-	itemManager->getItemLabel(label);
-	label[8] = '\0';
-	led::LFPrintString(label);// this function should also exist with an second parameter to set the string length!!!#####
-}
-
-bool ItemSelector::run(){
-	if (!isConfigValid()) return false;			// no valid buttons / itemManager
-	if (itemManager->isEmpty()) return false;	// no items
-	
-	occupyButtons();
-	led::LFPrintString("SELECT");
-	hardware::delay(1000);// <<< this also could be replaced.
-	printItem();
-	return true;
-}
-
-/************************************************************************/
-/*  ItemManager                                                         */
-/************************************************************************/
-
-bool ItemManager::runCancelProcedure(){
-	if (canCancel()){
-		cancelProcedure();
-		return true;
-		} else {
-		return false;
-	}
-}
-
-ItemManager& ItemManager::operator++(){ // omitting the return value could be better for small RAM ######
-	position = (position + 1) % countItems();
-	return *this;
-}
-
-ItemManager& ItemManager::operator--(){
-	position = (position - 1) % countItems();
-	return *this;
-}
-
-void ItemManager::getItemLabel(char* string_8_bytes){
-	if (onCancelItem()){
-		char mystring[] = "-CANCEL-";
-		hardware::copyString(string_8_bytes,mystring,8,false);
-		} else {
-		getItemLabelInternal(string_8_bytes);
-	}
-}
-
-void ItemManager::runItemProcedure(){
-	if (onCancelItem()){
-		cancelProcedure(); // if clause makes calling save
-		} else {
-		runItemProcedureInternal();
-	}
-}
 
 
 #ifdef debugxl
