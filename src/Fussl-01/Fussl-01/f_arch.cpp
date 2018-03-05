@@ -1,9 +1,9 @@
 /*
- * f_arch.cpp
- *
- * Created: 01.09.2016 17:38:51
- *  Author: Maximilian Starke
- */ 
+* f_arch.cpp
+*
+* Created: 01.09.2016 17:38:51
+* Author: Maximilian Starke
+*/
 
 /************************************************************************/
 /* FPS must be created                                                                     */
@@ -41,63 +41,63 @@ typedef struct savrecord {
 typedef struct sbuffer* pbuffer;
 typedef struct sbuffer {
 	uint16_t light;
-		// the real light has only 15 bits - the 15 lower bits of light
-		// the MSB of light has to be zero if the tbuffer is supposed to
-		// push the light config and wait for delay * x * ms
-		// set the MSB = 1 to make a delay without changing light
+	// the real light has only 15 bits - the 15 lower bits of light
+	// the MSB of light has to be zero if the tbuffer is supposed to
+	// push the light config and wait for delay * x * ms
+	// set the MSB = 1 to make a delay without changing light
 	uint8_t delay;
-		// delay time.
-		// make a decision what 0 should mean ####
+	// delay time.
+	// make a decision what 0 should mean ####
 } tbuffer;
 
 /* one whole configuration of the decoding system */
 typedef struct slight* plight;
 typedef struct slight {
 	tavrecord avrecord[RECURSIONDEPTH];
-		/* one program can call another as subroutine.
-			program on 1. level is on avrecord[0]
-			next follows on []++
-			*/
+	/* one program can call another as subroutine.
+	program on 1. level is on avrecord[0]
+	next follows on []++
+	*/
 	uint8_t ptr; // indexer to avrecord. current program state
 	
 	tbuffer buffer[BUFFERSIZE]; //global buffer ##### should be more global (I mean not twice present in "state")
 	
 	uint8_t read; // indexer to the position to read next entry from,
-					//but check that read != write mod 16 <=> means the buffer is empty
-					// first read entry, than ptr++
+	//but check that read != write mod 16 <=> means the buffer is empty
+	// first read entry, than ptr++
 	uint8_t write; // indexer to the next free buffer element to write,
-					// but check that write + 1 != read mod 16 <=> means ptr is on last free space.
-							// You have to let this free space blind because write and ptr++ would cause a state
-							// where the consumer thinks that he read everything
-					// first write entry, than ptr++
+	// but check that write + 1 != read mod 16 <=> means ptr is on last free space.
+	// You have to let this free space blind because write and ptr++ would cause a state
+	// where the consumer thinks that he read everything
+	// first write entry, than ptr++
 	bool bufferWait; // set 0, only set to 1 if the buffer is not ready to read.
-					// actors: buffer reader: set 1 if nothing to read and do not tell the time engine to plan the next buffer reader execution
-					//		buffer filler: check if it is 1. if so call the buffer reader once after filling the buffer
-					
+	// actors: buffer reader: set 1 if nothing to read and do not tell the time engine to plan the next buffer reader execution
+	//		buffer filler: check if it is 1. if so call the buffer reader once after filling the buffer
+	
 	uint8_t timerCountDown;
-		// what is that var ?????
+	// what is that var ?????
 } tlight;
 
 /************************************************************************/
-/* BUFFER EDGE SITUATIONS:
-	f... free Buffer cells
-	d... data in cell
+/* BUFFER BORDER CASES:
+f... free Buffer cells
+d... data in cell
 
-	case: empty buffer. reader has nothing to read:
-					  R
-	-------------------------------------
-	| f | f | f | f | f | f | f | f | f | 
-	-------------------------------------
-					  W
+case: empty buffer. reader has nothing to read:
+R
+-------------------------------------
+| f | f | f | f | f | f | f | f | f |
+-------------------------------------
+W
 
-	case: full buffer. producer has no space to write
-					  R
-	-------------------------------------
-	| d | d | d | f | d | d | d | d | d |
-	-------------------------------------
-				  W
+case: full buffer. producer has no space to write
+R
+-------------------------------------
+| d | d | d | f | d | d | d | d | d |
+-------------------------------------
+W
 
-	                                                                    */
+*/
 /************************************************************************/
 
 typedef struct sstate* pstate;
@@ -109,17 +109,17 @@ typedef struct sstate {
 static tstate state;
 
 namespace {
-		/* mark at writing position WAITONLY into light */
+	/* mark at writing position WAITONLY into light */
 	inline void WaitOnlyBufferPrepare(){
 		state.light.buffer[state.light.write].light = 0x8000;
 	}
 	
-		/* buffer write ptr ++ */
+	/* buffer write ptr ++ */
 	inline void BufferWriteIndexerInc(){
 		state.light.write = (state.light.write + 1 ) % BUFFERSIZE;
 	}
 	
-		/* buffer read ptr ++ */
+	/* buffer read ptr ++ */
 	inline void BufferReadIndexerInc(){
 		state.light.read = (state.light.read + 1) % BUFFERSIZE;
 	}
@@ -171,7 +171,7 @@ void arch::readBuffer(void){
 		}
 		//### set timer = state.light.buffer[state.light.read].delay; after time execute arch::readBuffer
 		BufferReadIndexerInc();
-	} else {
+		} else {
 		state.light.bufferWait = true;
 		// set a waiting signal to led output??? <<<< gui can do ths
 	}
@@ -179,7 +179,7 @@ void arch::readBuffer(void){
 
 uint8_t arch::instructionLength(const uint8_t firstByte){// ###please check this.
 	if  (	(firstByte >= (3<<6)) /* ALU Register */
-		||	((firstByte & 0b11110100) == 0b10110100) /* DEC (Register) and WAIT-R */	){	
+	||	((firstByte & 0b11110100) == 0b10110100) /* DEC (Register) and WAIT-R */	){
 		return 1; // 8 bit
 	}
 	if ((firstByte & 0b11110000)==0x80){ /* Jump on Condition */
@@ -196,7 +196,7 @@ uint16_t arch::EEPAddressHelper_(uint8_t program, uint8_t instruction, const boo
 	if ((program == 0) && !counting){
 		ptr = hardware::EEPNULL;
 		// ledError(3); ## please delete error from manuscript this should be allowed for compatibility
-	} else {
+		} else {
 		// select the program
 		--program;
 		if (counting) program = 0;
@@ -235,7 +235,7 @@ void arch::getProgramName(uint8_t program, char* string_8_bytes){// for gui prog
 	if (program == 0){
 		char off[] = "OFF";
 		hardware::copyString(string_8_bytes,off,8,false);
-	} else {
+		} else {
 		uint16_t address = arch::getAddress(program,0) + 2;
 		for (uint8_t i = 0; i<8; ++i){
 			string_8_bytes[i] = eeprom_read_byte((uint8_t*) (address + i));
@@ -248,22 +248,22 @@ void arch::programHeaderInterpreter(){
 	pavrecord avrecord = &(state.light.avrecord[state.light.ptr]);
 	/************************************************************************/
 	/* BLINKING PROGRAM HEADER
-	   0:		pointer to the next program		H Byte		------------------------------------ address of the 0th instruction (INIT PART)
-	   1:										L Byte
-	   2:		program name (8 characters)		Byte 0 (first letter, on the left) -> MSB
-	   3:										Byte 1
-	   4:										Byte 2
-	   5:										Byte 3
-	   6:										Byte 4
-	   7:										Byte 5
-	   8:										Byte 6
-	   9:										Byte 7 (last letter, on the right) -> LSB
-	   A:		initialization of register		Reg 0
-	   B:										Reg 1
-	   C:										Reg 2
-	   D:										Reg 3
-	   E:													------------------------------------- address of the 1st instruction (PROGRAM PART)
-	   F:		...															*/
+	0:		pointer to the next program		H Byte		------------------------------------ address of the 0th instruction (INIT PART)
+	1:										L Byte
+	2:		program name (8 characters)		Byte 0 (first letter, on the left) -> MSB
+	3:										Byte 1
+	4:										Byte 2
+	5:										Byte 3
+	6:										Byte 4
+	7:										Byte 5
+	8:										Byte 6
+	9:										Byte 7 (last letter, on the right) -> LSB
+	A:		initialization of register		Reg 0
+	B:										Reg 1
+	C:										Reg 2
+	D:										Reg 3
+	E:													------------------------------------- address of the 1st instruction (PROGRAM PART)
+	F:		...															*/
 	/************************************************************************/
 	if (avrecord->program==0){ // if program 0 is called there is no header to deal with
 		return;
@@ -296,8 +296,8 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 	}
 	
 	uint8_t instruction[3] = {eeprom_read_byte((uint8_t*)avrecord->pc),
-							  eeprom_read_byte((uint8_t*) ((avrecord->pc+1)% ADDRESSSPACE)),
-							  eeprom_read_byte((uint8_t*) ((avrecord->pc+2)% ADDRESSSPACE))};
+		eeprom_read_byte((uint8_t*) ((avrecord->pc+1)% ADDRESSSPACE)),
+	eeprom_read_byte((uint8_t*) ((avrecord->pc+2)% ADDRESSSPACE))};
 	
 	uint8_t* const reg2 = &(  avrecord->reg[  (instruction[0] & 0b00001100)>>2  ]  );/// constexpr ??? <<<<<<
 	uint8_t* const reg3 = &(  avrecord->reg[    (instruction[0] & 0b00000011)   ]  );
@@ -326,8 +326,8 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 				//MOD
 				*reg2 = *reg2 % *reg3;
 			}
-			avrecord->pc += 1; 
-		} else {
+			avrecord->pc += 1;
+			} else {
 			if (instruction[0] & 0b00100000){
 				if (instruction[0] & 0b00010000){
 					//0xB
@@ -336,7 +336,7 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 							// DEC: 0b1011 11 RR
 							*reg3 -=1;
 							avrecord->pc += 1;
-						} else {
+							} else {
 							if (instruction[0] & 0b00000010){
 								if (instruction[0] & 0b00000001){
 									// RET: 0xBB | MATTER
@@ -347,12 +347,12 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 										}
 										--state.light.ptr;
 									}
-								} else {
+									} else {
 									// 0xBA
 									seg = (instruction[1] & 0b11110000)>>4;
 									if (seg==0){
 										// MOVE: 0b 1011 1010 | 0000 RD RS
-										 *reg6 = *reg7; 
+										*reg6 = *reg7;
 									}
 									if (seg==1){
 										//SET-LR: 0b 1011 1010 | 0001 RH RL
@@ -376,37 +376,37 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 										arch::programHeaderInterpreter();
 									}
 								}
-							} else {
+								} else {
 								avrecord->pc += 2;
 								if (instruction[0] & 0b00000001){
 									//WAIT-I: 0xB9 | Immediate
 									buffer->delay = instruction[1];
 									BufferWriteIndexerInc();
-									WaitOnlyBufferPrepare();									
-								} else {
+									WaitOnlyBufferPrepare();
+									} else {
 									//JMP: 0xB8 | local address
 									if (instruction[1] == 0) {
 										//### throw error: you should use reset instead
-									} else {
+										} else {
 										avrecord->pc = arch::getAddress(avrecord->program,instruction[1]);
 									}
 								}
 							}
 						}
-					} else {
+						} else {
 						if (instruction[0] & 0b00000100){
 							// WAIT-R: 0b1011 01 RR
 							buffer->delay = *reg3;
 							BufferWriteIndexerInc();
 							WaitOnlyBufferPrepare();
 							avrecord->pc += 1;
-						} else {
+							} else {
 							//SET-RI: 0b1011 00 RR | Immediate
 							*reg3 = instruction[1];
 							avrecord->pc += 2;
 						}
 					}
-				} else {
+					} else {
 					// CALL: 0b1010 QQQQ | program | instruction | return matter | immediate/reg_0 | immediate/reg_1 | i/r_2 | i/r_3
 					// QQQQ:		Q==0	->		immediate	->		(8 bit immediate)
 					//				Q==1	->		register	->		(XX CC RD RS)	:	RS .. source register; write back in RD iff CC==11
@@ -420,9 +420,9 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 						// fetch more instructions
 						// 5x fetching: % is not necessary because programmer should provide presence of the parameters <<<<<<< catch this as an error and make all lights off or such a thing
 						uint8_t values[4] = {	eeprom_read_byte((uint8_t*) ((avrecord->pc+4)% ADDRESSSPACE)),
-												eeprom_read_byte((uint8_t*) ((avrecord->pc+5)% ADDRESSSPACE)),
-												eeprom_read_byte((uint8_t*) ((avrecord->pc+6)% ADDRESSSPACE)),
-												eeprom_read_byte((uint8_t*) ((avrecord->pc+7)% ADDRESSSPACE))};
+							eeprom_read_byte((uint8_t*) ((avrecord->pc+5)% ADDRESSSPACE)),
+							eeprom_read_byte((uint8_t*) ((avrecord->pc+6)% ADDRESSSPACE)),
+						eeprom_read_byte((uint8_t*) ((avrecord->pc+7)% ADDRESSSPACE))};
 						
 						avrecord->pc += 8; //<<<< catch if user makes such code which will make me an eeprom read because of the pc which is out of range / ADRESSSpace
 						state.light.ptr++;
@@ -434,18 +434,18 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 						av2->returnMatter = matter;
 						for(uint8_t i = 0; i<4; ++i){
 							av2->reg[i] = (instruction[0] & (1<<(3-i))) 	? /*reg*/			avrecord->reg[values[i] & 0b11]
-																			: /*immediate*/		values[i]
-																			;
+							: /*immediate*/		values[i]
+							;
 						}
 						// if called program header:
 						if (instruction[2] == 0) {
 							arch::programHeaderInterpreter();
 						}
-					} else {
+						} else {
 						//throw little error <<<<
 					}
 				}
-			} else {
+				} else {
 				seg = (instruction[0] & 0b00001100)>>2;
 				if (instruction[0] & 0b00010000){
 					// ALU IMMEDIATE Operations: 0x1001 XX RR | Immediate
@@ -466,18 +466,18 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 						// MOD-I
 						*reg3 = *reg3 % instruction[1];
 					}
-				} else {
+					} else {
 					// JUMP ON CONDITION: 0x 1000 XX RR | Immediate | Instruction - Address
 					avrecord->pc += 3;
 					if (
-							( (seg==0) && (*reg3 == instruction[1]) ) // JMP-EQ
-								||
-							( (seg==1) && (*reg3 != instruction[1]) ) // JMP-NE
-								||
-							( (seg==2) && (*reg3 < instruction[1]) ) // JMP-LT
-								||
-							( (seg==3) && (*reg3 > instruction[1]) ) // JMP-GT
-																			){
+					( (seg==0) && (*reg3 == instruction[1]) ) // JMP-EQ
+					||
+					( (seg==1) && (*reg3 != instruction[1]) ) // JMP-NE
+					||
+					( (seg==2) && (*reg3 < instruction[1]) ) // JMP-LT
+					||
+					( (seg==3) && (*reg3 > instruction[1]) ) // JMP-GT
+					){
 						avrecord->pc = arch::getAddress(avrecord->program,instruction[2]);
 						if (instruction[2] == 0){
 							arch::programHeaderInterpreter();
@@ -486,7 +486,7 @@ bool arch::fetchBuffer(void){// check the prg logic !!! ######
 				}
 			}
 		}
-	} else {
+		} else {
 		//SET-LI: 0b0 L LL LLLL | LLLL LLLL;
 		buffer->light = ((instruction[0]<<8) + instruction[1]) & ~(1<<15);
 		avrecord->pc += 2;
