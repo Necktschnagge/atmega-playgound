@@ -12,9 +12,11 @@
 template <typename _base_type, _base_type RANGE, bool OVERFLOW_RESULTS_IN_OUT_OF_RANGE = true>
 class range_int {
 	public:
+
+	using base_type = _base_type;
+
 	static constexpr _base_type OUT_OF_RANGE{ static_cast<_base_type>(-1) }; // better #include <limits> // but not possible for AVR
 	
-	using base_type = _base_type;
 	private:
 	_base_type value;
 	
