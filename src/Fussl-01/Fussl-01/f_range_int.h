@@ -9,22 +9,23 @@
 #ifndef __F_RANGE_INT_H__
 #define __F_RANGE_INT_H__
 
-template <typename base_type, base_type RANGE, bool OVERFLOW_RESULTS_IN_OUT_OF_RANGE = true>
+template <typename _base_type, _base_type RANGE, bool OVERFLOW_RESULTS_IN_OUT_OF_RANGE = true>
 class range_int {
 	public:
-	static constexpr base_type OUT_OF_RANGE{ static_cast<base_type>(-1) }; // better #include <limits> // but not possible for AVR
-		
-	private:
-	base_type value;
+	static constexpr _base_type OUT_OF_RANGE{ static_cast<_base_type>(-1) }; // better #include <limits> // but not possible for AVR
 	
-	inline void check_out_of_range(){
+	using base_type = _base_type;
+	private:
+	_base_type value;
+	
+	inline void constexpr check_out_of_range(){
 		if (!(value < RANGE)){
-			value = OUT_OF_RANGE;	
+			value = OUT_OF_RANGE;
 		}
 	}
 	
 	/* private c-tor for addition and subtraction */
-	inline range_int(base_type value, base_type plus, base_type minus) : value(value + plus - minus) {
+	inline range_int(_base_type value, _base_type plus, _base_type minus) : value(value + plus - minus) { // maybe consgtexpr ???
 		check_out_of_range();
 		if (OVERFLOW_RESULTS_IN_OUT_OF_RANGE) if (value + plus < value - minus) value = OUT_OF_RANGE;
 	}
@@ -32,26 +33,27 @@ class range_int {
 	public:
 	
 	/* c-tors */
-	inline range_int(): value(0) {}
-	inline range_int(base_type value): value(value) { check_out_of_range(); }
+	inline constexpr range_int(): value(0) {}
+	inline constexpr range_int(_base_type value): value(value) { check_out_of_range(); }
 	
 	/* conversion operator */
-	inline operator base_type(){	return value;	}
-		
-	/* copy = operator */
-	inline range_int<base_type,RANGE>& operator = (const range_int<base_type,RANGE>& another) { value = another.value; }
-		
-	/* modification operators */
-	inline range_int<base_type,RANGE> operator + (const base_type& rop) const { return range_int<base_type,RANGE>(value,rop,0); }
-	inline range_int<base_type,RANGE> operator - (const base_type& rop) const { return range_int<base_type,RANGE>(value,0,rop); }
+	inline constexpr operator _base_type() const {	return value;	}
+	inline constexpr _base_type to_base_type() const {	return value;	}
 	
-	inline range_int<base_type,RANGE>& operator += (base_type rop) { return *this = *this + rop; }
-	inline range_int<base_type,RANGE>& operator -= (base_type rop) { return *this = *this - rop; }
-		
-	inline range_int<base_type,RANGE>& operator ++ (){ return *this = *this + 1; }
-	inline range_int<base_type,RANGE>& operator ++ (int){ range_int<base_type,RANGE> copy{ *this }; *this = *this + 1; return copy; }
-	inline range_int<base_type,RANGE>& operator -- (){ return *this = *this - 1; }
-	inline range_int<base_type,RANGE>& operator -- (int){ range_int<base_type,RANGE> copy{ *this }; *this = *this - 1; return copy; }
+	/* copy = operator */
+	inline constexpr range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
+	
+	/* modification operators */
+	inline range_int<_base_type,RANGE> operator + (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,rop,0); }
+	inline range_int<_base_type,RANGE> operator - (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,0,rop); }
+	
+	inline range_int<_base_type,RANGE>& operator += (_base_type rop) { return *this = *this + rop; }
+	inline range_int<_base_type,RANGE>& operator -= (_base_type rop) { return *this = *this - rop; }
+	
+	inline range_int<_base_type,RANGE>& operator ++ (){ return *this = static_cast<_base_type>(*this) + 1; }
+	inline range_int<_base_type,RANGE>& operator ++ (int){ range_int<_base_type,RANGE> copy{ *this }; *this = static_cast<_base_type>(*this) + 1; return copy; }
+	inline range_int<_base_type,RANGE>& operator -- (){ return *this = static_cast<_base_type>(*this) - 1; }
+	inline range_int<_base_type,RANGE>& operator -- (int){ range_int<_base_type,RANGE> copy{ *this }; *this = static_cast<_base_type>(*this) - 1; return copy; }
 
 };
 

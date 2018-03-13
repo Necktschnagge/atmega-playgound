@@ -26,8 +26,8 @@ namespace hardware {
 		for our project we subtract 2, because PG3, PG4 are used as TOSC1/2 for ext RTC-OSC source (32kHz OSC).
 		*/
 		
-		using PINID = uint8_t;
-		using PINID2 = range_int<uint8_t,MAX>;
+		//using PINID = uint8_t;
+		using PINID = range_int<uint8_t,MAX,true>;
 		
 		
 		enum class Port : uint8_t {
@@ -39,7 +39,7 @@ namespace hardware {
 		};
 		
 		
-		static constexpr PINID NO_IOPIN{ 0xFF };
+		static constexpr PINID NO_IOPIN{ PINID::OUT_OF_RANGE };
 		
 		/* calculates pin_id of given port and bit inside port
 		with undefined inputs, result is undefined */
@@ -48,7 +48,7 @@ namespace hardware {
 		}
 		
 		/* with illegal pin_id, result my be undefined */
-		inline static constexpr Port get_port_from_pin_id(PINID pin_id){
+		inline static constexpr Port get_port_from_pin_id(PINID::base_type pin_id){
 			return static_cast<Port>((pin_id / 8) * 8);
 		}
 		
@@ -60,20 +60,14 @@ namespace hardware {
 		private:
 		
 		PINID pin_id; // unique id for one particular GPIO Pin
-		
-		inline void check_out_of_range(){
-			if (!	(pin_id < MAX)){
-				pin_id = NO_IOPIN;
-			}
-		}
-		
+				
 		public:
 		
 		/* c-tors */
 		
-		IOPin(PINID pin_id): pin_id(pin_id) { check_out_of_range(); }
+		IOPin(PINID pin_id): pin_id(pin_id) {}
 		
-		IOPin(Port port, uint8_t bit) : pin_id(get_pin_id(port,bit)) { check_out_of_range(); }
+		IOPin(Port port, uint8_t bit) : pin_id(get_pin_id(port,bit)) {}
 		
 		
 		/* GPIO Accessors and Modifiers */
@@ -95,7 +89,7 @@ namespace hardware {
 		
 		/* allow casting from to bool <-> DD*/
 		inline void write_DD(DD data_direction) const {
-		
+		///#####
 		}
 		
 		inline DD read_DD() const {
@@ -114,7 +108,7 @@ namespace hardware {
 		}
 		
 		inline void write_PORT(bool value) const {
-			
+			///######
 		}
 		
 		inline bool read_PORT() const {
@@ -148,10 +142,10 @@ namespace hardware {
 			// make opportunity to check whether we are a NO_PIN associated IOPIN
 		inline IOPin operator - (uint8_t difference) const { return IOPin(this->pin_id - difference); }
 		
-		inline IOPin& operator ++ () { ++pin_id; check_out_of_range(); return *this; }
-		inline IOPin operator ++ (int) { IOPin copy(*this); ++pin_id; check_out_of_range(); return copy; }
-		inline IOPin& operator -- () { --pin_id; check_out_of_range(); return *this; }
-		inline IOPin operator -- (int) { IOPin copy(*this); --pin_id; check_out_of_range(); return copy; }
+		inline IOPin& operator ++ () { ++pin_id; return *this; }
+		inline IOPin operator ++ (int) { IOPin copy(*this); ++pin_id; return copy; }
+		inline IOPin& operator -- () { --pin_id; return *this; }
+		inline IOPin operator -- (int) { IOPin copy(*this); --pin_id; return copy; }
 		
 		
 		inline IOPin& operator = (IOPin rop) { this->pin_id = rop.pin_id; return *this; }
@@ -161,8 +155,5 @@ namespace hardware {
 		inline IOPin& operator -= (uint8_t difference) { return *this = *this - difference; }
 		
 	};
-
-	
-	
 }
 #endif //__F_IOPIN_H__
