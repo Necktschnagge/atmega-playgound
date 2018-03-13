@@ -39,7 +39,7 @@ namespace hardware {
 		};
 		
 		
-		static constexpr PINID NO_IOPIN{ PINID::OUT_OF_RANGE };
+		static constexpr PINID NO_IOPIN_ID{ PINID::OUT_OF_RANGE };	
 		
 		/* calculates pin_id of given port and bit inside port
 		with undefined inputs, result is undefined */
@@ -65,9 +65,9 @@ namespace hardware {
 		
 		/* c-tors */
 		
-		IOPin(PINID pin_id): pin_id(pin_id) {}
+		inline constexpr IOPin(PINID pin_id): pin_id(pin_id) {}
 		
-		IOPin(Port port, uint8_t bit) : pin_id(get_pin_id(port,bit)) {}
+		inline constexpr IOPin(Port port, uint8_t bit) : pin_id(get_pin_id(port,bit)) {}
 		
 		
 		/* GPIO Accessors and Modifiers */
@@ -155,5 +155,7 @@ namespace hardware {
 		inline IOPin& operator -= (uint8_t difference) { return *this = *this - difference; }
 		
 	};
+	
+	constexpr IOPin NO_IOPIN{ IOPin(IOPin::NO_IOPIN_ID) };
 }
 #endif //__F_IOPIN_H__
