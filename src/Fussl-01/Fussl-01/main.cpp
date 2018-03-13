@@ -5,17 +5,18 @@
  * Author : Maximilian Starke
  */ 
 
-#include <stdint.h>				// uint8_t..
-#include <avr/eeprom.h>			//eeprom_read_byte()
 
+/* extern headers */
+#include <stdint.h>				// uint8_t..
+
+/* own headers */
 #include "f_ledline.h"
 #include "f_hardware.h"
 #include "f_arch.h"
-#include "f_gui.h"
-#include "f_test.h"
-#include "f_hcsr04.h"
-#include "stdint.h"
-#include "f_cmr.h"
+//#include "f_gui.h"
+//#include "f_test.h"
+//#include "f_hcsr04.h"
+//#include "f_cmr.h"
 
 #include "display_server.h"
 
@@ -49,10 +50,6 @@ void guiBootScreen(){
 	hardware::delay(500);
 }
 
-void after_selecting(){
-	// do nothing
-	led::clear();
-}
 
 void init_sr(){
 	DDRB = 0b00000011;
@@ -381,8 +378,11 @@ int main(void){
 	guiBootScreen();
 	led::clear();
 	
-	init_port_C_server();
-	endless_server_loop();
+	led::printString("D-SERVER");
+	hardware::delay(2000);
+	led::clear();
+	
+	main_of_display_server();
 	
 	//testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
 	//test_cmr();
