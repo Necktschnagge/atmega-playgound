@@ -26,7 +26,7 @@ namespace concepts {
 	class Flags { // not yet ready. do not use.
 	private:
 		uint8_t memory;
-	public:
+	public: 
 		typedef uint8_t flag_id;
 	
 	/* c-tors */

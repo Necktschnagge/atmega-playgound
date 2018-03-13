@@ -44,10 +44,12 @@ C_SRCS +=  \
 ../f_gui.cpp \
 ../f_hardware.cpp \
 ../f_hcsr04.cpp \
+../f_iopin.cpp \
 ../f_item_manager.cpp \
 ../f_item_selector.cpp \
 ../f_ledline.cpp \
 ../f_list_item_manager.cpp \
+../f_range_int.cpp \
 ../f_scheduler.cpp \
 ../f_systime.cpp \
 ../f_task_runner.cpp \
@@ -71,10 +73,12 @@ f_cmr.o \
 f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
+f_iopin.o \
 f_item_manager.o \
 f_item_selector.o \
 f_ledline.o \
 f_list_item_manager.o \
+f_range_int.o \
 f_scheduler.o \
 f_systime.o \
 f_task_runner.o \
@@ -91,10 +95,12 @@ f_cmr.o \
 f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
+f_iopin.o \
 f_item_manager.o \
 f_item_selector.o \
 f_ledline.o \
 f_list_item_manager.o \
+f_range_int.o \
 f_scheduler.o \
 f_systime.o \
 f_task_runner.o \
@@ -111,10 +117,12 @@ f_cmr.d \
 f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
+f_iopin.d \
 f_item_manager.d \
 f_item_selector.d \
 f_ledline.d \
 f_list_item_manager.d \
+f_range_int.d \
 f_scheduler.d \
 f_systime.d \
 f_task_runner.d \
@@ -131,10 +139,12 @@ f_cmr.d \
 f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
+f_iopin.d \
 f_item_manager.d \
 f_item_selector.d \
 f_ledline.d \
 f_list_item_manager.d \
+f_range_int.d \
 f_scheduler.d \
 f_systime.d \
 f_task_runner.d \
@@ -205,12 +215,16 @@ LINKER_SCRIPT_DEP+=
 
 
 
+
+
 ./f_ledline.o: .././f_ledline.cpp
 	@echo Building file: $<
 	@echo Invoking: AVR8/GNU C Compiler : 5.4.0
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++14 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
 	@echo Finished building: $<
 	
+
+
 
 
 

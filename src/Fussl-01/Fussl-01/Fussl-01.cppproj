@@ -253,6 +253,12 @@
     <Compile Include="f_hcsr04.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_iopin.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_iopin.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_item_manager.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -280,6 +286,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="f_macros.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_range_int.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_range_int.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="f_scheduler.cpp">
