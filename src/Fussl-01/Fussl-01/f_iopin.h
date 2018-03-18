@@ -2,7 +2,11 @@
 * f_iopin.h
 *
 * Created: 13.03.2018 17:41:04
-* Author: F-NET-ADMIN
+* Author: Maximilian Starke
+*
+*	FPS:
+	everything seems to be fine, complete and working properly.
+	add all doc-strings, there are nearly no explanations in the code !!!!!
 */
 
 
@@ -27,15 +31,15 @@ namespace hardware {
 		*/
 		
 		//using PINID = uint8_t;
-		using PINID = range_int<uint8_t,MAX,true>;
+		using PINID = range_int<uint8_t,MAX,true,true>;
 		
 		
 		enum class Port : uint8_t {
 			A = 0, B = 8, C = 16, D = 24, E = 32, F = 40, G = 48
 		};
 		
-		enum class DD : uint8_t {
-			IN = 0, OUT = 1
+		enum class DD : bool {
+			IN = false, OUT = true
 		};
 		
 		
@@ -67,15 +71,13 @@ namespace hardware {
 		
 		inline constexpr IOPin(PINID pin_id): pin_id(pin_id) {}
 		
-		inline constexpr IOPin(Port port, uint8_t bit) : pin_id(get_pin_id(port,bit)) {}
+		inline constexpr IOPin(Port port, uint8_t bit_od_port) : pin_id(get_pin_id(port,bit_od_port)) {}
 		
 		
 		/* GPIO Accessors and Modifiers */
 		
 		inline bool read_PIN() const {
-			//if (pin_id == NO_IOPIN_ID) return true; // virtual true (pull up) on error
-			// <<< we can comment this, because in this case we will end up in never reached region.
-			// <<< maybe think about throwing an exception instead of returning default value.
+			if (pin_id == NO_IOPIN_ID) throw *this;
 			
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (pin_id < 8)  return static_cast<bool>(PINA & pin_select);
@@ -87,14 +89,13 @@ namespace hardware {
 			if (pin_id < 56) return static_cast<bool>(PING & pin_select);
 			
 			/* this region should never be reached */
-			return true;
+			//return true;
+			throw false;
 		}
 		
 		/* allow casting from to bool <-> DD*/
 		inline void write_DD(DD data_direction) const {
-			//if (pin_id == NO_IOPIN_ID) return // do nothing;
-			// <<< we can comment this, because in this case we will end up in never reached region.
-			// <<< maybe think about throwing an exception instead of doing nothing.
+			if (pin_id == NO_IOPIN_ID) throw *this;
 
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (data_direction == DD::OUT){
@@ -106,7 +107,7 @@ namespace hardware {
 				if (pin_id < 48) { DDRF |= pin_select; return; }
 				if (pin_id < 56) { DDRG |= pin_select; return; }
 			}
-			else
+			else // if (data_direction == DD:IN)
 			{
 				if (pin_id <  8) { DDRA &= ~pin_select; return; }
 				if (pin_id < 16) { DDRB &= ~pin_select; return; }
@@ -117,12 +118,12 @@ namespace hardware {
 				if (pin_id < 56) { DDRG &= ~pin_select; return; }
 			}
 			
-			/* this region should never be reached / only reached in case of NO_IOPIN */
+			/* this region should never be reached */
+			throw false;
 		}
 		
 		inline DD read_DD() const {
-			//if (pin_id == NO_IOPIN_ID) return DD::OUT; // virtual true (pull up) on error
-			// <<< we can comment this, because in this case we will end up in never reached region.
+			if (pin_id == NO_IOPIN_ID) throw *this;
 			
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (pin_id < 8)  return static_cast<DD>(static_cast<bool>(DDRA & pin_select));
@@ -133,15 +134,13 @@ namespace hardware {
 			if (pin_id < 48) return static_cast<DD>(static_cast<bool>(DDRF & pin_select));
 			if (pin_id < 56) return static_cast<DD>(static_cast<bool>(DDRG & pin_select));
 			
-			/* this region should never be reached / reached in case of NO_IOPIN */
-			return DD::OUT; // virtual false (output pin) on error
-			// <<< maybe think about throwing an exception instead of returning default value.
+			/* this region should never be reached */
+			//return DD::OUT; // virtual false (output pin) on error
+			throw false;
 		}
 		
 		inline void write_PORT(bool value) const {
-			//if (pin_id == NO_IOPIN_ID) return;
-			// <<< we can comment this, because in this case we will end up in never reached region.
-			// <<< maybe think about throwing an exception instead of doing nothing.
+			if (pin_id == NO_IOPIN_ID) throw *this;
 			
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (value){
@@ -161,12 +160,11 @@ namespace hardware {
 				if (pin_id < 48) { PORTF &= ~pin_select; return; }
 				if (pin_id < 56) { PORTG &= ~pin_select; return; }
 			}
+			throw false;
 		}
 		
 		inline bool read_PORT() const {
-			//if (pin_id == NO_IOPIN_ID) return false; // virtual false on error
-			// <<< we can comment this, because in this case we will end up in never reached region.
-			// <<< maybe think about throwing an exception instead of returning default value.
+			if (pin_id == NO_IOPIN_ID) throw *this;
 			
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (pin_id < 8)  return static_cast<bool>(PORTA & pin_select);
@@ -178,37 +176,42 @@ namespace hardware {
 			if (pin_id < 56) return static_cast<bool>(PORTG & pin_select);
 			
 			/* this region should never be reached */
-			return false; // virtual false on error
+			// return false; // virtual false on error
+			throw false;
 		}
 		
 		/* GPIO Accessors and Manipulators: more high level */
 		
-		inline void set_as_output()				{	write_DD(DD::OUT);				}
-		inline void set_as_input()				{	write_DD(DD::IN);				}
-		inline bool is_input()					{	return read_DD() == DD::IN;		}
-		inline bool is_output()					{	return read_DD() == DD::OUT;	}
+		inline void set_as_output()			const	{	write_DD(DD::OUT);				}
+		inline void set_as_input()			const	{	write_DD(DD::IN);				}
+		inline bool is_input()				const	{	return read_DD() == DD::IN;		}
+		inline bool is_output()				const	{	return read_DD() == DD::OUT;	}
 
-		inline void set_pull_up(bool is_on)		{	write_PORT(is_on);				}
-		inline bool read_input()				{	return read_PIN();				}
-		inline void write_output(bool value)	{	write_PORT(value);				}
-		
+		inline void set_pull_up(bool is_on)	 const	{	write_PORT(is_on);				}
+		inline bool read_input()			 const	{	return read_PIN();				}
+		inline void write_output(bool value) const	{	write_PORT(value);				}
 		
 		/* overloaded operators for GPIO Pin Access and Modification ****************************************/
 		
-		inline operator bool() const { return read_PIN(); }
+		inline operator bool()		const { return  read_PIN(); }
+		inline bool operator ! ()	const { return !read_PIN(); }
+		
 
-		inline void operator = (bool value) const { return write_PORT(value); }
-		inline void operator << (bool value) const { return write_PORT(value); }
-		inline void operator >> (bool& target) const { target = read_PIN(); }
+		inline void operator = (bool value)		const { return write_PORT(value); }
+		inline void operator << (bool value)	const { return write_PORT(value); }
+		inline void operator >> (bool& target)	const { target = read_PIN(); }
 		
 		
 		/* overloaded operators for object modification *****************************************************/
 		
-		inline bool is_no_IOPIN() { return pin_id == NO_IOPIN_ID; }
-		inline bool operator ! () { return pin_id == NO_IOPIN_ID; }
-		
-		inline IOPin operator + (uint8_t difference) const { return IOPin(this->pin_id + difference); }
-		inline IOPin operator - (uint8_t difference) const { return IOPin(this->pin_id - difference); }
+		inline constexpr bool valid()	const { return pin_id != NO_IOPIN_ID; }
+		inline constexpr bool invalid()	const { return pin_id == NO_IOPIN_ID; }
+
+		// behavior:
+		// whenever an overflow / underflow happens, NO_IOPIN is returned
+		// whenever left operand (i.e. the IOPin) is already NO_IOPIN (call it invalid), result is also NO_IOPIN and parameter difference will be ignored		
+		inline constexpr IOPin operator + (uint8_t difference) const { return IOPin(this->pin_id + difference); }
+		inline constexpr IOPin operator - (uint8_t difference) const { return IOPin(this->pin_id - difference); }
 		
 		inline IOPin& operator ++ () { ++pin_id; return *this; }
 		inline IOPin operator ++ (int) { IOPin copy(*this); ++pin_id; return copy; }
@@ -217,13 +220,11 @@ namespace hardware {
 		
 		
 		inline IOPin& operator = (IOPin rop) { this->pin_id = rop.pin_id; return *this; }
-		inline bool operator == (IOPin rop) const { return this->pin_id == rop.pin_id; }
+		inline constexpr bool operator == (IOPin rop) const { return this->pin_id == rop.pin_id; }
+		inline constexpr bool operator != (IOPin rop) const { return this->pin_id != rop.pin_id; }
 		
 		inline IOPin& operator += (uint8_t difference) { return !(*this) ? *this : *this = *this + difference; } // think about what behaviour we want
 		inline IOPin& operator -= (uint8_t difference) { return !(*this) ? *this : *this = *this - difference; }
-		// whenever...		NO_IOPIN_ID + x = NO_IOPIN_ID
-		//					NO_IOPIN_ID - x = NO_IOPIN_ID
-		
 	};
 	
 	constexpr IOPin NO_IOPIN{ IOPin(IOPin::NO_IOPIN_ID) };

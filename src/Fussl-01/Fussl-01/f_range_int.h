@@ -2,14 +2,14 @@
 * f_range_int.h
 *
 * Created: 13.03.2018 17:52:31
-* Author: F-NET-ADMIN
+* Author: Maximilian Starke
 */
 
 
 #ifndef __F_RANGE_INT_H__
 #define __F_RANGE_INT_H__
 
-template <typename _base_type, _base_type RANGE, bool OVERFLOW_RESULTS_IN_OUT_OF_RANGE = true>
+template <typename _base_type, _base_type RANGE, bool OVERFLOW_RESULTS_IN_OUT_OF_RANGE = true, bool OUT_OF_RANGE_IS_ABSORBING = true>
 class range_int {
 	public:
 
@@ -28,6 +28,7 @@ class range_int {
 	
 	/* private c-tor for addition and subtraction */
 	inline range_int(_base_type value, _base_type plus, _base_type minus) : value(value + plus - minus) { // maybe consgtexpr ???
+		if (OUT_OF_RANGE_IS_ABSORBING) if (value == OUT_OF_RANGE) this->value = OUT_OF_RANGE;
 		check_out_of_range();
 		if (OVERFLOW_RESULTS_IN_OUT_OF_RANGE) if (value + plus < value - minus) value = OUT_OF_RANGE;
 	}
@@ -46,11 +47,11 @@ class range_int {
 	inline constexpr range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
 	
 	/* modification operators */
-	inline range_int<_base_type,RANGE> operator + (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,rop,0); }
-	inline range_int<_base_type,RANGE> operator - (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,0,rop); }
+	inline constexpr range_int<_base_type,RANGE> operator + (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,rop,0); }
+	inline constexpr range_int<_base_type,RANGE> operator - (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,0,rop); }
 	
-	inline range_int<_base_type,RANGE>& operator += (_base_type rop) { return *this = *this + rop; }
-	inline range_int<_base_type,RANGE>& operator -= (_base_type rop) { return *this = *this - rop; }
+	inline constexpr range_int<_base_type,RANGE>& operator += (_base_type rop) { return *this = *this + rop; }
+	inline constexpr range_int<_base_type,RANGE>& operator -= (_base_type rop) { return *this = *this - rop; }
 	
 	inline range_int<_base_type,RANGE>& operator ++ (){ return *this = static_cast<_base_type>(*this) + 1; }
 	inline range_int<_base_type,RANGE>& operator ++ (int){ range_int<_base_type,RANGE> copy{ *this }; *this = static_cast<_base_type>(*this) + 1; return copy; }

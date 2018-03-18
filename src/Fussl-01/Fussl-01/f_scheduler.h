@@ -255,7 +255,7 @@ namespace scheduler {
 		return 0;
 	}
 	
-};
+}
 
 
 

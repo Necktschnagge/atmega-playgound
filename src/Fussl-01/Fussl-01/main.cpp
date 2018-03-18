@@ -106,7 +106,7 @@ void sendbit(bool value){
 	PORTB &= 0b11110111;
 	uint8_t v = value;
 	PORTB |= (v<<3);
-	bool toggle;
+	//bool toggle;
 	
 }
 
