@@ -13,20 +13,7 @@
 #include "f_ledline.h"
 #include "f_hardware.h"
 #include "f_arch.h"
-//#include "f_gui.h"
-//#include "f_test.h"
-//#include "f_hcsr04.h"
-//#include "f_cmr.h"
-
 #include "display_server.h"
-
-
-
-/*
-cpp course
-*/
-
-
 
 
 void guiBootScreen(){
