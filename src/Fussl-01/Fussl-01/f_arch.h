@@ -8,7 +8,7 @@
 /************************************************************************/
 /* FPS:
 	everything has to be checked!!!
-	
+	see line 48!!!
 
 
 	                                                                    */
@@ -43,6 +43,22 @@
 
 #include "f_hardware.h"
 #include <avr/io.h>
+
+///
+/****
+##### to do next:
+
+* wait for dependency: scheduler, because we need timers, and we mean no exclusive timers but software timers
+that can be shared, such that we do not care about it
+
+* convert namespace arch into a class arch;
+
+* refactoring: the class gets IOPin objects,
+
+
+
+*/ ///
+
 
 namespace arch {
 	

@@ -15,11 +15,13 @@
 #include "f_concepts.h"
 #include "f_time.h"
 
+
 namespace scheduler {
 
 	/* forward declaration: intern classes / structs: */
 	class SchedulerHandle;
 	class UnionCallback;
+	
 			class Priority; // as part of TaskSpecifics
 			class Progress; // as part of TaskSpecifics
 		class TaskSpecifics; // as part of UnionSpecifics
@@ -292,6 +294,8 @@ namespace scheduler {
 			is_task/is_timer
 			callable /ptr flag
 			is_interrupting # timers only
+			
+			
 			
 	                                                                     */
 	/************************************************************************/
