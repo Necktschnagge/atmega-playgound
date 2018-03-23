@@ -43,26 +43,20 @@ namespace analyzer {
 			/* a channel represents an area for measured values with an average
 				and a rating how bad the channel is for currently given inputs. */
 		class Channel {
-			/// <<< I don't know very well about compiler optimization,
-			// but when putting class channel's methods directly into CMI,
-			// we would not need to pass config pointers
-			// -> better in storage usage on stack and also execution time (*config derefencing)
-			// one contra: a worse(..) or invalidate(..) function which gets only one parameter now
-			// will get two (the object pointer and the channel array index)
-			// contra-contra: this methods are inline....
+
 		private:
 			Metric _average;		// average of accumulated values
-			uint8_t _badness;	// channel invalid <=> badness == 255, channel would be best if badness = 0
+			uint8_t _badness;		// channel invalid <=> badness == 255, channel would be best if badness = 0
 
 		public:	
 				/* create an invalid Channel */
-			Channel() : _average(0), _badness(255) {}
+			inline constexpr Channel() : _average(0), _badness(255) {}
 				
 				/* create a valid Channel */
-			Channel(const Metric& initial_value, const Configuration* config);
+			inline constexpr Channel(const Metric& initial_value, const Configuration* config);
 			
 				/* returns reference to average of this channel */
-			inline const Metric& get_average() { return _average; }
+			inline const Metric& get_average() /*const*/ { return _average; } // test const
 				
 				/* make the Channel 'worse' */
 			inline void inc_badness(){ if (_badness < 254) ++_badness; }
@@ -88,10 +82,6 @@ namespace analyzer {
 				/* make channel invalid */	
 			inline void invalidate(){ _badness = 255; }
 			
-				/* destroy a channel, actually the same as invalidate() */
-			inline ~Channel() {	invalidate(); }
-				// <<< there is another <<< which says to put methods from this class in nesting class.
-				// then please only keep this one invalidate function.
 		};
 		
 	/* private data */
@@ -252,11 +242,7 @@ namespace analyzer {
 /************************************************************************/
 
 	template<class Metric, uint8_t channels>
-	inline ChannellingMeasurementInterpreter<Metric,channels>::Channel::Channel(const Metric& initial_value, const Configuration* config){
-		_average = initial_value;
-		_badness = config->initial_badness;
-		if (_badness == 255) --_badness; // just to avoid that someone tries to create a invalid channel.
-	}
+	inline constexpr ChannellingMeasurementInterpreter<Metric,channels>::Channel::Channel(const Metric& initial_value, const Configuration* config) : _average(initial_value), _badness(config->initial_badness != 255 ? config->initial_badness : 254) {}
 	
 	template<class Metric, uint8_t channels>
 	inline bool ChannellingMeasurementInterpreter<Metric,channels>::Channel::accumulate(const Metric& value, Configuration* config){
