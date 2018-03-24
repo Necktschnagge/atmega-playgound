@@ -19,7 +19,8 @@ template <uint8_t TABLE_SIZE>
 class scheduler2 {
 public:	
 	using SchedulerHandle = range_int<uint8_t,TABLE_SIZE,true,true>;
-
+	
+	static constexpr SchedulerHandle NO_HANDLE{ SchedulerHandle::OUT_OF_RANGE };
 private:
 	class UnionCallback {
 		public:
@@ -41,17 +42,15 @@ private:
 	class TaskSpecifics {
 		public:
 		uint8_t urgency; // Dringlichkeit
-		/* 255 .. very important ... 0 ... least important
-		uint8_t progress;// 0 ..255 : 0%ready .. 100%ready*/
+		/* 255 .. least important ... 0 ... most important */
 		uint8_t task_race_countdown;		
 		
 	};
 
 	class TimerSpecifics {
-		private:
-		const time::ExtendedMetricTime* event_time; // earliest time when timer can be executed
 		public:
-		inline const time::ExtendedMetricTime& get_execution_time() const { return *event_time; }
+		const time::ExtendedMetricTime* event_time; // earliest time when timer can be executed
+
 	};
 	
 	class UnionSpecifics {
@@ -61,18 +60,18 @@ private:
 			TaskSpecifics task;
 			TimerSpecifics timer;
 		};
-		
 		InternUnion _union;
 		public:
 		TaskSpecifics& task() { return _union.task; } // using direct references makes objects become larger by 2*ptrsize, I tried it
 		TimerSpecifics& timer() { return _union.timer; }
 	};
+	
 public:
-	static constexpr SchedulerHandle NO_HANDLE{ SchedulerHandle::OUT_OF_RANGE };
+	
 		
 		// a handle which may be used, if there should be no valid entry. // but first therefore we have a valid flag inside flag class
 
-
+/*
 			class scheduling_countdown;
 			class Priority; // as part of TaskSpecifics
 			class Progress; // as part of TaskSpecifics
@@ -81,11 +80,13 @@ public:
 	class UnionSpecifics;
 	class Flags;
 	class SchedulerMemoryLine;
-
+*/
 private:
 	
 	static_assert(sizeof(SchedulerHandle) == 1, "SchedulerHandle has not the appropriate size.");
-	static_assert(sizeof(UnionCallback) > 0, "UnionCallback has not the appropriate size.");
+	static_assert(sizeof(UnionCallback) == 2, "UnionCallback has not the appropriate size.");
+	static_assert(sizeof(UnionSpecifics) == 2, "UnionSpecifics has not the appropriate size.");
+	static_assert(sizeof(concepts::Flags) == 1, "concepts::Flags has not the appropriate size.");
 	
 	
 	struct SchedulerMemoryLine {
@@ -94,6 +95,10 @@ private:
 		UnionSpecifics specifics; // 2
 		concepts::Flags flags; // 1
 	};
+	
+	
+	
+	/* private data */
 	
 	/* aufbau der tabelle.
 	

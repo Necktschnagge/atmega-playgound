@@ -20,7 +20,9 @@ class range_int {
 	private:
 	_base_type value;
 	
-	inline void constexpr check_out_of_range(){
+	inline static constexpr _base_type in_range(_base_type value){ return value < RANGE ? value : OUT_OF_RANGE; }
+	
+	inline void check_out_of_range(){
 		if (!(value < RANGE)){
 			value = OUT_OF_RANGE;
 		}
@@ -37,14 +39,14 @@ class range_int {
 	
 	/* c-tors */
 	inline constexpr range_int(): value(0) {}
-	inline constexpr range_int(_base_type value): value(value) { check_out_of_range(); }
+	inline constexpr range_int(_base_type value): value(in_range(value)) {}
 	
 	/* conversion operator */
 	inline constexpr operator _base_type() const {	return value;	}
 	inline constexpr _base_type to_base_type() const {	return value;	}
 	
 	/* copy = operator */
-	inline constexpr range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
+	inline range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
 	
 	/* modification operators */
 	inline constexpr range_int<_base_type,RANGE> operator + (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,rop,0); }

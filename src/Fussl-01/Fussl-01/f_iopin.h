@@ -77,7 +77,7 @@ namespace hardware {
 		/* GPIO Accessors and Modifiers */
 		
 		inline bool read_PIN() const {
-			if (pin_id == NO_IOPIN_ID) throw *this;
+			// if (pin_id == NO_IOPIN_ID) throw *this;
 			
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (pin_id < 8)  return static_cast<bool>(PINA & pin_select);
@@ -89,13 +89,13 @@ namespace hardware {
 			if (pin_id < 56) return static_cast<bool>(PING & pin_select);
 			
 			/* this region should never be reached */
-			//return true;
-			throw false;
+			return true;
+			//throw false;
 		}
 		
 		/* allow casting from to bool <-> DD*/
 		inline void write_DD(DD data_direction) const {
-			if (pin_id == NO_IOPIN_ID) throw *this;
+			//if (pin_id == NO_IOPIN_ID) throw *this;
 
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (data_direction == DD::OUT){
@@ -119,11 +119,12 @@ namespace hardware {
 			}
 			
 			/* this region should never be reached */
-			throw false;
+			// return;
+			//throw false;
 		}
-		
+		# remove all throws in the entire solution
 		inline DD read_DD() const {
-			if (pin_id == NO_IOPIN_ID) throw *this;
+			//if (pin_id == NO_IOPIN_ID) throw *this;
 			
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (pin_id < 8)  return static_cast<DD>(static_cast<bool>(DDRA & pin_select));
@@ -135,8 +136,8 @@ namespace hardware {
 			if (pin_id < 56) return static_cast<DD>(static_cast<bool>(DDRG & pin_select));
 			
 			/* this region should never be reached */
-			//return DD::OUT; // virtual false (output pin) on error
-			throw false;
+			return DD::OUT; // virtual false (output pin) on error
+			//throw false;
 		}
 		
 		inline void write_PORT(bool value) const {
@@ -227,6 +228,6 @@ namespace hardware {
 		inline IOPin& operator -= (uint8_t difference) { return !(*this) ? *this : *this = *this - difference; }
 	};
 	
-	constexpr IOPin NO_IOPIN{ IOPin(IOPin::NO_IOPIN_ID) };
+	constexpr IOPin NO_IOPIN = IOPin(IOPin::NO_IOPIN_ID);
 }
 #endif //__F_IOPIN_H__

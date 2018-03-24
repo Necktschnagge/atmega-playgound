@@ -15,6 +15,8 @@
 #include "f_arch.h"
 #include "display_server.h"
 
+#include "f_iopin.h"
+
 
 void guiBootScreen(){
 	hardware::delay(10);	
@@ -359,11 +361,15 @@ void test_cmr(){
 #endif
 }
 
+
+
 int main(void){
 	
 	led::init(8);
 	guiBootScreen();
 	led::clear();
+	hardware::IOPin iopin(hardware::IOPin::Port::A,0);
+
 	
 	led::printString("D-SERVER");
 	hardware::delay(2000);
