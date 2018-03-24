@@ -47,6 +47,15 @@ namespace concepts {
 	};
 	
 	
+	// this is not ready yet:::
+	template<typename return_type,typename exception_type>
+	class Exceptional {
+		private:
+		union _union {
+			return_type result;
+			exception_type exception;
+			};
+		};
 }
 
 

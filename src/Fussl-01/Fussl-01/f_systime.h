@@ -76,10 +76,9 @@ namespace scheduler {
 		static uint8_t anti_racing_factor;
 	
 			/* return reference to the instance which is / has to be clocked by ISR */
-			/* don't call, if you did not link an instance, it is called by running timer */
-			/* so don't run timer before you linked a SysTime object (this is checked by start() too) */
-		inline static SysTime& get_instance() {	return *p_instance;	}
-			// <<< what about making this save
+			/* don't call, if you did not link an instance */
+			/* this will end in undefined behavior */
+		inline static SysTime& get_instance() { return *p_instance; }
 		
 			/* set reference (pointer) to the SystemTime object which should be clocked by ISR */
 			/* deactivates interrupts during replacing of reference, just in case timer is already running
