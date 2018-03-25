@@ -18,6 +18,8 @@
 #ifndef F_SYSTIME_H_
 #define F_SYSTIME_H_
 
+#include "f_concepts.h"
+
  /*                                                   
 documentation:
 
@@ -115,9 +117,11 @@ namespace scheduler {
 	private:
 			/* the real oscillator frequency / Hz, critical since ISR access */
 		long double osc_frequency {1};
+			// <<<< using fixed point number we need to define the exponent, either as constant, or as template parameter
 		
 			/* the truncated / broken part of the last compare match value, critical since ISR access */
 		long double residual_ticks {0};
+			// <<< if we store this as an fixed point number, is should be [0, 2), so 100000* -> 1,  111111111* ->  max value, <ca 2
 		
 			/* logarithmic value of precision, critical since ISR access */
 			/* a SysTime object is marked as invalid if log_precision == 255 */
@@ -128,12 +132,12 @@ namespace scheduler {
 			/* begins counting at 0 when SysTime is initialized. for encoding see time::EMT */
 			/* now is accessed by ISR and user/operating system. it is critical */
 		time::ExtendedMetricTime now {0};
-		
+			
 		// <<< if ready just look how it works. maybe fixed point floats stored in integers are better....
 		// <<< try this later.
 		
 			/* precision / Hz, critical since ISR access */
-		inline long double precision(){ return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision); }
+		inline long double precision() const { return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision); }
 		
 			/* try to set osc_frequency and log_precision to given values */
 			/* returns error codes:
@@ -151,6 +155,9 @@ namespace scheduler {
 		uint8_t try_to_set(const long double& osc_frequency_new, uint8_t log_precision_wish);
 		
 	public:
+
+		concepts::void_function now_update_interrupt_handler;
+		
 	/******* constructors *************************************************************************/
 		
 			/* tries to construct a SysTime object with given values 
@@ -160,7 +167,7 @@ namespace scheduler {
 			   the log_precision passed might be changed in order to construct a valid SysTime
 			   so the final value of log_precision is passed back. */
 			/* on error log_precision is INVALID_log_precision */
-		SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code);
+		SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code, concepts::void_function handler = nullptr);
 		
 		
 	/******* modifiers  **************************************************************************/
@@ -172,10 +179,10 @@ namespace scheduler {
 		}
 			
 			/* try to change precision to wish-value */
-		inline uint8_t change_log_precision(uint8_t& new_log_recision){
-			return try_to_set(osc_frequency,new_log_recision); // read - read access means no interrupt conflicts
+		inline uint8_t change_log_precision(uint8_t& new_log_precision){
+			return try_to_set(osc_frequency,new_log_precision); // read - read access means no interrupt conflicts
 		}
-		
+				
 	/****** interrupt methods ******************************************************************/
 				
 			/* method which tells ISR what compare value should be used next */
@@ -200,6 +207,7 @@ namespace scheduler {
 		
 			/* get system time (same as get_now_time) */
 		inline time::ExtendedMetricTime operator()() { return get_now_time(); }
+		
 	};
 
 

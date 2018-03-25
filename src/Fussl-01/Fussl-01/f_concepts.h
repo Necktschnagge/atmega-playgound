@@ -13,6 +13,8 @@
 
 namespace concepts {
 	
+	using void_function = void (*)();
+	
 	class Callable {
 	public:
 		virtual void operator()() = 0;

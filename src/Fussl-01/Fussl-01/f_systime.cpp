@@ -30,6 +30,8 @@ ISR (TIMER1_COMPA_vect){
 	// ##detect this. ### because gcmv needs heavy floting point division
 	
 	++scheduler::SysTime::get_instance();
+	
+	if (scheduler::SysTime::get_instance().now_update_interrupt_handler != nullptr) scheduler::SysTime::get_instance().now_update_interrupt_handler();
 }
 
 namespace scheduler {
@@ -92,7 +94,7 @@ namespace scheduler {
 					++n_log_pre;
 			++cloop;
 			if (cloop > 20){ return 2; } // could be about 16. I think exactly 17. 20 to avoid off by one
-				// why 17?: you may need to ++ or -- n_log_pre 16 times. but then you need to check loop comndition once again
+				// why 17?: you may need to ++ or -- n_log_pre 16 times. but then you need to check loop condition once again
 		}
 		// we found valid values for n_osc_freq and n_log_pre:
 		// replace the effective variables by our local try-something-copies:
@@ -103,7 +105,7 @@ namespace scheduler {
 		return 0; // successful
 	}
 	
-	SysTime::SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code){
+	SysTime::SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code, concepts::void_function handler) : now_update_interrupt_handler(handler) {
 		error_code = try_to_set(osc_frequency,log_precision);
 		if (error_code){ // mark object as internally invalid
 			this->log_precision = INVALID_log_precision;
