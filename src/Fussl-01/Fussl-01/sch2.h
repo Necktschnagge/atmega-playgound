@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <avr/wdt.h>
 
+#include "f_macros.h"
 #include "f_range_int.h"
 #include "f_concepts.h"
 #include "f_time.h"
@@ -86,19 +87,14 @@ class scheduler2 {
 	static constexpr concepts::Flags::flag_id IS_RUNNING{ 0 }; // true iff run() runs
 	static constexpr concepts::Flags::flag_id STOP_CALLED{ 1 }; // if true, run() should return when current task returns.
 	static constexpr concepts::Flags::flag_id TABLE_LOCKED{ 2 }; // if scheduler is accessing scheduling table, it must not be modified by interrupt timers
-	static constexpr concepts::Flags::flag_id EMPTY_TABLE_DETECTED{ 3 };
+	static constexpr concepts::Flags::flag_id EMPTY_TABLE_DETECTED{ 3 }; // for function-local internal use in run() only.
+	static constexpr concepts::Flags::flag_id SOFTWARE_INTERRUPTS_ENABLE{ 4 };
 
 	
 	/* private data */
 	
-	/* aufbau der tabelle.
-	
-	interrupt timer // look on interrupt
-	non interrupt timer // look first on schedule loop
-	tasks // look second in schedule loop
-	
-	*/
-	/*
+	/* table layout definition:
+
 	begin
 	interrupting timers
 	[no gap]
@@ -107,6 +103,7 @@ class scheduler2 {
 	tasks
 	[no gap]
 	end
+
 	*/
 	
 	/*
@@ -114,9 +111,9 @@ class scheduler2 {
 	an entry that is VALID but DISABLED, is not gap and has to be inside its section.
 	
 	*/
-	SchedulerMemoryLine table[TABLE_SIZE];
+	SchedulerMemoryLine table[TABLE_SIZE]; // the timer and task table
 
-	uint8_t hardware_watchdog_timeout;
+	uint8_t hardware_watchdog_timeout; //
 
 	uint32_t watchdog_countdown_value;
 	// it is set to watchdog_reset_value on finishing of any task or timer procedure.
@@ -128,6 +125,9 @@ class scheduler2 {
 	scheduler::SysTime& system_time;
 	
 	public:
+	
+	static scheduler2* instance;
+	
 	static constexpr uint8_t table_line_size(){ return sizeof(SchedulerMemoryLine); }
 
 
@@ -137,26 +137,21 @@ class scheduler2 {
 	// just set it to 0 (NO_WATCHDOG).
 	static constexpr int32_t NO_WATCHDOG_COUNTER_FORMAT{0}; // calc by a constexpr function for time-wtchdog -> counter-watchdog
 
+	void set_watchdog(const time::ExtendedMetricTime& watchdog){ /*scheduler::watchdog = 0; watchdog; (zeit pro systime tick ) */ }
 	
-	// intern memory, watchdog time
-	bool init(SchedulerMemoryLine* table_ptr, uint8_t table_size,const time::ExtendedMetricTime& watchdog_restart_time = NO_WATCHDOG_EMT){
-		// if (is_active) return false; // can't init because already running.
-		//scheduler::p_table = table_ptr;
-		//scheduler::s_table = table_size;
-		watchdog_reset_value = 0; // watchdog_restart_time; / (zeit pro SysTime tick)
-		
-		return true;
+	void non_static_interrupt_handler(){
+		--watchdog_countdown_value;
+		if ((!watchdog_reset_value) || (watchdog_countdown_value > 0)) {
+			// reset hw watchdog here: #####
+			// replace hd watchdog calls in run() by calls to software watchdog.
+		}
+		if (instance.flags.get(SOFTWARE_INTERRUPTS_ENABLE) == false) return;
+		// execute interupt timers here #####
 	}
 	
-	void set_watchdog(const time::ExtendedMetricTime& watchdog){ /*scheduler::watchdog = 0; watchdog; (zeit pro systime tick ) */ }
-	/*
-	void interrupt_handler(){
-	//if (!is_active) return;
-	
-	--watchdog_countdown_value;
-	if ((!watchdog_reset_value) || (watchdog_countdown_value > 0)) {
-	// reset hardware watchdog here
-	}	// else: after short time hardware watchdog will restart controller
+	static void interrupt_handler(){
+		instance->non_static_interrupt_handler();
+	}
 	
 	
 	
@@ -164,33 +159,52 @@ class scheduler2 {
 	// check for interrupting functions in schedule table
 	}
 	*/
+	
 	// central control loop. called after init and provides the tasks
-	bool run();
-	//
+	uint8_t run();
+
+	/* make scheduler return after current executed task / timer */
+	inline void stop(){
+		flags.set_true(STOP_CALLED);
+	}
 	
-	//
+	// <<< think about behaviour of deleting timer entries after they were executed
+	
 	/*
-	// make scheduler return after current executed task / timer
-	void stop(){
-	// if (flags.get(IS_ACTIVE) == false) return false;
-	flags.set_true(STOP_CALLED);
-	// return true;
-	}
+		try to add new task to table.
+		returns SchedulerHandle of created task
+		if not successful NO_HANDLE is returned.
 	*/
-	/* true: task was written into scheduler table. */
-	/* false: table is full. not written into table */
-	// maybe it is because of some disabled timers or tasks, but this has to be checked by u-programmer
-	bool new_task(){
-		return false;
+	static constexpr uint8_t mod_minus_one(uint8_t uint){
+		return static_cast<uint8_t>( (static_cast<uint16_t>(uint) + static_cast<uint16_t>(TABLE_SIZE -1)) % static_cast<uint16_t>(TABLE_SIZE) );
 	}
 	
-	/* write handles of disabled timers / tasks into array handles which has count cells
-	return count as the number of handles which are disabled. */
-	/* if more than array size, a undefined choice of them is stored into array.
-	if less than only the first count@after entries are filled with handles */
-	/* return also first found handle */
-	uint8_t get_disabled_entries(uint8_t* handles, uint8_t& count){
-		return 0;
+	SchedulerHandle new_task(uint8_t urgency = STANDARD_URGENCY, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool enable = true);
+	
+	SchedulerHandle get_disabled_entries(uint8_t& count, SchedulerHandle* array = nullptr){
+		macro_interrupt_critical(
+			if (flags.get(TABLE_LOCKED)) {
+				count = 0xFF;
+				return NO_HANDLE;
+			}
+			flags.set_true(TABLE_LOCKED);
+		);
+		uint8_t counter{ 0 };
+		SchedulerHandle return_value;
+		for(uint8_t index = 0; index < TABLE_SIZE; ++index){
+			if (table[index].flags.get(IS_VALID) && !table[index].flags.get(IS_ENABLED)){
+				if (counter < count){
+					array[counter] = table[index].handle;
+				}
+				if (counter == 0){
+					return_value = table[index].handle;
+				}
+				++counter;
+			}
+		}
+		count = counter;
+		flags.set_false(TABLE_LOCKED);
+		return return_value;
 	}
 	
 };
@@ -199,10 +213,10 @@ class scheduler2 {
 /* FUNCTION IMPLEMENTATION                                              */
 /************************************************************************/
 
-
 template <uint8_t TABLE_SIZE>
-bool scheduler2<TABLE_SIZE>::run()
+uint8_t scheduler2<TABLE_SIZE>::run()
 {
+	static_assert(TABLE_SIZE >= 1, "Table declared with size 0.");
 	flags.set_false(STOP_CALLED); // delete previous stop command
 	flags.set_true(IS_RUNNING); // set running flag
 	flags.set_false(EMPTY_TABLE_DETECTED); // check for empty table
@@ -213,19 +227,21 @@ bool scheduler2<TABLE_SIZE>::run()
 		
 		wdt_reset(); // reset hardware watchdog
 		uint8_t choice; // index inside
-		flags.set_true(TABLE_LOCKED);
+		macro_interrupt_critical(
+			flags.set_true(TABLE_LOCKED); // lock table: let no one (no interrupt) modify table while we are accessing it
+		);
 		
 		/*** look for a timer that can be executed ***/
 		{
 			time::ExtendedMetricTime now = system_time();
 			for(choice = 0; choice < TABLE_SIZE; ++choice){
-				if (	(table[choice].flags.get(IS_VALID) == false)	||	(table[choice].flags.get(IS_TIMER) == false)){
-					goto no_timer_expired; // we reached the end of the timer section, but no timer expired
-				}
+				if (	(table[choice].flags.get(IS_VALID) == false)	||	(table[choice].flags.get(IS_TIMER) == false)	){
+					goto no_timer_expired; // we reached the end of the timer section, but no timer expired, the table is not full with timer entries
+				} // <<<<< we can put this also into loop condition, because there is no different treatment for both cases.
 				// at current index we see a valid timer
 				if (table[choice].flags.get(IS_ENABLED)){
 					// timer is enabled.
-					flags.set_false(EMPTY_TABLE_DETECTED);
+					flags.set_false(EMPTY_TABLE_DETECTED); // put this in local bool var if it is possible to delete this variable before executer is started.
 					if (now > *table[choice].specifics.timer().event_time) {
 						// timer has expired.
 						table[choice].flags.set_false(IS_ENABLED); // disable timer to avoid execution twice
@@ -236,7 +252,7 @@ bool scheduler2<TABLE_SIZE>::run()
 			}
 		} /*** end of looking for timer ***/
 		
-		// when here: table is full with timers, but no one expired
+		// when here: table is full with timers, but no one expired, (but it is also possible that all timers)
 		
 		no_timer_expired:
 		
@@ -250,17 +266,16 @@ bool scheduler2<TABLE_SIZE>::run()
 		{
 			uint8_t min_entry_index{ TABLE_SIZE }; // means no entry
 			uint16_t min_entry_race_countdown{ 0xFFFF }; // means no entry
-			bool section_empty{ true }; // stays true if and only if there is no enabled task in the task section
 			
 			/** look for a task with task_race_countdown == 0 **/
-			for (choice = TABLE_SIZE - 1; choice < TABLE_SIZE; --choice){
-				if ((table[choice].flags.get(IS_VALID) == false) || (table[choice].flags.get(IS_TIMER) == true)){
+			for (choice = TABLE_SIZE - 1; (table[choice].flags.get(IS_VALID) == true) && (table[choice].flags.get(IS_TIMER) == false) && (choice < TABLE_SIZE); --choice){
+				/*if ((table[choice].flags.get(IS_VALID) == false) || (table[choice].flags.get(IS_TIMER) == true)){
 					// reached end of task section in table
-					goto no_zero_countdown; /* same as break; */
-				}
+					goto no_zero_countdown; //same as break;
+					/// <<< check whether we can put this into loop invariant / condition
+				}*/
 				if (table[choice].flags.get(IS_ENABLED)){
 					// current task has to be considered
-					section_empty = false; // there is at least one task that may eventually be executed
 					if (table[choice].specifics.task().task_race_countdown == 0){
 						goto task_execute;
 					}
@@ -271,13 +286,13 @@ bool scheduler2<TABLE_SIZE>::run()
 				}
 			} /** end of looking for task with countdown == 0 **/
 			
-			// when here: the whole table is filled with tasks, but no one's task_race_countdown was at zero
+			// <<< description no more valid: // when here: the whole table is filled with tasks, but no one's task_race_countdown was at zero
 			
-			no_zero_countdown:
+			// no_zero_countdown:
 			
 			// when here: reached end of (maybe empty, maybe max-sized) task section, but no task_race_countdown was zero
 			
-			if (section_empty){
+			if (min_entry_index == TABLE_SIZE){ // section has no enabled task <==> is empty
 				 flags.set_true(EMPTY_TABLE_DETECTED);
 				 goto central_control_loop; // the task section is empty at the moment, run scheduler from begin.
 			}
@@ -286,17 +301,14 @@ bool scheduler2<TABLE_SIZE>::run()
 			
 			/** subtract minimum task_race_countdown from all count_downs in task section and let the min-countdown task be executed afterwards **/
 			for (choice = TABLE_SIZE - 1; (table[choice].flags.get(IS_VALID) == true) && (table[choice].flags.get(IS_TIMER) == false) && (choice < TABLE_SIZE); --choice){			
-			/*	if ((table[choice].flags.get(IS_VALID) == false) || (table[choice].flags.get(IS_TIMER) == true) || (choice >= TABLE_SIZE)){
-					// reached end of task section in table
-					// execute the min entry that we found one loop before:
-					goto task_execute;
-				}
-			*/ // << replaced by new loop condition
 				if (table[choice].flags.get(IS_ENABLED)){
 					table[choice].specifics.task().task_race_countdown -= static_cast<uint8_t>(min_entry_race_countdown);
 				}
 			}
+			// <<< this loop can be merged with the previous loop, head of loop is the same, also first condition in body.
 			choice = min_entry_index;
+			
+			task_execute:
 			table[choice].specifics.task().task_race_countdown = table[choice].specifics.task().urgency;
 			// goto execute; // implicitly done
 		} /*** end of looking for task to be executed ***/
@@ -333,7 +345,18 @@ bool scheduler2<TABLE_SIZE>::run()
 		flags.set_false(IS_RUNNING); // delete running flag
 		flags.set_false(TABLE_LOCKED); // table unlocked
 	}
+	return exit_code;
+	
+	// reasons of breaking scheduling:
 	/*
+		0: table got empty
+		1: stop was called
+		
+		3.???? not all requirements for starting were fulfilled
+	*/
+	
+	
+		/*
 	task selection {
 	TIDY_UP_STRATEGY
 	go through all task until you find one with 0 racing, replace 0 racing by reset value and choose this task goto execute.
@@ -356,18 +379,85 @@ bool scheduler2<TABLE_SIZE>::run()
 	
 	// just implement one strategy and later implement the others and make it possible to choose by conditioned compiling.
 	}
-	
-	*/
-	return exit_code;
-	// reasons of breaking scheduling:
-	/*
-		0: table got empty
-		1: stop was called
-		
-		3.???? not all requirements for starting were fulfilled
 	*/
 }
 
+template <uint8_t TABLE_SIZE>
+typename scheduler2<TABLE_SIZE>::SchedulerHandle scheduler2<TABLE_SIZE>::new_task(uint8_t urgency /*= STANDARD_URGENCY*/, concepts::Callable* callable /*= nullptr*/, concepts::void_function function /*= nullptr*/, bool enable /*= true*/)
+{
+	macro_interrupt_critical(
+	if (flags.get(TABLE_LOCKED)) return NO_HANDLE;
+	flags.set_true(TABLE_LOCKED);
+	)
+	// search for invalid entry to replace.
+	uint8_t index;
+	for(index = TABLE_SIZE -1; (index < TABLE_SIZE); --index){
+		if (table[index].flags.get(IS_VALID) == false) goto found_invalid_entry;
+	}
+	flags.set_false(TABLE_LOCKED);
+	return NO_HANDLE;
+	
+	found_invalid_entry:
+	
+	uint8_t free_index{ index };
+	SchedulerHandle free_handle{ NO_HANDLE };
+	
+	// search for free handle
+	SchedulerHandle candidates[2] = {index, table[index].handle};
+	// prefer handle == index in table.... index may grow up during handler life, when task with greater index is deleted
+	// second idea: handle = handle of last entry that was written here.
+	uint8_t check_until_index[2] = {index, index};
+	
+	index = (index + 1) % TABLE_SIZE;
+	while (true){
+		if (table[index].flags.get(IS_VALID)) // check whether a handle candidate is forbidden by this line
+		for(uint8_t i = 0; i < 2; ++i)
+		if (table[index].handle == candidates[i]){ // candidate is not free
+			if (i == 0){ // use different update strategies for candidates:
+				candidates[i] = mod_minus_one(candidates[i]);
+				} else {
+				candidates[i] = index;
+			}
+			check_until_index[i] = mod_minus_one(index);
+		}
+		for(uint8_t i = 0; i < 2; ++i){
+			if (check_until_index[i] == index){
+				// this candidate is a free handle
+				free_handle = candidates[i];
+				goto found_free_handle;
+			}
+		}
+		index = (index + 1) % TABLE_SIZE;
+	}
+	/// <<<< this is much work to find free handlers, think about allowing to put all entries unordered into the table.
+	// <<<<<< then we can always use the indices as handlers, -> we need less memory for the table (1 byte per line)
+	// <<<<<< furthermore finding free handlers will become much easier and faster
+	// <<<<<< searching in method run() will last a little bit longer, I think,
+	
+	found_free_handle:
+	// some flags:
+	table[free_index].flags.set_true(IS_VALID);
+	table[free_index].flags.set_false(IS_TIMER);
+	table[free_index].flags.set_false(IS_ENABLED);
+	if (enable) table[free_index].flags.set_true(IS_ENABLED);
+	// handle:
+	table[free_index].handle = free_handle;
+	// callback and callback flag:
+	if (callable == nullptr){
+		table[free_index].callback.set_function_ptr(function);
+		table[free_index].flags.set_false(IS_CALLABLE);
+		} else {
+		table[free_index].callback.set_callable_ptr(callable);
+		table[free_index].flags.set_true(IS_CALLABLE);
+	}
+	// task specific information: task urgency and countdown:
+	table[free_index].specifics.task().urgency = urgency;
+	table[free_index].specifics.task().task_race_countdown = 0;
+	
+	flags.set_false(TABLE_LOCKED);
+	return free_handle;
+
+}
 
 
 #endif //__SCH2_H__
