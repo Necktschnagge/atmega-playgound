@@ -202,7 +202,7 @@ namespace analyzer {
 	/* public methods */
 	
 			/* enter a new measured value */
-			/* returns the Channel {0, ... ,channels-1} which matched,
+			/* returns the Channel {0, ... ,channels-1} which matched,  // @ before reordering
 			   returns NO_CHANNEL if no channel matched and creates a new channel */
 		uint8_t input(const Metric& value);
 		
