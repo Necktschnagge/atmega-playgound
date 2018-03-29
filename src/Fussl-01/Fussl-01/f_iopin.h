@@ -122,7 +122,7 @@ namespace hardware {
 			// return;
 			//throw false;
 		}
-		# remove all throws in the entire solution
+
 		inline DD read_DD() const {
 			//if (pin_id == NO_IOPIN_ID) throw *this;
 			
@@ -141,7 +141,7 @@ namespace hardware {
 		}
 		
 		inline void write_PORT(bool value) const {
-			if (pin_id == NO_IOPIN_ID) throw *this;
+			// if (pin_id == NO_IOPIN_ID) throw *this; // just return
 			
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (value){
@@ -161,11 +161,11 @@ namespace hardware {
 				if (pin_id < 48) { PORTF &= ~pin_select; return; }
 				if (pin_id < 56) { PORTG &= ~pin_select; return; }
 			}
-			throw false;
+			// throw false; just return
 		}
 		
 		inline bool read_PORT() const {
-			if (pin_id == NO_IOPIN_ID) throw *this;
+			// if (pin_id == NO_IOPIN_ID) return true; //throw *this;
 			
 			const uint8_t pin_select = (static_cast<uint8_t>(1) << (pin_id % 8));
 			if (pin_id < 8)  return static_cast<bool>(PORTA & pin_select);
@@ -178,7 +178,8 @@ namespace hardware {
 			
 			/* this region should never be reached */
 			// return false; // virtual false on error
-			throw false;
+			// throw false;
+			return true;
 		}
 		
 		/* GPIO Accessors and Manipulators: more high level */
