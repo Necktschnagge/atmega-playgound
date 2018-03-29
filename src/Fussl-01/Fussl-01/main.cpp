@@ -256,7 +256,7 @@ void arch_prototype_release_blink_up_and_l_to_r() {
 	}
 }
 void testing_CMI_Interpreter_with_one_HCSR04_sensor(){
-#ifdef false // test for the old version of cmi - the one with hardcoded 5% delta
+#if false // test for the old version of cmi - the one with hardcoded 5% delta
 
 	/* no return */
 	
@@ -285,7 +285,7 @@ void testing_CMI_Interpreter_with_one_HCSR04_sensor(){
 }
 
 void test_cmr(){
-#ifdef false // old cmi version
+#if false // old cmi version
 		init_sr();
 		
 		sensor::Kanalysator<int32_t,4>::Configuration config;
