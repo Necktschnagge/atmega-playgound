@@ -144,6 +144,7 @@ namespace analyzer {
 				/* tells cmi the allowed delta to the average for which new values are accepted and accumulated to existing channels */
 				/* this function must be overridden by an inheriting class */
 				/* if you prefer const, and from value independent delta, you can use predefined ConstDeltaConfiguration */
+				/* you must care about overflows: max_measured_value + delta must not overflow in your chosen type Metric */
 			virtual const Metric& delta(const Metric& value) = 0;
 		};
 			
@@ -154,6 +155,8 @@ namespace analyzer {
 			Metric _delta;
 		public:
 			inline ConstDeltaConfiguration(const Metric& const_delta) : _delta(const_delta) {}
+			/* you must care about overflows: max_measured_value + delta must not overflow in your chosen type Metric */
+
 			inline void set_delta(const Metric& new_delta){	_delta = new_delta;	}
 			inline const Metric& get_delta() {	return _delta;	}
 			const Metric& delta(const Metric&) override { return _delta; }
@@ -247,7 +250,8 @@ namespace analyzer {
 	template<class Metric, uint8_t channels>
 	inline bool ChannellingMeasurementInterpreter<Metric,channels>::Channel::accumulate(const Metric& value, Configuration* config){
 		if (_badness == 255) return false; // channel invalid
-		if ((value < _average - config->delta(_average))  || (value > _average + config->delta(_average))){
+		if ((config->delta(_average) + value) < _average)  || (value > _average + config->delta(_average))){
+				// think about overflows here again!!! <<<<<<
 				// no match:
 			inc_badness();
 			return false;
@@ -270,12 +274,9 @@ namespace analyzer {
 	
 	template<class Metric, uint8_t channels>
 	inline void ChannellingMeasurementInterpreter<Metric,channels>::smart_sort(uint8_t channel){
-		again_smart_sort:
-		if (channel == 0) return;
-		if (_ch[channel] < _ch[channel-1]){
+		while ((channel != 0) && (_ch[channel] < _ch[channel-1])){
 			swap_with_previous(channel);
 			--channel;
-			goto again_smart_sort;
 		}
 	}
 	

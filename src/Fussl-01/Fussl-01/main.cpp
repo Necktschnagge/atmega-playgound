@@ -16,7 +16,7 @@
 #include "display_server.h"
 
 #include "f_iopin.h"
-
+#include "sch2.h"
 
 void guiBootScreen(){
 	hardware::delay(10);	
@@ -361,9 +361,9 @@ void test_cmr(){
 #endif
 }
 
-
-
 int main(void){
+	//scheduler2<10> object;
+	//scheduler2<10>::interrupt_handler();
 	
 	led::init(8);
 	guiBootScreen();

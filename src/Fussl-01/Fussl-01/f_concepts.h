@@ -46,6 +46,13 @@ namespace concepts {
 			memory &= ~(1 << bit);
 		}
 		
+		inline void set(flag_id bit, bool value){
+			if (value){
+				set_true(bit);
+			} else {
+				set_false(bit);
+			}
+		}
 	};
 	
 	
