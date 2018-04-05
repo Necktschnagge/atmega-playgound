@@ -79,6 +79,8 @@ class scheduler2 {
 	static_assert(sizeof(UnionSpecifics) == 2, "UnionSpecifics has not the appropriate size.");
 	static_assert(sizeof(concepts::Flags) == 1, "concepts::Flags has not the appropriate size.");
 	
+	
+	// earliest int timer time separat speichern, damit das schneller gehtr
 	struct SchedulerMemoryLine {
 		SchedulerHandle handle; // 1
 		UnionCallback callback; // 2
@@ -251,7 +253,7 @@ class scheduler2 {
 	}
 	
 	SchedulerHandle new_timer(const time::ExtendedMetricTime& time, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
-
+		//#### go one here and with function new table line
 		// check whether we can modify table:
 		macro_interrupt_critical(
 		if (flags.get(TABLE_LOCKED)) return NO_HANDLE;
