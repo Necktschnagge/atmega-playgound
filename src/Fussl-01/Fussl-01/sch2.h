@@ -20,14 +20,23 @@
 
 template <uint8_t TABLE_SIZE>
 class scheduler2 {
+	
 	public:
+	
+	/*** public types ***/
+	
 	using SchedulerHandle = range_int<uint8_t,TABLE_SIZE,true,true>;
+	
+	/*** public constexpr constants ***/
 	
 	static constexpr SchedulerHandle NO_HANDLE{ SchedulerHandle::OUT_OF_RANGE };
 	
 	static constexpr uint8_t STANDARD_URGENCY{ 50 };
 	
 	private:
+	
+	/*** private types ***/
+	
 	class UnionCallback {
 		private:
 		union InternUnion {
@@ -49,6 +58,8 @@ class scheduler2 {
 		uint8_t task_race_countdown;
 		// always the task with the smallest task_race_countdown will be executed. If this is ambigious one of them will be executed.
 		// after a task is executed task_race_countdown will be increased by urgency_inverse.
+		// at least when a task_race_countdown is right before overflow, all task_race_countdowns are rebased together,
+		// to do so, determine the min task_race_coiuntdown and substract this from all task_race_countdowns
 	};
 
 	struct TimerSpecifics {
@@ -67,13 +78,6 @@ class scheduler2 {
 		TimerSpecifics& timer() { return _union.timer; }
 	};
 	
-	/* flags for each scheduler line */
-	static constexpr concepts::Flags::flag_id IS_VALID{ 0 };
-	static constexpr concepts::Flags::flag_id IS_ENABLED{ 1 };
-	static constexpr concepts::Flags::flag_id IS_TIMER{ 2 };
-	static constexpr concepts::Flags::flag_id IS_INTTIMER{ 3 };
-	static constexpr concepts::Flags::flag_id IS_CALLABLE{ 4 };
-
 	static_assert(sizeof(SchedulerHandle) == 1, "SchedulerHandle has not the appropriate size.");
 	static_assert(sizeof(UnionCallback) == 2, "UnionCallback has not the appropriate size.");
 	static_assert(sizeof(UnionSpecifics) == 2, "UnionSpecifics has not the appropriate size.");
@@ -88,36 +92,48 @@ class scheduler2 {
 		concepts::Flags flags; // 1
 	};
 	
-	concepts::Flags flags;
-	static constexpr concepts::Flags::flag_id IS_RUNNING{ 0 }; // true iff run() runs
+	static_assert(sizeof(SchedulerMemoryLine) == 6, "SchedulerMemoryLine has not the appropriate size.");
+	
+	/*** private constexpr constants ***/
+	
+	/* flags for each scheduler line */
+	static constexpr concepts::Flags::flag_id IS_VALID{ 0 }; // if an entry is not valid, the entry may be overwritten.
+	static constexpr concepts::Flags::flag_id IS_ENABLED{ 1 }; // if an entry is valid, then the entry will be considered on scheduling decisions iff is_enabled
+	// timer will automatically be disabled right before executing, if you want the timer to execute again after a certain time, you have to reenable from inside the timer procedure
+	static constexpr concepts::Flags::flag_id IS_TIMER{ 2 }; // if entry is valid, then entry (containing unions) is treated as a timer iff IS_Timer and as task otherwise.
+	static constexpr concepts::Flags::flag_id IS_INTTIMER{ 3 }; // if entry is_valid and is_timer, then callback may be executed as soon as event_time is reached on system time interrupt iff IS_INTTIMER. Otherwise is has to wait until the current task/timer returned.
+	static constexpr concepts::Flags::flag_id IS_CALLABLE{ 4 }; // if entry is_valid, the callback union will be treated as a callable iff IS_CALLABLE, otherwise as function pointer.
+
+	/* flags once for every scheduler object */
+	static constexpr concepts::Flags::flag_id IS_RUNNING{ 0 }; // true iff run() runs // write access only by run()
 	static constexpr concepts::Flags::flag_id STOP_CALLED{ 1 }; // if true, run() should return when current task returns.
 	// if it is true no int timers will be executed anymore until scheduler was started again.
-	static constexpr concepts::Flags::flag_id TABLE_LOCKED{ 2 }; // if scheduler is accessing scheduling table, it must not be modified by interrupt timers
+	static constexpr concepts::Flags::flag_id TABLE_LOCKED{ 2 }; // if scheduler is accessing scheduling table, it must not be modified by interrupt timers, modifying only allowed if you own TABLE_LOCKED.
 	static constexpr concepts::Flags::flag_id EMPTY_TABLE_DETECTED{ 3 }; // for function-local internal use in run() only.
 	static constexpr concepts::Flags::flag_id SOFTWARE_INTERRUPTS_ENABLE{ 4 }; // scheduler will only look for int timers at now time update if enabled
-
 	
-	/* private data */
+	/*** private data ***/
 	
-	/* table layout definition:
-
-	begin
-	interrupting timers
-	[no gap]
-	noninterrupting timers
-	[maybe gap]
-	tasks
-	[no gap]
-	end
-
+	/* the scheduler object's flags */	
+	concepts::Flags flags;
+	
+	
+	/* table containing all timers and tasks
+	table layout definition:
+		0				:	interrupting timers [no gap]	:	VALID
+						:	non-interrupting timers			:	VALID
+						:	[maybe gap]						:  INVALID
+						:	tasks [no gap]					:	VALID
+		TABLE_SIZE		:
+	
+	An entry is gap iff it is INVALID. An entry, that is VALID but DISABLED, is not gap and has to be inside its section.
 	*/
-	
-	/*
-	an entry is gap, when it is INVALID.
-	an entry that is VALID but DISABLED, is not gap and has to be inside its section.
-	
-	*/
-	SchedulerMemoryLine table[TABLE_SIZE]; // the timer and task table
+	SchedulerMemoryLine table[TABLE_SIZE];
+
+
+	/************************************************************************/
+	/* go one here with restructuring this header!!!                                                                     */
+	/************************************************************************/
 
 	uint8_t hardware_watchdog_timeout; // value for hardware watchdog // must be greater than the time betweeen two now time updates.
 
@@ -128,10 +144,10 @@ class scheduler2 {
 	uint32_t software_watchdog_reset_value; // watchdog_countdown_value is reset to this value every time a timer or task procedure returns
 	// contains indirectly a time distance, which stands for the time the software watchdog has to wait before rebooting
 	
-	// scheduler::SysTime& system_time; not needed because there is a static get_instance() in f_systime.h
-	
 	/*** private methods ***/
 	
+	/* executes callback of given table index. (callback will automatically be checked for nullptr, in this case nothing will be done)
+	*/
 	inline void execute_callback(uint8_t table_index){
 		if (table[table_index].flags.get(IS_CALLABLE)){
 			table[table_index].callback.call_callable();
@@ -140,20 +156,23 @@ class scheduler2 {
 		}
 	}
 	
+	/* goes through all (valid) int timer entries and executes the callback if execution_time was reached and entry is enabled.
+	   executes only the first entry (i.e. the one with the lowest table index) and sets its is_enable to false */
 	inline void execute_interrupting_timers(){
 		time::ExtendedMetricTime now = scheduler::SysTime::get_instance()(); // = system_time() // .get_now_time();
 		for(uint8_t index = 0; (index < TABLE_SIZE); ++index){ // check at all other positions where we have merged the loop condition, that we do not access before checking out of range like in next line: #####
 			if ((table[index].flags.get(IS_VALID) == false) || (table[index].flags.get(IS_TIMER) == false) || (table[index].flags.get(IS_INTTIMER) == false))
-			break; // we reached the end of the interrupting timer section.
-			if (table[index].flags.get(IS_VALID) && (now >=  *table[index].specifics.timer().event_time)){
+				break; // we reached the end of the interrupting timer section.
+			if (table[index].flags.get(IS_ENABLED) && (now >=  *table[index].specifics.timer().event_time)){
 				table[index].flags.set_false(IS_ENABLED);
 				return execute_callback(index);
 			}
 		}
 	}
 
+	/* */
 	inline void non_static_interrupt_handler(){
-		if ((software_watchdog_reset_value == 0) || (software_watchdog_countdown_value > 0)) {
+		if ((software_watchdog_reset_value == 0) /*software watchdog disabled*/ || (software_watchdog_countdown_value > 0) /*software watchdog not exceeded*/) {
 			--software_watchdog_countdown_value;
 			wdt_reset();
 			// replace hd watchdog calls in run() by calls to software watchdog. ####
@@ -163,19 +182,37 @@ class scheduler2 {
 	
 	public:
 	
-	static scheduler2<TABLE_SIZE>* instance; /// here is a big problem: our class is template. // someone (interrupt by now time update) cannot know which function to call
+	
+	
+		/* executed all stuff that should be done on now_time update, including hardware watchdog reset, inttimer execution.
+	   sould be called on every update of the now time */
+	// read explanation at "instance" for more troubleshooting
+	/*static void interrupt_handler(){
+		instance->non_static_interrupt_handler();
+	}*/
+	// called by SysTime, every time an TC Compare Match Interrupt occurs
+	// check for interrupting functions in schedule table
+	inline void time_update_interrupt_handler(){ return non_static_interrupt_handler(); }
+	
+	//static scheduler2<TABLE_SIZE>* instance; /// here is a big problem: our class is template. // someone (interrupt by now time update) cannot know which function to call
 	// should be no problem if behaviour is like: each template instanciation has its own static instance pointer.
+	// this is the case that every tempolate instanciation has its own static member, you have to extern define these members, otherwise linkage errors will come up.
+	// user has to write an own function that is called by systime now update and only propergates i.e. calls MY_SCHEDULER::interrupt handler(); where 
+	// MY_SCHEDULER has to be defined with using ~ = scheduler2<20>; or similar
 	
+	// i think it is better to do not have this static member. user must provide one self-written function as callback handler which calls instance->time_update_interrupt_handler()
 	
-	static constexpr uint8_t table_line_size(){ return sizeof(SchedulerMemoryLine); }
+	/* returns size in bytes of one SchedulerMemoryLine */
+	static constexpr uint8_t table_line_size_of(){ return sizeof(SchedulerMemoryLine); }
+	/* returns size in bytes of the whole scheduler table */
+	static constexpr uint16_t table_size_of(){ return sizeof(SchedulerMemoryLine)*TABLE_SIZE; }
 
-
-	
+	// a time for software watchdog time is required on initialization. but if you don't want a watchdog/ you want to deactivate watchdog, just set it to 0 (NO_WATCHDOG).	
 	static constexpr time::ExtendedMetricTime NO_WATCHDOG_EMT{0};
-	// a time for watchdog is required on initialization. but if you don't want a watchdog,
-	// just set it to 0 (NO_WATCHDOG).
+	//### provide functions to update software watchdog reset time
 	
-	static constexpr int32_t NO_WATCHDOG_COUNTER_FORMAT{0}; // calc by a constexpr function for time-wtchdog -> counter-watchdog
+	static constexpr int32_t NO_WATCHDOG_COUNTER_FORMAT{0}; // calc by a constexpr function for time-wtchdog -> counter-watchdog#######
+		///#### what is this
 
 	void set_watchdog(const time::ExtendedMetricTime& watchdog){ /*scheduler::watchdog = 0; watchdog; (zeit pro systime tick ) */ }
 	
@@ -197,12 +234,7 @@ class scheduler2 {
 	deactivate hardware watchdog
 	
 	*/
-	//template <uint8_t TABLE_SIZEP>
-	static void interrupt_handler(){
-		/*scheduler2<TABLE_SIZEP>::*/ instance->non_static_interrupt_handler();
-	}
-	// called by SysTime, every time an TC Compare Match Interrupt occurs
-	// check for interrupting functions in schedule table
+	
 	
 	
 	// central control loop. called after init and provides the tasks
@@ -211,6 +243,7 @@ class scheduler2 {
 	/* make scheduler return after current executed task / timer */
 	inline void stop(){
 		flags.set_true(STOP_CALLED);
+		// after all: #### every flags access is interrupt critical, bacause of non-atomic instructions.d
 	}
 	
 	// <<< think about behaviour of deleting timer entries after they were executed
@@ -227,29 +260,96 @@ class scheduler2 {
 	
 	SchedulerHandle new_task(uint8_t urgency = STANDARD_URGENCY, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool enable = true);
 	
+	
+	inline bool is_table_locked(){ return flags.get(TABLE_LOCKED); }
+	
+	
+	/*inline bool is_table_full(){ return true; } */
+	
 	/* prepares an unused (= IS_INVALID) line to add a new task or timer there */
-	/* returns TABLE_SIZE if the table is either locked or full */
-	uint8_t new_table_line(bool highest_index /* true for any timer type, false for any task */, bool is_interrupting /* irrelevant for any task*/){
-		bool& allocate_task{ highest_index };
+	/* returns TABLE_SIZE if the table is either locked or full. In this case the table is not changed */
+	/* you can determine whether "table locked" was a reason of abortion by checking this->flags.get(TABLE_LOCKED) */
+	/* otherwise returns the index of the line which was prepared.
+	   The prepared line comes with a free handle stored inside this line. */
+	uint8_t new_table_line(bool is_task /* true for any timer type, false for any task */, bool is_interrupting /* irrelevant for any task*/){
 		// check whether we can modify table:
 		macro_interrupt_critical(
 		if (flags.get(TABLE_LOCKED)) return TABLE_SIZE; //NO_HANDLE;
 		flags.set_true(TABLE_LOCKED);
 		);
+		/*@when here: table was not locked before, we can access the table, we have locked the table ourself. */
 		
-		// search for invalid entry to replace.
+		/* search for invalid entry to replace: */
 		uint8_t index;
 		// we look from max index to min when we want to add a new task, because of table layout [int timer, timer, gaps, tasks]
 		// we look from min index to max when we want to add a new timer, because of table layout.
-		// if we want to create an interrupting timer we need to swap position with first non_int timer.
-		//for(index = TABLE_SIZE -1; (index < TABLE_SIZE); --index){
-		for(index = highest_index * (TABLE_SIZE -1); (index < TABLE_SIZE); highest_index ? --index :++index){
+		for(index = static_cast<uint8_t>(is_task) * (TABLE_SIZE -1); (index < TABLE_SIZE); is_task ? --index : ++index){
 			if (table[index].flags.get(IS_VALID) == false) goto found_invalid_entry;
 		}
+		/*@when here: despite we have rights to modify the table, we cannnot because it is already full */
 		flags.set_false(TABLE_LOCKED);
-		return NO_HANDLE;
+		return TABLE_SIZE;
+		
+		found_invalid_entry:
+		uint8_t free_index{ index };
+		/*@when here: The table has a free line, we store that index as free_index */
+		SchedulerHandle free_handle{ NO_HANDLE };
 
+		// if we want to create an interrupting timer we need to swap position with first non_int timer.
+		
+		// search for free handle // there must be a free handle since there is at least one free line in the table
+		SchedulerHandle candidates[2] = {index, table[index].handle};
+		// prefer handle == index in table.... index may grow up during handler life, when task with greater index is deleted
+		// second idea: handle = handle of last entry that was written here. // because this handle is possibly free
+		uint8_t check_until_index[2] = {index, index};
+		
+		index = (index + 1) % TABLE_SIZE;
+		while (true){
+			if (table[index].flags.get(IS_VALID)) // if current line is valid, current line's handle must not be a candidate handle.
+				for(uint8_t i = 0; i < 2; ++i)
+					if (table[index].handle == candidates[i]){ // candidate is already used at currrent index
+						if (i == 0){ // use different update strategies for candidates:
+								// idea: go through all possible handles by moving --
+							candidates[i] = minus_one_mod_table_size(candidates[i]);
+						} else {
+								// idea: if we wanted an handle that equals it's entry's index but we found this forbidder here, try the forbidders index
+							candidates[i] = index;
+						}
+						check_until_index[i] = minus_one_mod_table_size(index);
+					}
+					for(uint8_t i = 0; i < 2; ++i){
+						if (check_until_index[i] == index){
+							// this candidate is a free handle
+							free_handle = candidates[i];
+							goto found_free_handle;
+						}
+					}
+			index = (index + 1) % TABLE_SIZE;
+		}
+		
+		found_free_handle:
 
+		/// <<<< this is much work to find free handlers, think about allowing to put all entries unordered into the table.
+		// <<<<<< then we can always use the indices as handlers, -> we need less memory for the table (1 byte per line)
+		// <<<<<< furthermore finding free handlers will become much easier and faster
+		// <<<<<< searching in method run() will last a little bit longer, I think,
+		
+		if ((!is_task) && (is_interrupting)){ // we need to swap a new int timer line to the section of int timers!
+			if (free_index == 0){
+				// we are already in the right section, do nothing
+			} else {
+				// we are not on top of the array. check whether predecessors are non-int timers.
+				for(index = free_index; true; --index ){ // check about a swap of index and free_index
+					if ((index == 0) || (table[index-1].flags.get(IS_INTTIMER))) break; // swap with current index
+				}
+				// we need to swap:
+				// move from index to free_index
+				table[free_index] = table[index];
+				free_index = index;
+			}
+		}
+		table[free_index].handle = free_handle;
+		return free_index;	
 	}
 	
 	SchedulerHandle new_timer(const time::ExtendedMetricTime& time, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
@@ -307,6 +407,7 @@ class scheduler2 {
 		// <<<<<< then we can always use the indices as handlers, -> we need less memory for the table (1 byte per line)
 		// <<<<<< furthermore finding free handlers will become much easier and faster
 		// <<<<<< searching in method run() will last a little bit longer, I think,
+		uint8_t free_index_2 = new_table_line(false,is_interrupting);
 		
 		found_free_handle:
 		// some flags:
