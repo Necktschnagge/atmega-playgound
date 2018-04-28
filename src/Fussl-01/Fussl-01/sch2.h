@@ -112,7 +112,7 @@ class scheduler2 {
 	
 	/*
 	an entry is gap, when it is INVALID.
-	an entry that is VALID but DISABLED, is not gap and has to be inside its section.
+	an entry, that is VALID but DISABLED, is not gap and has to be inside its section.
 	
 	*/
 	SchedulerMemoryLine table[TABLE_SIZE]; // the timer and task table
@@ -225,29 +225,96 @@ class scheduler2 {
 	
 	SchedulerHandle new_task(uint8_t urgency = STANDARD_URGENCY, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool enable = true);
 	
+	
+	inline bool is_table_locked(){ return flags.get(TABLE_LOCKED); }
+	
+	
+	/*inline bool is_table_full(){ return true; } */
+	
 	/* prepares an unused (= IS_INVALID) line to add a new task or timer there */
-	/* returns TABLE_SIZE if the table is either locked or full */
-	uint8_t new_table_line(bool highest_index /* true for any timer type, false for any task */, bool is_interrupting /* irrelevant for any task*/){
-		bool& allocate_task{ highest_index };
+	/* returns TABLE_SIZE if the table is either locked or full. In this case the table is not changed */
+	/* you can determine whether "table locked" was a reason of abortion by checking this->flags.get(TABLE_LOCKED) */
+	/* otherwise returns the index of the line which was prepared.
+	   The prepared line comes with a free handle stored inside this line. */
+	uint8_t new_table_line(bool is_task /* true for any timer type, false for any task */, bool is_interrupting /* irrelevant for any task*/){
 		// check whether we can modify table:
 		macro_interrupt_critical(
 		if (flags.get(TABLE_LOCKED)) return TABLE_SIZE; //NO_HANDLE;
 		flags.set_true(TABLE_LOCKED);
 		);
+		/*@when here: table was not locked before, we can access the table, we have locked the table ourself. */
 		
-		// search for invalid entry to replace.
+		/* search for invalid entry to replace: */
 		uint8_t index;
 		// we look from max index to min when we want to add a new task, because of table layout [int timer, timer, gaps, tasks]
 		// we look from min index to max when we want to add a new timer, because of table layout.
-		// if we want to create an interrupting timer we need to swap position with first non_int timer.
-		//for(index = TABLE_SIZE -1; (index < TABLE_SIZE); --index){
-		for(index = highest_index * (TABLE_SIZE -1); (index < TABLE_SIZE); highest_index ? --index :++index){
+		for(index = static_cast<uint8_t>(is_task) * (TABLE_SIZE -1); (index < TABLE_SIZE); is_task ? --index : ++index){
 			if (table[index].flags.get(IS_VALID) == false) goto found_invalid_entry;
 		}
+		/*@when here: despite we have rights to modify the table, we cannnot because it is already full */
 		flags.set_false(TABLE_LOCKED);
-		return NO_HANDLE;
+		return TABLE_SIZE;
+		
+		found_invalid_entry:
+		uint8_t free_index{ index };
+		/*@when here: The table has a free line, we store that index as free_index */
+		SchedulerHandle free_handle{ NO_HANDLE };
 
+		// if we want to create an interrupting timer we need to swap position with first non_int timer.
+		
+		// search for free handle // there must be a free handle since there is at least one free line in the table
+		SchedulerHandle candidates[2] = {index, table[index].handle};
+		// prefer handle == index in table.... index may grow up during handler life, when task with greater index is deleted
+		// second idea: handle = handle of last entry that was written here. // because this handle is possibly free
+		uint8_t check_until_index[2] = {index, index};
+		
+		index = (index + 1) % TABLE_SIZE;
+		while (true){
+			if (table[index].flags.get(IS_VALID)) // if current line is valid, current line's handle must not be a candidate handle.
+				for(uint8_t i = 0; i < 2; ++i)
+					if (table[index].handle == candidates[i]){ // candidate is already used at currrent index
+						if (i == 0){ // use different update strategies for candidates:
+								// idea: go through all possible handles by moving --
+							candidates[i] = minus_one_mod_table_size(candidates[i]);
+						} else {
+								// idea: if we wanted an handle that equals it's entry's index but we found this forbidder here, try the forbidders index
+							candidates[i] = index;
+						}
+						check_until_index[i] = minus_one_mod_table_size(index);
+					}
+					for(uint8_t i = 0; i < 2; ++i){
+						if (check_until_index[i] == index){
+							// this candidate is a free handle
+							free_handle = candidates[i];
+							goto found_free_handle;
+						}
+					}
+			index = (index + 1) % TABLE_SIZE;
+		}
+		
+		found_free_handle:
 
+		/// <<<< this is much work to find free handlers, think about allowing to put all entries unordered into the table.
+		// <<<<<< then we can always use the indices as handlers, -> we need less memory for the table (1 byte per line)
+		// <<<<<< furthermore finding free handlers will become much easier and faster
+		// <<<<<< searching in method run() will last a little bit longer, I think,
+		
+		if ((!is_task) && (is_interrupting)){ // we need to swap a new int timer line to the section of int timers!
+			if (free_index == 0){
+				// we are already in the right section, do nothing
+			} else {
+				// we are not on top of the array. check whether predecessors are non-int timers.
+				for(index = free_index; true; --index ){ // check about a swap of index and free_index
+					if ((index == 0) || (table[index-1].flags.get(IS_INTTIMER))) break; // swap with current index
+				}
+				// we need to swap:
+				// move from index to free_index
+				table[free_index] = table[index];
+				free_index = index;
+			}
+		}
+		table[free_index].handle = free_handle;
+		return free_index;	
 	}
 	
 	SchedulerHandle new_timer(const time::ExtendedMetricTime& time, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
@@ -305,6 +372,7 @@ class scheduler2 {
 		// <<<<<< then we can always use the indices as handlers, -> we need less memory for the table (1 byte per line)
 		// <<<<<< furthermore finding free handlers will become much easier and faster
 		// <<<<<< searching in method run() will last a little bit longer, I think,
+		uint8_t free_index_2 = new_table_line(false,is_interrupting);
 		
 		found_free_handle:
 		// some flags:
