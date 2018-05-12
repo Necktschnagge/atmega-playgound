@@ -12,8 +12,10 @@
 #include "f_systime.h" // corresponding header
 
 namespace {
-	inline auto get_cmv() -> decltype(scheduler::SysTime::get_instance().get_compare_match_value_only_call_by_IRS())
-	{	return scheduler::SysTime::get_instance().get_compare_match_value_only_call_by_IRS();	}
+		/* get the next compare match value for timer1 */
+		/* justify: here is this function since it is used twice. */
+	inline auto get_cmv() -> decltype(scheduler::SysTime::get_instance().get_compare_match_value_only_call_by_ISR())
+	{	return scheduler::SysTime::get_instance().get_compare_match_value_only_call_by_ISR();	}
 		
 	inline constexpr long double to_precision(uint8_t log_precision){
 		return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision);
@@ -29,6 +31,9 @@ ISR (TIMER1_COMPA_vect){
 	// a problem would be if the calculation of the new compare match is not ready until the next osc rising edge
 	// ##detect this. ### because gcmv needs heavy floting point division
 	
+	// the bigger problem is the time consumed by now_update_interrupt_handler!#####
+	// it might be possible to auto-detect if this happens. 
+	
 	++scheduler::SysTime::get_instance();
 	
 	if (scheduler::SysTime::get_instance().now_update_interrupt_handler != nullptr) scheduler::SysTime::get_instance().now_update_interrupt_handler();
@@ -36,7 +41,7 @@ ISR (TIMER1_COMPA_vect){
 
 namespace scheduler {
 
-	SysTime* SysTime::p_instance {nullptr};
+	SysTime* volatile SysTime::p_instance {nullptr};
 		
 	uint8_t SysTime::anti_racing_factor {4}; // <<<< this factor should be measured, it should be püossible to change this value.
 		// it should have an std value like here, but the os programmer might want to change it.
@@ -113,7 +118,7 @@ namespace scheduler {
 		log_precision = this->log_precision;
 	}
 
-	uint16_t SysTime::get_compare_match_value_only_call_by_IRS(){
+	uint16_t SysTime::get_compare_match_value_only_call_by_ISR(){
 		if (log_precision == INVALID_log_precision){
 			pause();
 			return 0xFFFF;
@@ -139,7 +144,7 @@ history:
 
 concept:
 
-there are 3 main entities to deal with:
+there are 3 main entitieas to deal with:
 	osc_freq:
 		Frequency of the oscillator.
 		Unit: Hz

@@ -250,7 +250,7 @@ namespace analyzer {
 	template<class Metric, uint8_t channels>
 	inline bool ChannellingMeasurementInterpreter<Metric,channels>::Channel::accumulate(const Metric& value, Configuration* config){
 		if (_badness == 255) return false; // channel invalid
-		if ((config->delta(_average) + value) < _average)  || (value > _average + config->delta(_average))){
+		if (((config->delta(_average) + value) < _average)  || (value > _average + config->delta(_average))){
 				// think about overflows here again!!! <<<<<<
 				// no match:
 			inc_badness();
