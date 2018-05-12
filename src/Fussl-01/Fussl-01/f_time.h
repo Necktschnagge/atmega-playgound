@@ -270,6 +270,8 @@ namespace time {
 
 	public:
 		/* assignment operators */
+		inline ExtendedMetricTime& operator = (const ExtendedMetricTime& rop) { value = rop.value; return *this; }
+		inline void operator = (const ExtendedMetricTime& rop) volatile { value = rop.value; }
 		inline ExtendedMetricTime& operator = (const int64_t& rop) { value = rop; return *this; }
 		inline ExtendedMetricTime& operator = (const HumanTime& time);
 
