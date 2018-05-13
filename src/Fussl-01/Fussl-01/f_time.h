@@ -14,6 +14,8 @@
 	all time stuff has also been put in an extra namespace (after everything was written). 
 	(This destroyed (like ever) a lot. I hope I made no mistakes when hot fixing this namespace conflicts)
 	
+	<<< maybe add a += operator
+	
  */ 
 
 #ifndef F_TIME_H_

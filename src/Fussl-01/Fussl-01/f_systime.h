@@ -6,18 +6,42 @@
  
  FPS:	Lib is at RC state. It is suposed to be stable. No bugs found yet.
 		do the following enhancements:
- 
-		<<< see modifier in class: they are declkared asa = delete. this can be done in future
-		<<< make descriptions a bit better / more details
-		<<< make another theoretical check of lib.
-		<<< docu seem somewhere lost, also cponcept stuff in *cpp file.
-		
+ 		
 		<<< think about the error that comes when we always add a rounded const to now time to increase it. the error sums up. better multiply if it is really a problem.
-		
-		<<< check where a volatile is necessary and not yet placed!!!!!
+		/// for this I may write some test code, whether there comes up a difference.
+		// i don not think so since we add potences of 2
+		// but we could also: store a constexpr time zero, store the uint64_t number of increases. and calculate the the via mutiply on each get_now_time.
 		
 		<<< you should not but actually can call the static methods pause, resume, start, stop in arbitrary order, and nothing is checked for integrity.
 			please check where we should prevent mistakes of using programmer.
+			
+		<<< 	use fixed point comma integer value fro frequency, etc., osc_fequency, residual_ticks
+		// <<<< using fixed point number we need to define the exponent, either as constant, or as template parameter
+		
+		
+		<< we use compare match a for our interrupts, we should check ovverrun -> min_compare_match_value
+		<< therefor we may use compare match b and check, whether we get interrupted there?
+			// a problem would be if the calculation of the new compare match is not ready until the next osc rising edge
+			// ##detect this. ### because gcmv needs heavy floting point division
+		// the bigger problem is the time consumed by now_update_interrupt_handler!#####
+		// it might be possible to auto-detect if this happens.
+	next four line: description at definition in *cpp file:
+				 // <<<< this factor should be measured, it should be püossible to change this value.
+				 // it should have an std value like here, but the os programmer might want to change it.
+				 // the factor may be renamed. it is not only about that interrupt handling lasts longer than gap between two interrupts
+				 // also the time which is wasted in non-necessary time counting can have negative side effect to the actual task of the controller
+
+		<<< description: it is only for my controller model. make stuff more exchangable.
+
+	
+	
+	
+	<<<< conclusion of FPS:
+	only make a documentation of the stuff written at ztop of header and bottom of cpp.
+	AND only check once the try_to_set method with the reviewed documentation.
+
+	done: all checks about variables being volatile
+
  */ 
 
 
@@ -40,9 +64,12 @@ This library offers two main things.
 Steps to do, in order to build a running SysTime clock:
 	1	First create a SysTime object
 		(! check ctor description and check error information returned )
+		
+		set min_compare_macth_value if necessary.
+		
 	2	use the (static) link(..) method to tell the timer engine about your SysTime object.
 		it gets a persistent reference to your object.
-	3	start() the time with static start() method
+	3	start() the timer with static start() method
 		(! check the return value of start() and it's description of course )
 	4	Get the sysTime value whenever you want by using operator() of your SysTime object.
 		e.g.
@@ -51,6 +78,7 @@ Steps to do, in order to build a running SysTime clock:
 		auto after  my_sysTime();
 		// duration of function: after - before
 
+	5	
 There are a few other methods you may use, but in normal / easy cases,
 where you just want to start a SysTime once and recurrently get the now time,
 you will not need them.
@@ -74,24 +102,23 @@ namespace scheduler {
 		/******************   STATIC STUFF   **********************/
 	private /*static*/:
 	
-			/* pointer to the one and only class instance which is encountered by ISR */
-			/* ISR is accessing this. */
+			/* pointer to the one and only SysTime instance which is affected ISR */
+			/* ISR is accessing this. -> every access is critical. */
+			/* design: it is only a volatile pointer to a non-volatile object since
+			   all SysTime properties care itself about their volatileness */
 		static SysTime* volatile p_instance;
-			// <<< this should be only a volatile ptr to a non-volatile object when all object member are declared volatile.
-			// then the user does not have to care about defining a Systime object as volatile.
 			
 	public /*static*/:
-		
-			/* a factor which makes a condition stronger for a SysTime to be valid.
-			   it says what the Compare Match Value can be at minimum */
+
+			/* the minimum allowed value for the compare match register of timer1 */		
 			/* if you allow arbitrary small Compare Match Values, among other possible side effects
 			   ISR may take too much time in comparison to the time between two Compare Matches */
 			/* must not be used by any interrupt routine since it is not volatile */
-		static uint8_t anti_racing_factor;
+		static uint8_t min_compare_match_value;
 	
 			/* return reference to the instance which is / has to be clocked by ISR */
-			/* don't call, if you did not link an instance before */
-			/* this will end in undefined behavior */
+			/* don't call, if you did not link an instance before, this may cause undefined behaviour */
+			/* access is interrupt-critical. */
 		inline static SysTime& get_instance() { return *p_instance; }
 		
 			/* set reference (pointer) to the SystemTime object which should be clocked by ISR */
@@ -99,9 +126,10 @@ namespace scheduler {
 			   and someone tries to change the affected SysTime object (despite this should not be done) */
 		inline static void link(SysTime& instance){	macro_interrupt_critical( p_instance = &instance; ); }
 
-			/*	start running SysTime clock and return true, if timer wasn't running and reference ptr is non-null
+			/*	start running SysTime clock and return true, if timer wasn't running before and reference ptr is non-null
 				(only) returns false, if timer already running from some clock source or instance pointer is nullptr
 				start is more like a save maybe-start */
+			/*  as clock source an extern oscillator is chosen, please ensure to have one connected to the controller */
 		static bool start();
 			
 			/* pause the SysTime clock
@@ -129,12 +157,10 @@ namespace scheduler {
 	private:
 			/* the real oscillator frequency / Hz, critical since ISR access */
 		volatile long double osc_frequency {1};
-			// <<<< using fixed point number we need to define the exponent, either as constant, or as template parameter
 		
 			/* the truncated / broken part of the last compare match value, critical since ISR access */
 		volatile long double residual_ticks {0};
-			// <<< if we store this as an fixed point number, is should be [0, 2), so 100000* -> 1,  111111111* ->  max value, <ca 2
-		
+			
 			/* logarithmic value of precision, precision = 2^log_precision, critical since ISR access */
 			/* a SysTime object is marked as invalid :<==> iff log_precision == 255 */
 			/* the precision is the frequency of now-time updates 
@@ -147,32 +173,21 @@ namespace scheduler {
 			/* begins counting at 0 when SysTime is initialized. for encoding see time::EMT */
 			/* now is accessed by ISR and user/operating system. it is critical */
 		volatile time::ExtendedMetricTime now {0};
-			
-		// <<< if ready just look how it works. maybe fixed point floats stored in integers are better....
-		// <<< try this later.
-		
-			/* returns precision / Hz, critical since ISR access */
-			/* the precision is the frequency of now updates */
-		inline long double precision() const { return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision); }
-		
-			/* try to set osc_frequency and log_precision to given values */
-			/* returns error codes:
-				0	...		no error
-				1	...		given log_precision out of range {0,1,...,16}
-				2	...		no possible adapted log_precision, more detail: log_p is toggled between two values either (f) or (g) evaluates false, but !f and !g are not overlapping
-				3	...		no possible adapted log_precision, more detail: taboo zones of (!f) and (!g) overlapping
-				4	...		no possible adapted log_precision, more detail: either !f or !g covers whole range of log_precision
-				5	...		non-positive osc_frequency given
-			
-			   if 0 was returned osc_frequency and log_precision are set to your given osc_frequency and some
-			   log_precision that is valid for the osc_freq and is nearest to your wished value
-			   otherwise osc_frequency and log_precision are not modified. */
-			/* this function is not interrupt critical. It cares about this itself. */
-		uint8_t try_to_set(const long double& osc_frequency_new, uint8_t log_precision_wish);
-		
-	public:
 
+			/* calculate a precision from a given log_precision */			
+		inline static constexpr long double log_precision_to_precision(uint8_t log_precision){
+				return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision);
+			} 
+	
+			/* returns precision / Hz */
+			/* the precision is the frequency of now updates */
+		inline long double precision() const { uint8_t log_precision2 = log_precision;  return log_precision_to_precision(log_precision2); }
+	
+	public:
+			/* pointer to now_update software interrupt handler,
+			   critical since ISR access. */
 		volatile concepts::void_function now_update_interrupt_handler;
+		// why is this public???? <<<<<#####
 		
 	/******* constructors *************************************************************************/
 		
@@ -188,17 +203,34 @@ namespace scheduler {
 		
 	/******* modifiers  **************************************************************************/
 	
-			/* change osc_frequency */
+			/* try to set osc_frequency and log_precision to given values */
+			/* returns error codes:
+				0	...		no error
+				1	...		given log_precision out of range {0,1,...,16}
+				2	...		no possible adapted log_precision, more detail: log_p is toggled between two values either (f) or (g) evaluates false, but !f and !g are not overlapping
+				3	...		no possible adapted log_precision, more detail: taboo zones of (!f) and (!g) overlapping
+				4	...		no possible adapted log_precision, more detail: either !f or !g covers whole range of log_precision
+				5	...		non-positive osc_frequency given
+			
+			   if 0 was returned osc_frequency and log_precision are set to your given osc_frequency and some
+			   log_precision that is valid for the osc_freq and is nearest to your wished value
+			   otherwise osc_frequency and log_precision are not modified. */
+			/* this function is not interrupt critical. It cares about this itself. */
+		uint8_t try_to_set(const long double& osc_frequency_new, uint8_t log_precision_wish);
+		
+			/* try to change osc_frequency, not interrupt critical */
+			/* returns error code: see at try_to_set(...) */
 		inline uint8_t set_osc_frequency(const long double& new_osc_frequency){
 			return try_to_set(new_osc_frequency,log_precision);
-			// directly using log_precision is non-critical since (it is one byte only and) ISR only reads it
 		}
 			
-			/* try to change precision to wish-value */
+			/* try to change precision to wish-value, not interrupt critical */
+			/* returns error code: see at try_to_set(...) */
 		inline uint8_t change_log_precision(uint8_t& new_log_precision){
 			long double osc_frequency_old;
 			macro_interrupt_critical( osc_frequency_old = osc_frequency; );
-			return try_to_set(osc_frequency_old,new_log_precision); // read - read access means no interrupt conflicts
+			uint8_t result = try_to_set(osc_frequency_old,new_log_precision);
+			return result;
 		}
 				
 	/****** interrupt methods ******************************************************************/
@@ -220,10 +252,10 @@ namespace scheduler {
 			/* for safety: use operator() or get_now_time() instead */
 		inline const volatile time::ExtendedMetricTime& get_reference_to_critical_now_time(){	return now;	}
 		
-			/* get system time (same as operator()) */
+			/* get system time (same as operator()), non-critical */
 		inline time::ExtendedMetricTime get_now_time();
 		
-			/* get system time (same as get_now_time) */
+			/* get system time (same as get_now_time), non-critical */
 		inline time::ExtendedMetricTime operator()() { return get_now_time(); }
 		
 	};
@@ -251,17 +283,16 @@ namespace scheduler {
 	}
 	
 	/* non-static class member */
-	
 	inline void SysTime::operator ++(){
-		if (log_precision == INVALID_log_precision) return; // <<< make an inline is_valid function!
-			// necessary since we cannot << to a negative number .... i suppose
-		//this->now
-		this->now = const_cast<time::ExtendedMetricTime&>(this->now) + (1LL << (16 - log_precision)); // <<<< wait for += operator in f_time and change it then
+		if (log_precision == INVALID_log_precision) return; // necessary since we cannot << to a negative number .... i suppose
+		this->now = const_cast<time::ExtendedMetricTime&>(this->now) + (1LL << (static_cast<uint8_t>(16 - log_precision)));
 	}
 	
 	inline time::ExtendedMetricTime SysTime::get_now_time(){
 		time::ExtendedMetricTime copy;
-		macro_interrupt_critical(copy = const_cast<time::ExtendedMetricTime&>(now););
+		macro_interrupt_critical(
+			copy = const_cast<time::ExtendedMetricTime&>(now);
+		);
 		return copy;
 	}
 

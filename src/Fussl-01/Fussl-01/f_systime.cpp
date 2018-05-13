@@ -11,28 +11,12 @@
 
 #include "f_systime.h" // corresponding header
 
-namespace {
-		/* get the next compare match value for timer1 */
-		/* justify: here is this function since it is used twice. */
-	inline auto get_cmv() -> decltype(scheduler::SysTime::get_instance().get_compare_match_value_only_call_by_ISR())
-	{	return scheduler::SysTime::get_instance().get_compare_match_value_only_call_by_ISR();	}
-		
-	inline constexpr long double to_precision(uint8_t log_precision){
-		return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision);
-	} // implemented second time, see precision#() at SysTime.... <<<<<
-}
 	/* interrupt subroutine */
+	/* set the compare-match value for the next interrupt 
+	   increase now time
+	   call now update interrupt handler if non nullptr */
 ISR (TIMER1_COMPA_vect){
-	// set the compare-match value for the next interrupt
-	// update the *SystemTime::p_activated_instance
-	
-	OCR1A = get_cmv(); 
-	
-	// a problem would be if the calculation of the new compare match is not ready until the next osc rising edge
-	// ##detect this. ### because gcmv needs heavy floting point division
-	
-	// the bigger problem is the time consumed by now_update_interrupt_handler!#####
-	// it might be possible to auto-detect if this happens. 
+	OCR1A = scheduler::SysTime::get_instance().get_compare_match_value_only_call_by_ISR(); 
 	
 	++scheduler::SysTime::get_instance();
 	
@@ -43,14 +27,11 @@ namespace scheduler {
 
 	SysTime* volatile SysTime::p_instance {nullptr};
 		
-	uint8_t SysTime::anti_racing_factor {4}; // <<<< this factor should be measured, it should be püossible to change this value.
-		// it should have an std value like here, but the os programmer might want to change it.
-		// the factor may be renamed. it is not only about that interrupt handling lasts longer than gap between two interrupts
-		// also the time which is wasted in non-necessary time counting can have negative side effect to the actual task of the controller
+	uint8_t SysTime::min_compare_match_value {4};
 
 	bool SysTime::start(){
 		if (is_running() || (p_instance == nullptr)) return false;
-			// timer is already running in any modus
+			// timer is already running in some modus
 				// maybe because it was already started by SysTime lib
 				// or someone else is already using this timer/counter
 			// or there is a nullptr reference as p_instance
@@ -60,10 +41,10 @@ namespace scheduler {
 		TCNT1 = 0; // counter starts at zero
 		
 		TIMSK = (TIMSK & 0b11000011) | 0b00010000; // data sheet page 138: interrupt enable for Timer1 Compare Match A
-		OCR1A = get_cmv(); // register with compare value
+		OCR1A = scheduler::SysTime::get_instance().get_compare_match_value_only_call_by_ISR(); // register with compare value
 		
 		TCCR1B = 0b00001111; // CTC (Clear Timer on Compare Match) (bit 3)
-							 // start timer running from ext source on triggered rising edge (bit 2:0)
+							 // start timer running from ext source, triggered on rising edge (bit 2:0)
 		
 		sei();	// activate global interrupts
 		return true;
@@ -72,7 +53,7 @@ namespace scheduler {
 	uint8_t SysTime::try_to_set(const long double& osc_frequency_new, uint8_t log_precision_wish){
 		if (!(osc_frequency_new > 0.0)) return 5;
 		/* local copies: */
-		long double n_osc_freq = osc_frequency_new;
+		const long double n_osc_freq = osc_frequency_new; // I think this is just space consumptive renaming <<<< 
 		uint8_t& n_log_pre = log_precision_wish; // call-by-value in function. no copy necessary
 		
 		/* given log_precision out of range */
@@ -82,18 +63,18 @@ namespace scheduler {
 		uint8_t cloop {0}; // avoid an infinite loop, which we can not exclude and is potentially possible
 		while(	(n_log_pre > 16) // not (e)
 					||
-				(static_cast<long double>(anti_racing_factor) * to_precision(n_log_pre) > n_osc_freq) // not (f)
+				(static_cast<long double>(min_compare_match_value) * log_precision_to_precision(n_log_pre) > n_osc_freq) // not (f)
 					||
-				(n_osc_freq > to_precision(n_log_pre) * static_cast<long double>((1LL<<16) - 2)) // not (g)
+				(n_osc_freq > log_precision_to_precision(n_log_pre) * static_cast<long double>((1LL<<16) - 2)) // not (g)
 		){	// there is at least one violated constraint
 			if (n_log_pre > 16) return 4;
 			if (
-				(static_cast<long double>(anti_racing_factor) * to_precision(n_log_pre) > n_osc_freq) // not f
+				(static_cast<long double>(min_compare_match_value) * log_precision_to_precision(n_log_pre) > n_osc_freq) // not f
 					&&
-				(n_osc_freq > to_precision(n_log_pre) * static_cast<long double>((1LL<<16) - 2)) // not g
+				(n_osc_freq > log_precision_to_precision(n_log_pre) * static_cast<long double>((1LL<<16) - 2)) // not g
 			) return 3;
 			
-			if /* not f */ (static_cast<long double>(anti_racing_factor) * to_precision(n_log_pre) > n_osc_freq)
+			if /* not f */ (static_cast<long double>(min_compare_match_value) * log_precision_to_precision(n_log_pre) > n_osc_freq)
 					--n_log_pre;
 				else /* it est f and (not g)*/
 					++n_log_pre;
@@ -112,9 +93,7 @@ namespace scheduler {
 	
 	SysTime::SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code, concepts::void_function handler) : now_update_interrupt_handler(handler) {
 		error_code = try_to_set(osc_frequency,log_precision);
-		if (error_code){ // mark object as internally invalid
-			this->log_precision = INVALID_log_precision;
-		}
+		if (error_code)	this->log_precision = INVALID_log_precision; // object invalid
 		log_precision = this->log_precision;
 	}
 
