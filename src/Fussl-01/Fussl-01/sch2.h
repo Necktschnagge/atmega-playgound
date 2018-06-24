@@ -31,43 +31,53 @@ class scheduler2 {
 	
 	/*** public constexpr constants ***/
 	
+	/* refers to none of the entries in scheduler table */
 	static constexpr SchedulerHandle NO_HANDLE{ SchedulerHandle::OUT_OF_RANGE };
 	
-	static constexpr uint8_t STANDARD_URGENCY{ 50 };
-		
+	/* the default urgency for task entries in scheduler table */
+	static constexpr uint8_t DEFAULT_URGENCY{ 50 };
+	
+	
 	static constexpr time::ExtendedMetricTime NO_WATCHDOG_EMT{0};
 	
 	private:
 	
 	/*** private types ***/
-	
+
+		/* instances of this type contain either a pointer to concepts::Callable or a concepts::void_function */	
 	class UnionCallback {
 		private:
 		union InternUnion {
 			concepts::void_function function_ptr;
 			concepts::Callable* callable_ptr;
+			
+			InternUnion(): function_ptr(nullptr){}
 		};
 		InternUnion _union;
-		public:
+		
+		public:			
+		/* set a function pointer, replaces the previously stored function pointer oder callable pointer */
 		inline void set_function_ptr(concepts::void_function ptr){ _union.function_ptr = ptr; }
 		inline void set_callable_ptr(concepts::Callable* ptr) { _union.callable_ptr = ptr; }
 		inline void call_function() const { if (_union.function_ptr != nullptr) _union.function_ptr(); }
 		inline void call_callable() const { if (_union.callable_ptr != nullptr) (*_union.callable_ptr)(); }
-		
 	};
-	
+		
 	struct TaskSpecifics {
-		uint8_t urgency_inverse; // Dringlichkeit
-		/* 255 .. least important ... 0 ... most important */
+		uint8_t urgency_inverse; // 255 .. least important ... 0 ... most importanttea
 		uint8_t task_race_countdown;
-		// always the task with the smallest task_race_countdown will be executed. If this is ambigious one of them will be executed.
-		// after a task is executed task_race_countdown will be increased by urgency_inverse.
-		// at least when a task_race_countdown is right before overflow, all task_race_countdowns are rebased together,
-		// to do so, determine the min task_race_coiuntdown and substract this from all task_race_countdowns
+		// Always the task with the smallest task_race_countdown will be executed. If this is ambiguous one of them will be executed.
+		// After a task is executed task_race_countdown will be increased by urgency_inverse.
+		// At least when a task_race_countdown would overflow if it has to be increased, all task_race_countdowns have to become rebased together.
+		// To do so, determine the min task_race_countdown and subtract this value from all task_race_countdowns.
+		
+		
 	};
 
 	struct TimerSpecifics {
-		const time::ExtendedMetricTime* event_time; // earliest time when timer can be executed
+		volatile time::ExtendedMetricTime* event_time; // earliest time when timer can be executed
+		//<<<<doen:  we might make the underlying object volatile so that it can be modified by interrupting timers.
+		//<< mabe drop the 'const' because you might want to get a time pointer from your handle to change the time...
 	};
 	
 	class UnionSpecifics {
@@ -82,12 +92,6 @@ class scheduler2 {
 		TimerSpecifics& timer() { return _union.timer; }
 	};
 	
-	static_assert(sizeof(SchedulerHandle) == 1, "SchedulerHandle has not the appropriate size.");
-	static_assert(sizeof(UnionCallback) == 2, "UnionCallback has not the appropriate size.");
-	static_assert(sizeof(UnionSpecifics) == 2, "UnionSpecifics has not the appropriate size.");
-	static_assert(sizeof(concepts::Flags) == 1, "concepts::Flags has not the appropriate size.");
-	
-	
 	struct SchedulerMemoryLine {
 		SchedulerHandle handle; // 1
 		UnionCallback callback; // 2
@@ -95,6 +99,10 @@ class scheduler2 {
 		concepts::Flags flags; // 1
 	};
 	
+	static_assert(sizeof(SchedulerHandle) == 1, "SchedulerHandle has not the appropriate size.");
+	static_assert(sizeof(UnionCallback) == 2, "UnionCallback has not the appropriate size.");
+	static_assert(sizeof(UnionSpecifics) == 2, "UnionSpecifics has not the appropriate size.");
+	static_assert(sizeof(concepts::Flags) == 1, "concepts::Flags has not the appropriate size.");
 	static_assert(sizeof(SchedulerMemoryLine) == 6, "SchedulerMemoryLine has not the appropriate size.");
 	
 	/*** private constexpr constants ***/
@@ -129,57 +137,84 @@ class scheduler2 {
 						:	tasks [no gap]					:	VALID
 		TABLE_SIZE		:
 	
-	An entry is gap iff it is INVALID. An entry, that is VALID but DISABLED, is not gap and has to be inside its section.
+	About the entries' flags:
+	An entry is gap if and only if not IS_VALID.
+	An entry with IS_VALID but not IS_ENABLED is not gap and has to be inside its section,
+	although it will not be treated by the scheduler since is is so-called disabled.
+	
 	Access to table:
-		there is an object's flag TABLE_LOCKED.
-		if you own TABLE_LOCKED you are allowed to read and modify the table.
-		if you do not own TABLE_LOCKED you are only allowed to read the table, but there is no guarantee that table is non-volatile
+		There is an object's flag TABLE_LOCKED.
+		One might set TABLE_LOCKED true if it was false in an atomic step at some point.
+		Then he is called the owner of TABLE_LOCKED. One should eventually release TABLE_LOCKED, i.e. set it false.
+		You are always allowed to read from the table
+		if you own TABLE_LOCKED you are allowed to read from a "non-volatile" (there wont be anyone interrupting you and changing table while you are reading) table and modify the table.
+		if you do not own TABLE_LOCKED you are only allowed to read the table, but there is no guarantee that table is non-volatile and also
+		no guaranty that table is in a consitent state if you are the interrupt during some table modification.
 	*/
 	SchedulerMemoryLine table[TABLE_SIZE];
 
-	uint8_t hardware_watchdog_timeout; // value for hardware watchdog // must be greater than the time betweeen two now time updates.
+	uint8_t hardware_watchdog_timeout; // value for hardware watchdog // must be greater than the time between two now time updates.
 	//###provide some explanation and references here
 
 	/* contains a value proportional to the time which passes until the software watchdog resets the controller.
 	   exactly spoken, the value is the number of time_update_interrupt_handler() calls left until watchdog triggers controller reset.
 	   it is set to software_watchdog_reset_value on finishing of any task or timer procedure.
-	   it is decreased by 1 on every SysTime interrupt.
+	   it is decreased by 1 on every SysTime interrupt./  now_time update
 	*/
-	uint32_t software_watchdog_countdown_value;
+	volatile uint32_t software_watchdog_countdown_value;
 
 	/* the number of time_update_interrupt_handler() calls, that the software watchdog waits from fresh reset until trigger reboot */
 	/* iff it is zero, the software watchdog is disabled. notice that hardware watchdog runs in background to observe behaviour of scheduler */
 	uint32_t software_watchdog_reset_value;
+	
+	volatile time::ExtendedMetricTime earliest_interrupting_timer_release;
+	//### on construction it must be set to now!!!
+	//###when add a int timer it must be updated to the min of old and time fo new int_timer
+	
 
 	/*** private methods ***/
 	
 	inline void software_watchdog_reset(){ software_watchdog_countdown_value = software_watchdog_reset_value; }
 		
-	inline void execute_callback(const UnionCallback& callback, bool is_callable){
-		if (is_callable){
-			callback.call_callable();
-			} else {
-			callback.call_function();
-		}
+		/* executes a callback. if callback pointer is nullptr, nothing will be done */
+	inline void execute_callback(UnionCallback callback, bool is_callable){
+		return (is_callable) ? callback.call_callable() : callback.call_function();	
 	}
 	
-	/* executes callback of given table index. (callback will automatically be checked for nullptr, in this case nothing will be done)
+	/* executes callback of given table index.
+	   The callback will automatically be checked if it is nullptr, in this case nothing will be done
+	   Make sure that table is non-volatile during function call - You should own table.
 	*/
 	inline void execute_callback(uint8_t table_index){
 		return execute_callback(table[table_index].callback,table[table_index].flags.get(IS_CALLABLE));
 	}
 	
 	/* goes through all (valid) int timer entries and executes the callback if execution_time was reached and entry is enabled.
-	   executes only the first entry (i.e. the one with the lowest table index) and sets its is_enable to false */
+	   executes only the first entry (i.e. the one with the lowest table index) and sets its is_enable to false
+	   the earliest_interrupting_timer_release will be updated */
 	inline bool execute_interrupting_timers(){
+		time::ExtendedMetricTime new_earliest_interrupting_timer_release = time::ExtendedMetricTime::MAX();
 		time::ExtendedMetricTime now = scheduler::SysTime::get_instance()(); // = system_time() // .get_now_time();
+		if (now < earliest_interrupting_timer_release) return false;
+		
+		bool table_locked_before = flags.get(TABLE_LOCKED);
+		flags.set_true(TABLE_LOCKED);
+		
 		for(uint8_t index = 0; (index < TABLE_SIZE); ++index){ // check at all other positions where we have merged the loop condition, that we do not access before checking out of range like in next line: #####
 			if ((table[index].flags.get(IS_VALID) == false) || (table[index].flags.get(IS_TIMER) == false) || (table[index].flags.get(IS_INTTIMER) == false))
-				return false; // we reached the end of the interrupting timer section.
-			if (table[index].flags.get(IS_ENABLED) && (now >=  *table[index].specifics.timer().event_time)){
-				table[index].flags.set_false(IS_ENABLED);
-				execute_callback(index);
-				return true;
+				earliest_interrupting_timer_release = new_earliest_interrupting_timer_release;
+				return true; //false; // we reached the end of the interrupting timer section.
+			if (table[index].flags.get(IS_ENABLED)){
+					if (now >= *table[index].specifics.timer().event_time){
+						table[index].flags.set_false(IS_ENABLED);
+						execute_callback(index);
+						//return true;
+					} else {
+						new_earliest_interrupting_timer_release =
+							new_earliest_interrupting_timer_release > *table[index].specifics.timer().event_time ? // if found smaller one
+								*table[index].specifics.timer().event_time : // replace
+								new_earliest_interrupting_timer_release; // do nothing
+					}
 			}
 		}
 	}
@@ -267,7 +302,7 @@ class scheduler2 {
 		return static_cast<uint8_t>( (static_cast<uint16_t>(uint) + static_cast<uint16_t>(TABLE_SIZE -1)) % static_cast<uint16_t>(TABLE_SIZE) );
 	}
 	
-	SchedulerHandle new_task(uint8_t urgency = STANDARD_URGENCY, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool enable = true);
+	SchedulerHandle new_task(uint8_t urgency = DEFAULT_URGENCY, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool enable = true);
 	
 	
 	inline bool is_table_locked(){ return flags.get(TABLE_LOCKED); }

@@ -23,7 +23,7 @@ namespace ui {
 	1.	Create an ItemSelector.
 	2.	init() the ItemSelector.
 	3.	run() the ItemSelector
-	[	you may pause() and resume() the ItemManager several times	]
+	[	you may pause() and resume() the ItemSelector several times	]
 	4.	finalize the ItemSelector yourself or
 	let it be finalized automatically by an ok button event.
 	*/

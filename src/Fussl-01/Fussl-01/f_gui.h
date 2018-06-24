@@ -6,6 +6,17 @@
  *
  *	FILE PROGRESS STATE:
  *	namespace input is ready and prg logic was checked again
+ 
+	/// <<<< this may better be converted into a class, and add some PIN references to the class.
+	// << template class using an template param for the number of buttons.
+	// but a button array may be build in another way,
+	// so we might encapsulate to parts of this logical part
+	// one part reading out the hardware an calculating some vector containing the button states
+	// one part using the vector to treat changes.
+	
+	use an IOPin range to get references to the input pins.
+	
+ 
  *	
  */ 
 
@@ -18,7 +29,7 @@
 
 using PCallable = concepts::Callable*;
 
-/// <<<< this may better be converted into a class, and add some PIN references to the class.
+
 namespace input {
 	/* input (for now) is like a static object (for java people) which holds the information
 	which buttons are pressed or released and what changed from last look up*/
@@ -104,7 +115,6 @@ namespace input {
 			in case enable == 0 this process will fail.
 	*/
 	
-	typedef struct event_s* pevent_t; // change old style ###
 	typedef struct event_s {
 		callback_t callbackReference;
 		int8_t enable;
