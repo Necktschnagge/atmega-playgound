@@ -267,6 +267,8 @@ namespace time {
 	private:
 	public:
 		static constexpr HumanTime CHRIST_0 = HumanTime();
+		static constexpr ExtendedMetricTime MAX(){ return ExtendedMetricTime(0x7FFFFFFFFFFFFFFF); }
+		static constexpr ExtendedMetricTime MIN(){ return ExtendedMetricTime(0x8000000000000000); }
 
 		int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed-dot-integer
 
@@ -349,6 +351,7 @@ inline void operator >> (uint8_t lop, time::Month& rop)		{ return rop<<lop; }
 /* Extended Metric Time comparison operators */
 inline bool operator == (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
 inline bool operator <  (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
+inline bool operator <  (const volatile time::ExtendedMetricTime&, const volatile time::ExtendedMetricTime&); // <<<< this was added because it was needed unexpectedly
 inline bool operator >  (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
 inline bool operator <= (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
 inline bool operator >= (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
@@ -428,6 +431,7 @@ bool constexpr time::HumanTime::isLeapYear(int16_t year){ // ready, checked
 
 inline bool operator == (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value == rop.value; }
 inline bool operator <  (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value <  rop.value; }
+inline bool operator <  (const volatile time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop)	{ return lop.value <  rop.value; }
 inline bool operator >  (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value >  rop.value; }
 inline bool operator <= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value <= rop.value; }
 inline bool operator >= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value >= rop.value; }

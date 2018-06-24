@@ -37,7 +37,7 @@
 	
 	
 	<<<< conclusion of FPS:
-	only make a documentation of the stuff written at ztop of header and bottom of cpp.
+	only make a documentation of the stuff written at top of header and bottom of cpp.
 	AND only check once the try_to_set method with the reviewed documentation.
 
 	done: all checks about variables being volatile
