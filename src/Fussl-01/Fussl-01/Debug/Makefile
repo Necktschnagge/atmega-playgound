@@ -49,6 +49,7 @@ C_SRCS +=  \
 ../f_item_selector.cpp \
 ../f_ledline.cpp \
 ../f_list_item_manager.cpp \
+../f_matrix_keyboard.cpp \
 ../f_range_int.cpp \
 ../f_scheduler.cpp \
 ../f_systime.cpp \
@@ -79,6 +80,7 @@ f_item_manager.o \
 f_item_selector.o \
 f_ledline.o \
 f_list_item_manager.o \
+f_matrix_keyboard.o \
 f_range_int.o \
 f_scheduler.o \
 f_systime.o \
@@ -102,6 +104,7 @@ f_item_manager.o \
 f_item_selector.o \
 f_ledline.o \
 f_list_item_manager.o \
+f_matrix_keyboard.o \
 f_range_int.o \
 f_scheduler.o \
 f_systime.o \
@@ -125,6 +128,7 @@ f_item_manager.d \
 f_item_selector.d \
 f_ledline.d \
 f_list_item_manager.d \
+f_matrix_keyboard.d \
 f_range_int.d \
 f_scheduler.d \
 f_systime.d \
@@ -148,6 +152,7 @@ f_item_manager.d \
 f_item_selector.d \
 f_ledline.d \
 f_list_item_manager.d \
+f_matrix_keyboard.d \
 f_range_int.d \
 f_scheduler.d \
 f_systime.d \
@@ -228,6 +233,8 @@ LINKER_SCRIPT_DEP+=
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
 	@echo Finished building: $<
 	
+
+
 
 
 

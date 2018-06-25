@@ -2,7 +2,7 @@
 * f_item_manager.cpp
 *
 * Created: 05.03.2018 13:13:37
-* Author: Maximilian Starke
+	* Author: Maximilian Starke
 */
 
 

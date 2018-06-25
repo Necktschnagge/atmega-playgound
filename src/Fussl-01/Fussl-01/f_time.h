@@ -266,6 +266,9 @@ namespace time {
 	class ExtendedMetricTime { // seems ready, only some <<<< test sth out.
 	private:
 	public:
+		using inner_type = int64_t; //  <<< this line was added somewhen later, when I thought it would be nice to have such a type alias
+		// maybe it would be useful to replace all intXX_t by this type alias ???
+	
 		static constexpr HumanTime CHRIST_0 = HumanTime();
 		static constexpr ExtendedMetricTime MAX(){ return ExtendedMetricTime(0x7FFFFFFFFFFFFFFF); }
 		static constexpr ExtendedMetricTime MIN(){ return ExtendedMetricTime(0x8000000000000000); }
