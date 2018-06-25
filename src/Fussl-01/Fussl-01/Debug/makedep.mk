@@ -26,6 +26,8 @@ f_ledline.cpp
 
 f_list_item_manager.cpp
 
+f_matrix_keyboard.cpp
+
 f_range_int.cpp
 
 f_scheduler.cpp

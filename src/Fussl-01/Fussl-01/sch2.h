@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <avr/wdt.h>
 
+#include <math.h>
+
 #include "f_macros.h"
 #include "f_range_int.h"
 #include "f_concepts.h"
@@ -164,7 +166,7 @@ class scheduler2 {
 
 	/* the number of time_update_interrupt_handler() calls, that the software watchdog waits from fresh reset until trigger reboot */
 	/* iff it is zero, the software watchdog is disabled. notice that hardware watchdog runs in background to observe behavior of scheduler */
-	uint32_t software_watchdog_reset_value;
+	volatile uint32_t software_watchdog_reset_value;
 	
 	volatile time::ExtendedMetricTime earliest_interrupting_timer_release;
 	//### on construction it must be set to now!!! // set to min!!!
@@ -173,7 +175,7 @@ class scheduler2 {
 
 	/*** private methods ***/
 	
-	inline void software_watchdog_reset(){ software_watchdog_countdown_value = software_watchdog_reset_value; }
+	inline void software_watchdog_reset(){ macro_interrupt_critical(software_watchdog_countdown_value = software_watchdog_reset_value;); }
 		
 	/* executes a callback. if callback pointer is nullptr, nothing will be done 
 	   iff (free_and_unfree_lock) the table_locked will be turned off right before callback and turned on right after callback */
@@ -203,8 +205,27 @@ class scheduler2 {
 		time::ExtendedMetricTime new_earliest_interrupting_timer_release = time::ExtendedMetricTime::MAX();
 		time::ExtendedMetricTime now = scheduler::SysTime::get_instance()();
 		
-		if (now < earliest_interrupting_timer_release)		return 2;
+		if (now < earliest_interrupting_timer_release)		return 2; 
 		if (flags.get(TABLE_LOCKED))						return 0;
+		// Wenn das interrupt kommt, während der scheduler scheduled, dann haben wir ein Prolem!
+		//#### das darf nicht sein, es muss trotzdem ein inttimer ausgeführt werden.
+		// die Modifikationen vom scheduler oder subrutinen müssen atomar gegen interrupts geschützt werden.
+		// dann ist bei jedem interrupt sichergestellt, dass zumindest die inttimer abgearbeitet werden können.
+		// das hebelt aber irgendwie das TABLE-locked aus!!!!
+		// ein table lock muss also immer mit atomarer kapselung versehen werden???
+		// das führt auch in teufels küche...
+		
+		//lösungsideen:
+		/************************************************************************/
+		/* 
+		1. eine schedulerline darf nur in atomarer umgebung geändert werden
+		2. in der schedulertable shiften (d.h. die relation aus Handle und Index ändern) darf nur, wer TABLE LOCK besitzt.
+		
+		-> inttimer executer hat immer eine konsistente table und darf darin atomar das enable von ausgeführten timern ändern.
+		-> scheduler kann sich gegen umordnen der Table sichern, und für den Zeitraum des AUslesen eines eintrages in eine atomater section gehen.
+		
+		                                                                     */
+		/************************************************************************/
 		
 		flags.set_true(TABLE_LOCKED);
 		uint8_t index = 0;
@@ -252,7 +273,7 @@ class scheduler2 {
 			// replace hd watchdog calls in run() by calls to software watchdog. ####
 			//#1
 		}
-		if (flags.get(SOFTWARE_INTERRUPTS_ENABLE) && (flags.get(STOP_CALLED) == false)) while(execute_interrupting_timers()){};
+		if (flags.get(SOFTWARE_INTERRUPTS_ENABLE) && (flags.get(STOP_CALLED) == false)) execute_interrupting_timers();
 	}
 	
 	/* returns size in bytes of one SchedulerMemoryLine */
@@ -263,11 +284,33 @@ class scheduler2 {
 	static constexpr int32_t NO_WATCHDOG_COUNTER_FORMAT{0}; // calc by a constexpr function for time-wtchdog -> counter-watchdog#######
 		///#### what is this
 
-	
-	void set_software_watchdog(const time::ExtendedMetricTime& watchdog){
-		software_watchdog_reset_value = static_cast<uint64_t>(watchdog) / (10);/// ### replace 10 with time between two now time updates.
-		// check whether value > 0
-		}
+	template <bool round_to_ceiling = false, bool truncate = false, bool truncate_and_add_one = true>
+	inline void set_software_watchdog(const time::ExtendedMetricTime& watchdog){
+		macro_interrupt_critical(
+			static_assert(0 + round_to_ceiling + truncate + truncate_and_add_one == 1, "There must be one template argument being true and two being false");
+			if (round_to_ceiling){
+				software_watchdog_reset_value =
+				static_cast<decltype(software_watchdog_reset_value)>(
+					ceil(
+						static_cast<long double>(watchdog.value) * (scheduler::SysTime::get_instance().precision())
+					)
+				);
+			} 
+			if (truncate){
+				software_watchdog_reset_value = static_cast<decltype(software_watchdog_reset_value)>
+					(
+						static_cast<long double>(watchdog.value) * (scheduler::SysTime::get_instance().precision())
+					);			
+			}
+			if (truncate_and_add_one){
+				software_watchdog_reset_value = static_cast<decltype(software_watchdog_reset_value)>
+				(
+				static_cast<long double>(watchdog.value) * (scheduler::SysTime::get_instance().precision())
+				)
+				+ 1;
+			}
+		);
+	}
 	
 	void activate_hardware_watchdog();
 	void deactivate_hardware_watchdog();
