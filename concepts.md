@@ -15,3 +15,4 @@
       * callable
       * const_callable
       * exceptional<...>
+   * dev (communication for _devices_, such as multi sensor measurement tool, pump controller)
