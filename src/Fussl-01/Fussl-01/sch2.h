@@ -39,9 +39,6 @@ class scheduler2 {
 	/* the default urgency for task entries in scheduler table */
 	static constexpr uint8_t DEFAULT_URGENCY{ 50 };
 	
-	
-	static constexpr time::ExtendedMetricTime NO_WATCHDOG_EMT{0};
-	
 	private:
 	
 	/*** private types ***/
@@ -256,18 +253,35 @@ class scheduler2 {
 		return 1;
 	}
 	
+	/* activate hardware watchdog and set the timeout to hardware_watchdog_timeout */
+	void activate_hardware_watchdog(){
+		macro_interrupt_critical(
+		wdt_enable(hardware_watchdog_timeout);
+		);
+	}
+	
+	/* deactivate hw watchdog */
+	void deactivate_hardware_watchdog(){
+		macro_interrupt_critical(
+		wdt_disable();
+		);
+	}
+	
 	public:
 	
 	/*** public data ***/
 	
-	//####	notice: there should not be any public data since class is template.
+	/*
+	IMPORTANT: There should not be any >>>static<<< [public] data since class is template.
+	*/
 	
 	/*** public methods ***/
 	
 	/* executes all stuff that should be done on now_time update, including hardware watchdog reset, int-timer execution e.a.
 	   should be called once on every update of the now time */
 	inline void time_update_interrupt_handler(){
-		if ((software_watchdog_reset_value == 0) /*software watchdog disabled*/ || (software_watchdog_countdown_value > 0) /*software watchdog not exceeded*/) {
+		if ((software_watchdog_reset_value == 0) /*software watchdog disabled*/ || (software_watchdog_countdown_value > 0) /*software watchdog not exceeded*/)
+		{
 			--software_watchdog_countdown_value;
 			wdt_reset();
 			// replace hd watchdog calls in run() by calls to software watchdog. ####
@@ -281,11 +295,19 @@ class scheduler2 {
 	/* returns size in bytes of the whole scheduler table */
 	static constexpr uint16_t table_size_of(){ return sizeof(SchedulerMemoryLine)*TABLE_SIZE; }
 	
-	static constexpr int32_t NO_WATCHDOG_COUNTER_FORMAT{0}; // calc by a constexpr function for time-wtchdog -> counter-watchdog#######
-		///#### what is this
-
+	/* deactivates software watchdog
+	   note that hardware watchdog is still in use and reboots controller if 
+		* you use too long interrupt timer handlers or
+		* if the Scheduler itself is corrupt and deactivates interrupts for too long
+	*/
+	inline void deactivate_software_watchdog(){		macro_interrupt_critical(software_watchdog_reset_value = 0;);	}
+	
+	/* activate the software watchdog for running scheduler.
+	   software watchdog will be startet when you call run() and stopped before run() returns, but may be enabled before you call run()
+	*/
 	template <bool round_to_ceiling = false, bool truncate = false, bool truncate_and_add_one = true>
-	inline void set_software_watchdog(const time::ExtendedMetricTime& watchdog){
+	inline void activate_software_watchdog(const time::ExtendedMetricTime& watchdog){
+		if (watchdog <= 0) return deactivate_software_watchdog();
 		macro_interrupt_critical(
 			static_assert(0 + round_to_ceiling + truncate + truncate_and_add_one == 1, "There must be one template argument being true and two being false");
 			if (round_to_ceiling){
@@ -310,30 +332,7 @@ class scheduler2 {
 				+ 1;
 			}
 		);
-	}
-	
-	void activate_hardware_watchdog();
-	void deactivate_hardware_watchdog();
-	/*
-	start engine:
-	reset hardware watchdog.
-	activate hw watchdog.
-	set software watchdog countdown to watchdog reset value
-	
-	give system_time the pointer to our interrupt handler.
-	make sure that our static instance pointer is up to date.
-	
-	
-	
-	just reset the now_update_handler of system_time to nullptr.
-	// -> we wont be called from the systemclock again.
-	
-	stop engine:
-	deactivate hardware watchdog
-	
-	*/
-	
-	
+	}	
 	
 	/* central control loop / scheduling loop to call after construction  of scheduler
 	   return code:
@@ -344,24 +343,19 @@ class scheduler2 {
 	uint8_t run();
 
 	/* make scheduler return after current executed task / timer */
-	inline void stop(){
-		flags.set_true(STOP_CALLED);
-		// after all: #### every flags access is interrupt critical, bacause of non-atomic instructions.d
+	inline void stop(){		macro_interrupt_critical(flags.set_true(STOP_CALLED););		}
+
+	/* returns (uint - 1) mod TABLE_SIZE */
+	static constexpr uint8_t minus_one_mod_table_size(uint8_t uint){
+		return static_cast<uint8_t>( (static_cast<uint16_t>(uint) + static_cast<uint16_t>(TABLE_SIZE -1)) % static_cast<uint16_t>(TABLE_SIZE) );
 	}
-	
-	// <<< think about behaviour of deleting timer entries after they were executed
 	
 	/*
 	try to add new task to table.
 	returns SchedulerHandle of created task
 	if not successful NO_HANDLE is returned.
 	*/
-
-	static constexpr uint8_t minus_one_mod_table_size(uint8_t uint){ // returns (uint - 1) mod TABLE_SIZE
-		return static_cast<uint8_t>( (static_cast<uint16_t>(uint) + static_cast<uint16_t>(TABLE_SIZE -1)) % static_cast<uint16_t>(TABLE_SIZE) );
-	}
-	
-	SchedulerHandle new_task(uint8_t urgency = DEFAULT_URGENCY, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool enable = true);
+	SchedulerHandle new_task(concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true);
 	
 	
 	inline bool is_table_locked(){ return flags.get(TABLE_LOCKED); }
@@ -744,8 +738,10 @@ uint8_t scheduler2<TABLE_SIZE>::run() // method ready, checked twice!!!
 	*/
 }
 
+
+
 template <uint8_t TABLE_SIZE>
-typename scheduler2<TABLE_SIZE>::SchedulerHandle scheduler2<TABLE_SIZE>::new_task(uint8_t urgency /*= STANDARD_URGENCY*/, concepts::Callable* callable /*= nullptr*/, concepts::void_function function /*= nullptr*/, bool enable /*= true*/)
+typename scheduler2<TABLE_SIZE>::SchedulerHandle scheduler2<TABLE_SIZE>::new_task(concepts::Callable* callable /*= nullptr*/, concepts::void_function function /*= nullptr*/, uint8_t urgency /*= DEFAULT_URGENCY*/, bool enable /*= true*/)
 {
 	macro_interrupt_critical(
 	if (flags.get(TABLE_LOCKED)) return NO_HANDLE;
