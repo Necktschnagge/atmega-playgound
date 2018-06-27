@@ -13,7 +13,8 @@
 #ifndef __F_ITEM_SELECTOR_H__
 #define __F_ITEM_SELECTOR_H__
 
-#include "f_concepts.h"
+#include "f_flags.h"
+#include "f_concepts.h" // needed?<<<<<
 #include "f_item_manager.h"
 
 namespace ui {
@@ -81,10 +82,10 @@ namespace ui {
 		uint8_t button_next {NO_BUTTON};
 		uint8_t button_prev {NO_BUTTON};
 		
-		concepts::Flags flags; // one object to store multiple flags:
+		fsl::lg::single_flags flags; // one object to store multiple flags:
 		/* defined flags in this class */
-		static constexpr concepts::Flags::flag_id OK_DOWN {0}; // ok was pressed
-		static constexpr concepts::Flags::flag_id IS_RUNNING {1}; // run() was called, not yet stopped
+		static constexpr fsl::lg::single_flags::flag_id OK_DOWN {0}; // ok was pressed
+		static constexpr fsl::lg::single_flags::flag_id IS_RUNNING {1}; // run() was called, not yet stopped
 		
 		/* check whether buttons and ItemManager* are valid */
 		inline bool valid();

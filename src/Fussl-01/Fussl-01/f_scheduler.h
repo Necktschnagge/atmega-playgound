@@ -9,11 +9,15 @@
 #ifndef F_SCHEDULER_H_
 #define F_SCHEDULER_H_
 
+#if false
+
+
 #include <stdint.h>
 
 #include "f_macros.h"
 #include "f_concepts.h"
 #include "f_time.h"
+
 
 
 namespace scheduler {
@@ -259,7 +263,7 @@ namespace scheduler {
 	
 }
 
-
+#endif
 
 #endif /* F_SCHEDULER_H_ */
 

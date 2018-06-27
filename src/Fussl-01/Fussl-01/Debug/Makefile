@@ -41,6 +41,7 @@ C_SRCS +=  \
 ../f_arch.cpp \
 ../f_cmi.cpp \
 ../f_cmr.cpp \
+../f_flags.cpp \
 ../f_gui.cpp \
 ../f_hardware.cpp \
 ../f_hcsr04.cpp \
@@ -72,6 +73,7 @@ display_server.o \
 f_arch.o \
 f_cmi.o \
 f_cmr.o \
+f_flags.o \
 f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
@@ -96,6 +98,7 @@ display_server.o \
 f_arch.o \
 f_cmi.o \
 f_cmr.o \
+f_flags.o \
 f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
@@ -120,6 +123,7 @@ display_server.d \
 f_arch.d \
 f_cmi.d \
 f_cmr.d \
+f_flags.d \
 f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
@@ -144,6 +148,7 @@ display_server.d \
 f_arch.d \
 f_cmi.d \
 f_cmr.d \
+f_flags.d \
 f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
@@ -199,6 +204,8 @@ LINKER_SCRIPT_DEP+=
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
 	@echo Finished building: $<
 	
+
+
 
 ./f_gui.o: .././f_gui.cpp
 	@echo Building file: $<

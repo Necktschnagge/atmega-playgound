@@ -7,6 +7,8 @@
 
 // bedingte Kompilierung für Optimierungs Features:
 
+#if false
+
 #ifdef earliest_timer_deadline
 	#error "config macro already defined."
 #endif
@@ -212,3 +214,5 @@ namespace scheduler {
 
 	
 }
+
+#endif
