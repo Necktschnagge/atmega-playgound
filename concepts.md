@@ -11,4 +11,7 @@
       * single_flags
       * flags<...>
    * str (structural stuff, classes etc)
+      * void_function
+      * callable
+      * const_callable
       * exceptional<...>
