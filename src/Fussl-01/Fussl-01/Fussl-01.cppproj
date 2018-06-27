@@ -213,6 +213,9 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
+    <Compile Include="f_callbacks.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_cmi.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
@@ -225,9 +228,6 @@
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
     <Compile Include="f_cmr.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="f_concepts.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="f_exceptional.cpp">

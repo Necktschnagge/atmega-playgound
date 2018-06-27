@@ -91,7 +91,7 @@ namespace scheduler {
 		return 0; // successful
 	}
 	
-	SysTime::SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code, concepts::void_function handler) : now_update_interrupt_handler(handler) {
+	SysTime::SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code, fsl::str::void_function handler) : now_update_interrupt_handler(handler) {
 		error_code = try_to_set(osc_frequency,log_precision);
 		if (error_code)	this->log_precision = INVALID_log_precision; // object invalid
 		log_precision = this->log_precision;
