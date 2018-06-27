@@ -2,7 +2,7 @@
 
 * fsl
    * ui (user interface stuff)
-      * matrix_keybord
+      * matrix_keyboard
    * hw (hardware, hardware abstraction)
       * IOPin
    * os (typical operating system features: like systime, scheduler, taskrunner)
