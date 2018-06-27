@@ -25,9 +25,9 @@
 #define F_GUI_H_
 
 #include "f_arch.h"
-#include "f_concepts.h"
+#include "f_callbacks.h"
 
-using PCallable = concepts::Callable*;
+using PCallable = fsl::str::callable*;
 
 
 namespace input {
@@ -97,7 +97,7 @@ namespace input {
 	typedef union callback_u* pcallback_t; // ## change old style
 	typedef union callback_u {
 		void (*callbackProcedure)();		// enabled by 1
-		concepts::Callable* callbackObject;			// enabled by 2
+		fsl::str::callable* callbackObject;			// enabled by 2
 		} callback_t;
 	
 	/*
@@ -218,7 +218,7 @@ namespace input {
 	
 	//	set callback reference (Callable*) and enable flag for given eventID
 	// with an illegal eventId it does nothing
-	void setEvent(int8_t eventId, concepts::Callable* callback, bool enabled = true);
+	void setEvent(int8_t eventId, fsl::str::callable* callback, bool enabled = true);
 	
 	//	set callback reference (function*) and enable flag for given eventID
 	// with an illegal eventId it does nothing

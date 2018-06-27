@@ -14,7 +14,7 @@
 #define __F_ITEM_SELECTOR_H__
 
 #include "f_flags.h"
-#include "f_concepts.h" // needed?<<<<<
+#include "f_callbacks.h"
 #include "f_item_manager.h"
 
 namespace ui {
@@ -38,7 +38,7 @@ namespace ui {
 		
 		private:
 		/* Singleton for OK Button callback */
-		class OkayCall final : public concepts::Callable {
+		class OkayCall final : public fsl::str::callable {
 			private:
 			ItemSelector* host;
 			OkayCall(ItemSelector* itemSelector) : host(itemSelector) {}
@@ -49,7 +49,7 @@ namespace ui {
 		};
 		
 		/* Singleton for NEXT Button callback */
-		class NextCall final : public concepts::Callable {
+		class NextCall final : public fsl::str::callable {
 			private:
 			ItemSelector* host;
 			NextCall(ItemSelector* itemSelector) : host(itemSelector) {}
@@ -60,7 +60,7 @@ namespace ui {
 		};
 		
 		/* Singleton for PREVIOUS Button callback */
-		class PreviousCall final : public concepts::Callable {
+		class PreviousCall final : public fsl::str::callable {
 			private:
 			ItemSelector* host;
 			PreviousCall(ItemSelector* itemSelector) : host(itemSelector) {}

@@ -59,7 +59,7 @@ bool input::exec(bool all /* = false */){
 	return result;
 }
 
-void input::setEvent(int8_t eventId, concepts::Callable* callback, bool enabled /* = true */){
+void input::setEvent(int8_t eventId, fsl::str::callable* callback, bool enabled /* = true */){
 	if ( (eventId >= 10) || (eventId < 0) ){ // illegal eventId
 		return;
 	}

@@ -48,7 +48,7 @@
 #ifndef F_SYSTIME_H_
 #define F_SYSTIME_H_
 
-#include "f_concepts.h"
+#include "f_callbacks.h"
 
  /*                                                   
 documentation:
@@ -186,7 +186,7 @@ namespace scheduler {
 	public:
 			/* pointer to now_update software interrupt handler,
 			   critical since ISR access. */
-		volatile concepts::void_function now_update_interrupt_handler;
+		volatile fsl::str::void_function now_update_interrupt_handler;
 		// why is this public???? <<<<<#####
 		
 	/******* constructors *************************************************************************/
@@ -198,7 +198,7 @@ namespace scheduler {
 			   the log_precision passed might be changed in order to construct a valid SysTime
 			   so the final value of log_precision is passed back. */
 			/* on error log_precision is INVALID_log_precision */
-		SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code, concepts::void_function handler = nullptr);
+		SysTime(const long double& osc_frequency, uint8_t& log_precision, uint8_t& error_code, fsl::str::void_function handler = nullptr);
 		
 		
 	/******* modifiers  **************************************************************************/

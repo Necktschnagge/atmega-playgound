@@ -17,7 +17,7 @@
 #include "f_macros.h"
 #include "f_range_int.h"
 #include "f_flags.h"
-#include "f_concepts.h" // needed?
+#include "f_callbacks.h"
 #include "f_time.h"
 #include "f_systime.h"
 
@@ -44,12 +44,12 @@ class scheduler2 {
 	
 	/*** private types ***/
 
-		/* instances of this type contain either a pointer to concepts::Callable or a concepts::void_function */	
+		/* instances of this type contain either a pointer to fsl::str::callable or a fsl::str::void_function */	
 	class UnionCallback {
 		private:
 		union InternUnion {
-			concepts::void_function function_ptr;
-			concepts::Callable* callable_ptr;
+			fsl::str::void_function function_ptr;
+			fsl::str::callable* callable_ptr;
 			
 			InternUnion(): function_ptr(nullptr){}
 		};
@@ -57,8 +57,8 @@ class scheduler2 {
 		
 		public:			
 		/* set a function pointer, replaces the previously stored function pointer oder callable pointer */
-		inline void set_function_ptr(concepts::void_function ptr){ _union.function_ptr = ptr; }
-		inline void set_callable_ptr(concepts::Callable* ptr) { _union.callable_ptr = ptr; }
+		inline void set_function_ptr(fsl::str::void_function ptr){ _union.function_ptr = ptr; }
+		inline void set_callable_ptr(fsl::str::callable* ptr) { _union.callable_ptr = ptr; }
 		inline void call_function() const { if (_union.function_ptr != nullptr) _union.function_ptr(); }
 		inline void call_callable() const { if (_union.callable_ptr != nullptr) (*_union.callable_ptr)(); }
 	};
@@ -356,7 +356,7 @@ class scheduler2 {
 	returns SchedulerHandle of created task
 	if not successful NO_HANDLE is returned.
 	*/
-	SchedulerHandle new_task(concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true);
+	SchedulerHandle new_task(fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true);
 	
 	
 	inline bool is_table_locked(){ return flags.get(TABLE_LOCKED); }
@@ -450,7 +450,7 @@ class scheduler2 {
 		return free_index;	
 	}
 	
-	SchedulerHandle new_timer(const time::ExtendedMetricTime& time, concepts::Callable* callable = nullptr, concepts::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
+	SchedulerHandle new_timer(const time::ExtendedMetricTime& time, fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
 		//#### go one here and with function new table line
 		// check whether we can modify table:
 		macro_interrupt_critical(
@@ -742,7 +742,7 @@ uint8_t scheduler2<TABLE_SIZE>::run() // method ready, checked twice!!!
 
 
 template <uint8_t TABLE_SIZE>
-typename scheduler2<TABLE_SIZE>::SchedulerHandle scheduler2<TABLE_SIZE>::new_task(concepts::Callable* callable /*= nullptr*/, concepts::void_function function /*= nullptr*/, uint8_t urgency /*= DEFAULT_URGENCY*/, bool enable /*= true*/)
+typename scheduler2<TABLE_SIZE>::SchedulerHandle scheduler2<TABLE_SIZE>::new_task(fsl::str::callable* callable /*= nullptr*/, fsl::str::void_function function /*= nullptr*/, uint8_t urgency /*= DEFAULT_URGENCY*/, bool enable /*= true*/)
 {
 	macro_interrupt_critical(
 	if (flags.get(TABLE_LOCKED)) return NO_HANDLE;
