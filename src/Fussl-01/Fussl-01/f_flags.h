@@ -7,7 +7,8 @@
 FPS:
 
 should be ready:
-add all doc-strings
+add all doc-strings!!
+write some testcode somewhen in future
 
 look at the last lines, there are two usings,
 check whether the code gets more or less depending on what implementation we choose.
