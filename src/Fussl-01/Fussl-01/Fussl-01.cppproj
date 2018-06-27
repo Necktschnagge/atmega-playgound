@@ -230,6 +230,12 @@
     <Compile Include="f_concepts.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_flags.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_flags.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_gui.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>

@@ -10,6 +10,8 @@ f_cmi.cpp
 
 f_cmr.cpp
 
+f_flags.cpp
+
 f_gui.cpp
 
 f_hardware.cpp

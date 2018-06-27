@@ -99,6 +99,8 @@ void sendbit(bool value){
 	
 }
 
+
+
 void unidirectional_led_line_test_by_testing_single_segments_numbers_and_some_characters_001(){
 	for (uint8_t pos = 0; pos < 8; ++pos){
 		// Test all segments on that particular LED character

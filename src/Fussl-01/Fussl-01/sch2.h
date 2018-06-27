@@ -16,7 +16,8 @@
 
 #include "f_macros.h"
 #include "f_range_int.h"
-#include "f_concepts.h"
+#include "f_flags.h"
+#include "f_concepts.h" // needed?
 #include "f_time.h"
 #include "f_systime.h"
 
@@ -97,31 +98,31 @@ class scheduler2 {
 		SchedulerHandle handle; // 1
 		UnionCallback callback; // 2
 		UnionSpecifics specifics; // 2
-		concepts::Flags flags; // 1
+		fsl::lg::single_flags flags; // 1
 	};
 	
 	/*** private constexpr constants ***/
 	
 	/* flags for each scheduler line */
-	static constexpr concepts::Flags::flag_id IS_VALID{ 0 }; // if an entry is not valid, the entry may be overwritten.
-	static constexpr concepts::Flags::flag_id IS_ENABLED{ 1 }; // if an entry is valid, then the entry will be considered on scheduling decisions iff is_enabled
+	static constexpr fsl::lg::single_flags::flag_id IS_VALID{ 0 }; // if an entry is not valid, the entry may be overwritten.
+	static constexpr fsl::lg::single_flags::flag_id IS_ENABLED{ 1 }; // if an entry is valid, then the entry will be considered on scheduling decisions iff is_enabled
 	// timer will automatically be disabled right before executing, if you want the timer to execute again after a certain time, you have to reenable from inside the timer procedure
-	static constexpr concepts::Flags::flag_id IS_TIMER{ 2 }; // if entry is valid, then entry (containing unions) is treated as a timer iff IS_Timer and as task otherwise.
-	static constexpr concepts::Flags::flag_id IS_INTTIMER{ 3 }; // if entry is_valid and is_timer, then callback may be executed as soon as event_time is reached on system time interrupt iff IS_INTTIMER. Otherwise is has to wait until the current task/timer returned.
-	static constexpr concepts::Flags::flag_id IS_CALLABLE{ 4 }; // if entry is_valid, the callback union will be treated as a callable iff IS_CALLABLE, otherwise as function pointer.
+	static constexpr fsl::lg::single_flags::flag_id IS_TIMER{ 2 }; // if entry is valid, then entry (containing unions) is treated as a timer iff IS_Timer and as task otherwise.
+	static constexpr fsl::lg::single_flags::flag_id IS_INTTIMER{ 3 }; // if entry is_valid and is_timer, then callback may be executed as soon as event_time is reached on system time interrupt iff IS_INTTIMER. Otherwise is has to wait until the current task/timer returned.
+	static constexpr fsl::lg::single_flags::flag_id IS_CALLABLE{ 4 }; // if entry is_valid, the callback union will be treated as a callable iff IS_CALLABLE, otherwise as function pointer.
 
 	/* flags once for every scheduler object */
-	static constexpr concepts::Flags::flag_id IS_RUNNING{ 0 }; // true iff run() runs // write access only by run()
-	static constexpr concepts::Flags::flag_id STOP_CALLED{ 1 }; // if true, run() should return when current task returns.
+	static constexpr fsl::lg::single_flags::flag_id IS_RUNNING{ 0 }; // true iff run() runs // write access only by run()
+	static constexpr fsl::lg::single_flags::flag_id STOP_CALLED{ 1 }; // if true, run() should return when current task returns.
 	// if it is true no int timers will be executed anymore until scheduler was started again.
-	static constexpr concepts::Flags::flag_id TABLE_LOCKED{ 2 }; // if scheduler is accessing scheduling table, it must not be modified by interrupt timers, modifying only allowed if you own TABLE_LOCKED.
-	static constexpr concepts::Flags::flag_id EMPTY_TABLE_DETECTED{ 3 }; // for function-local internal use in run() only.
-	static constexpr concepts::Flags::flag_id SOFTWARE_INTERRUPTS_ENABLE{ 4 }; // scheduler will only look for int timers at now time update if enabled
+	static constexpr fsl::lg::single_flags::flag_id TABLE_LOCKED{ 2 }; // if scheduler is accessing scheduling table, it must not be modified by interrupt timers, modifying only allowed if you own TABLE_LOCKED.
+	static constexpr fsl::lg::single_flags::flag_id EMPTY_TABLE_DETECTED{ 3 }; // for function-local internal use in run() only.
+	static constexpr fsl::lg::single_flags::flag_id SOFTWARE_INTERRUPTS_ENABLE{ 4 }; // scheduler will only look for int timers at now time update if enabled
 	
 	/*** private data ***/
 	
 	/* the scheduler object's flags */
-	volatile concepts::Flags flags;
+	volatile fsl::lg::single_flags flags;
 	
 	
 	/* table containing all timers and tasks
@@ -564,7 +565,7 @@ class scheduler2 {
 	static_assert(sizeof(SchedulerHandle) == 1, "SchedulerHandle has not the appropriate size.");
 	static_assert(sizeof(UnionCallback) == 2, "UnionCallback has not the appropriate size.");
 	static_assert(sizeof(UnionSpecifics) == 2, "UnionSpecifics has not the appropriate size.");
-	static_assert(sizeof(concepts::Flags) == 1, "concepts::Flags has not the appropriate size.");
+	static_assert(sizeof(fsl::lg::single_flags) == 1, "fsl::lg::single_flags has not the appropriate size.");
 	static_assert(sizeof(SchedulerMemoryLine) == 6, "SchedulerMemoryLine has not the appropriate size.");
 
 };
