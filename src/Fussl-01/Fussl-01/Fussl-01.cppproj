@@ -230,6 +230,12 @@
     <Compile Include="f_concepts.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_exceptional.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_exceptional.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_flags.cpp">
       <SubType>compile</SubType>
     </Compile>
