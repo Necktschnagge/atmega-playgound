@@ -29,7 +29,7 @@ class scheduler2 {
 	
 	/*** public types ***/
 	
-	using SchedulerHandle = range_int<uint8_t,TABLE_SIZE,true,true>;
+	using SchedulerHandle = fsl::lg::range_int<uint8_t,TABLE_SIZE,true,true>;
 	
 	/*** public constexpr constants ***/
 	

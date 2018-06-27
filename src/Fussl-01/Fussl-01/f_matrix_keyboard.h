@@ -3,6 +3,14 @@
 *
 * Created: 24.06.2018 17:29:49
 * Author: Maximilian Starke
+
+FPS:
+
+	Everything is ready.
+	
+	Please write test code:
+	Maybe for test code we can separate the iterator of IOPin from the context of the matrix, s.t. we provide an own iterator
+	implementing the same methods to test this.
 */
 
 
@@ -51,15 +59,15 @@ x_array_begin	2	3	x_size
 			/* points to first GPIOPin of x-row/col pins, y pins follow immediately
 			reserved pins are {x_array_begin, ... , x_array_begin + x_size + y_size -1 }
 			*/
-			hardware::IOPin _x_array_begin;
+			fsl::hw::IOPin _x_array_begin;
 			
 			constexpr uint8_t count_GPIOs(){ return x_size + y_size; }
-			constexpr hardware::IOPin array_begin(){ return _x_array_begin; }
-			constexpr hardware::IOPin array_end(){ return _x_array_begin + count_GPIOs(); }
-			constexpr hardware::IOPin x_array_begin(){ return _x_array_begin; }
-			constexpr hardware::IOPin x_array_end(){ return _x_array_begin + x_size; }
-			constexpr hardware::IOPin y_array_begin(){ return _x_array_begin + x_size; }
-			constexpr hardware::IOPin y_array_end(){ return _x_array_begin + count_GPIOs(); }
+			constexpr fsl::hw::IOPin array_begin(){ return _x_array_begin; }
+			constexpr fsl::hw::IOPin array_end(){ return _x_array_begin + count_GPIOs(); }
+			constexpr fsl::hw::IOPin x_array_begin(){ return _x_array_begin; }
+			constexpr fsl::hw::IOPin x_array_end(){ return _x_array_begin + x_size; }
+			constexpr fsl::hw::IOPin y_array_begin(){ return _x_array_begin + x_size; }
+			constexpr fsl::hw::IOPin y_array_end(){ return _x_array_begin + count_GPIOs(); }
 			
 			public:
 			
@@ -96,8 +104,8 @@ x_array_begin	2	3	x_size
 			reserved pins are {x_array_begin, ... , x_array_begin + x_size + y_size -1 }
 			make sure this class is exclusively using these pins
 			*/
-			matrix_keyboard(hardware::IOPin x_array_begin) : _x_array_begin(x_array_begin) {
-				for(hardware::IOPin iter = array_begin(); iter != array_end(); ++ iter){
+			matrix_keyboard(fsl::hw::IOPin x_array_begin) : _x_array_begin(x_array_begin) {
+				for(fsl::hw::IOPin iter = array_begin(); iter != array_end(); ++ iter){
 					iter.set_as_input(); // get a safe state
 					iter.set_pull_up(true);
 				}
@@ -106,10 +114,10 @@ x_array_begin	2	3	x_size
 			/* read the current key state of matrix_keyboard */
 			key_state operator()(){
 				key_state result;
-				for(hardware::IOPin iter = x_array_begin(); iter != x_array_end() ; ++ iter){
+				for(fsl::hw::IOPin iter = x_array_begin(); iter != x_array_end() ; ++ iter){
 					iter.write_PORT(false);	// goal: output 0V
 					iter.set_as_output();
-					for(hardware::IOPin jter = y_array_begin(); jter != y_array_end(); ++jter){
+					for(fsl::hw::IOPin jter = y_array_begin(); jter != y_array_end(); ++jter){
 						if (jter.read_PIN() == false){
 							result.inc_counter();
 							result.x = iter - x_array_begin();
