@@ -358,34 +358,31 @@ class scheduler2 {
 	*/
 	SchedulerHandle new_task(fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true);
 	
-	
-	inline bool is_table_locked(){ return flags.get(TABLE_LOCKED); }
-	
-	
-	/*inline bool is_table_full(){ return true; } */
+	inline bool is_table_locked(){ bool b; macro_interrupt_critical( b = flags.get(TABLE_LOCKED); ); return b; }
 	
 	/* prepares an unused (= IS_INVALID) line to add a new task or timer there */
 	/* returns TABLE_SIZE if the table is either locked or full. In this case the table is not changed */
 	/* you can determine whether "table locked" was a reason of abortion by checking this->flags.get(TABLE_LOCKED) */
 	/* otherwise returns the index of the line which was prepared.
 	   The prepared line comes with a free handle stored inside this line. */
+	/* only call from inside of a critical_section which is already save against interrupts */
 	uint8_t new_table_line(bool is_task /* true for any timer type, false for any task */, bool is_interrupting /* irrelevant for any task*/){
 		// check whether we can modify table:
-		macro_interrupt_critical(
+		/*macro_interrupt_critical(
 		if (flags.get(TABLE_LOCKED)) return TABLE_SIZE; //NO_HANDLE;
 		flags.set_true(TABLE_LOCKED);
-		);
-		/*@when here: table was not locked before, we can access the table, we have locked the table ourself. */
+		);*/
+		// outdated::: /*@when here: table was not locked before, we can access the table, we have locked the table ourself. */
 		
 		/* search for invalid entry to replace: */
 		uint8_t index;
 		// we look from max index to min when we want to add a new task, because of table layout [int timer, timer, gaps, tasks]
 		// we look from min index to max when we want to add a new timer, because of table layout.
-		for(index = static_cast<uint8_t>(is_task) * (TABLE_SIZE -1); (index < TABLE_SIZE); is_task ? --index : ++index){
+		for(index = is_task * (TABLE_SIZE -1); (index < TABLE_SIZE); is_task ? --index : ++index){
 			if (table[index].flags.get(IS_VALID) == false) goto found_invalid_entry;
 		}
 		/*@when here: despite we have rights to modify the table, we cannnot because it is already full */
-		flags.set_false(TABLE_LOCKED);
+		// ::: outdated::::    flags.set_false(TABLE_LOCKED);
 		return TABLE_SIZE;
 		
 		found_invalid_entry:
@@ -396,33 +393,39 @@ class scheduler2 {
 		// if we want to create an interrupting timer we need to swap position with first non_int timer.
 		
 		// search for free handle // there must be a free handle since there is at least one free line in the table
-		SchedulerHandle candidates[2] = {index, table[index].handle};
+		constexpr uint8_t c_candidates {3};
+		SchedulerHandle candidates[c_candidates] = {index, table[index].handle, index};
 		// prefer handle == index in table.... index may grow up during handler life, when task with greater index is deleted
-		// second idea: handle = handle of last entry that was written here. // because this handle is possibly free
-		uint8_t check_until_index[2] = {index, index};
+		// second idea: handle = handle of last entry that was written here. // because this handle is possibly free since the entry was marked disabled
+		// second idea: same as first idea, but different update strategy.
+		uint8_t check_until_index[c_candidates] = {index, index};
 		
-		index = (index + 1) % TABLE_SIZE;
 		while (true){
-			if (table[index].flags.get(IS_VALID)) // if current line is valid, current line's handle must not be a candidate handle.
-				for(uint8_t i = 0; i < 2; ++i)
+			index = (index + 1) % TABLE_SIZE;
+	
+			if (table[index].flags.get(IS_VALID)){ // if current line is valid, current line's handle must not be a candidate handle.
+				for(uint8_t i = 0; i < c_candidates; ++i){
 					if (table[index].handle == candidates[i]){ // candidate is already used at currrent index
 						if (i == 0){ // use different update strategies for candidates:
 								// idea: go through all possible handles by moving --
 							candidates[i] = minus_one_mod_table_size(candidates[i]);
-						} else {
+						} else if (i == 1){
 								// idea: if we wanted an handle that equals it's entry's index but we found this forbidder here, try the forbidders index
 							candidates[i] = index;
+						} else {
+							candidates[i] = (candidates[i] + 1) % TABLE_SIZE;
 						}
 						check_until_index[i] = minus_one_mod_table_size(index);
 					}
-					for(uint8_t i = 0; i < 2; ++i){
-						if (check_until_index[i] == index){
-							// this candidate is a free handle
-							free_handle = candidates[i];
-							goto found_free_handle1;
-						}
-					}
-			index = (index + 1) % TABLE_SIZE;
+				}
+			}
+			for(uint8_t i = 0; i < c_candidates; ++i){
+				if (check_until_index[i] == index){
+					// this candidate is a free handle
+					free_handle = candidates[i];
+					goto found_free_handle1;
+				}
+			}
 		}
 		
 		found_free_handle1:
@@ -447,7 +450,11 @@ class scheduler2 {
 			}
 		}
 		table[free_index].handle = free_handle;
-		return free_index;	
+		table[free_index].flags.set_true(IS_VALID);
+		table[free_index].flags.set(IS_TIMER, ! is_task);
+		table[free_index].flags.set(IS_INTTIMER, is_interrupting);
+		table[free_index].flags.set_false(IS_ENABLED);		
+		return free_index;
 	}
 	
 	SchedulerHandle new_timer(const time::ExtendedMetricTime& time, fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
