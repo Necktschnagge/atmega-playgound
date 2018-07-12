@@ -27,9 +27,6 @@
 #include "f_arch.h"
 #include "f_callbacks.h"
 
-using PCallable = fsl::str::callable*;
-
-
 namespace input {
 	/* input (for now) is like a static object (for java people) which holds the information
 	which buttons are pressed or released and what changed from last look up*/
