@@ -24,7 +24,6 @@
 #include "f_stack.h"
 
 namespace fsl {
-	
 	namespace os {
 
 		template <uint8_t TABLE_SIZE>
@@ -166,6 +165,18 @@ namespace fsl {
 				return static_cast<uint8_t>( (static_cast<uint16_t>(uint) + static_cast<uint16_t>(TABLE_SIZE -1)) % static_cast<uint16_t>(TABLE_SIZE) );
 			}
 			
+			/* returns index of table where given handle can be found */
+			/* only call from inside an atomic section */
+			uint8_t get_index(handle_type handle){
+				uint16_t candidate = handle;
+				for (uint8_t i = 0; i < (TABLE_SIZE + 1) /2; ++i){
+					if ((table[(candidate + i) % TABLE_SIZE].handle == handle) && (table[(candidate + i) % TABLE_SIZE].flags.get(IS_VALID))) return (candidate + i) % TABLE_SIZE;
+					if ((table[(candidate + TABLE_SIZE - i - 1) % TABLE_SIZE].handle == handle) && (table[(candidate + TABLE_SIZE - i - 1) % TABLE_SIZE].flags.get(IS_VALID))) return (candidate + TABLE_SIZE - i - 1) % TABLE_SIZE;
+				}
+				return TABLE_SIZE; // there is no such entry
+			}
+			
+			
 			/* reset the software watchdog. should be called after any completion of a task or timer */
 			inline void software_watchdog_reset(){ macro_interrupt_critical(software_watchdog_countdown_value = software_watchdog_reset_value;); }
 			
@@ -226,13 +237,14 @@ namespace fsl {
 			}
 			
 			/* prepares an unused (= not IS_VALID) line to add a new task or timer or int-timer there
-				returns TABLE_SIZE if the table is full. In this case the table is not changed
-				otherwise returns the index of the line which was prepared.
-				The prepared line comes with a free handle stored inside this line.
-				It is already marked as IS_VALID, as task / timer / int-timer as given in parameters and as not IS_ENABLED
-				only call from inside of a critical_section which is already save against interrupts
+			returns TABLE_SIZE if the table is full. In this case the table is not changed
+			otherwise returns the index of the line which was prepared.
+			The prepared line comes with a free handle stored inside this line.
+			It is already marked as IS_VALID, as task / timer / int-timer as given in parameters and as not IS_ENABLED
+			only call from inside of a critical_section which is already save against interrupts
 			*/
-			uint8_t new_table_line(bool is_task /* false for any timer type, true for any task */, bool is_interrupting /* irrelevant for any task*/){
+			uint8_t new_table_line(bool is_task, bool is_interrupting){
+				/* is_task :<=> false for any timer type, true for any task, is_interrupting: irrelevant for any task */
 				/* search for invalid entry to replace: */
 				uint8_t index;
 				// we look from max index to min when we want to add a new task, because of table layout [int timer, timer, gaps, tasks]
@@ -246,7 +258,7 @@ namespace fsl {
 				found_invalid_entry:
 				uint8_t free_index{ index };
 				/*@when here: The table has a free line, we stored that index as free_index,
-					there must be also a free handle since there is at least one free line in the table */
+				there must be also a free handle since there is at least one free line in the table */
 				handle_type free_handle{ NO_HANDLE };
 				
 				// search for free handle
@@ -290,8 +302,8 @@ namespace fsl {
 				
 				found_free_handle1:
 				/* @when here: free_index is an index of an unused line, free_handle is an unused handle.
-					if we want to create an interrupting timer we need to swap position with first non_int timer
-					if we want to create a task or a non-int timer, then free_index is already in the right table section.
+				if we want to create an interrupting timer we need to swap position with first non_int timer
+				if we want to create a task or a non-int timer, then free_index is already in the right table section.
 				*/
 				if ((!is_task) && (is_interrupting)){ // we need to swap a new int timer line to the section of int timers!
 					// Check whether predecessors of our int-timer are non-int timers.
@@ -300,9 +312,10 @@ namespace fsl {
 					}
 					// we need to swap:
 					// move from index to free_index
-					/* if (free_index != index) { */
+					
+					// if (free_index != index):
 					table[free_index] = table[index];
-					free_index = index; /* } */
+					free_index = index;
 				}
 				table[free_index].handle = free_handle;
 				table[free_index].flags.set_true(IS_VALID);
@@ -329,6 +342,12 @@ namespace fsl {
 			public:
 			
 			/*** public methods ***/
+			
+			/* activate software interrupts / activate interrupting timers */
+			void enable_software_interrupts(){ macro_interrupt_critical( flags.set_true(SOFTWARE_INTERRUPTS_ENABLE);); }
+
+			/* deactivate software interrupts / deactivate interrupting timers */
+			void disable_software_interrupts(){ macro_interrupt_critical( flags.set_false(SOFTWARE_INTERRUPTS_ENABLE);); }
 			
 			inline const handle_type& my_handle(){ return my_handle_stack.ctop(); }
 			
@@ -370,27 +389,27 @@ namespace fsl {
 				static_assert(0 + round_to_ceiling + truncate + truncate_and_add_one == 1, "There must be one template argument being true and two being false");
 				if (watchdog <= 0) return deactivate_software_watchdog();
 				macro_interrupt_critical(
-					if /* constexpr */ (round_to_ceiling){
-						software_watchdog_reset_value =
-						static_cast<decltype(software_watchdog_reset_value)>(
-						ceil(
-							watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
-						)
-						);
-					}
-					if /* constexpr */ (truncate){
-						software_watchdog_reset_value = static_cast<decltype(software_watchdog_reset_value)>
-						(
-							watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
-						);
-					}
-					if /* constexpr */ (truncate_and_add_one){
-						software_watchdog_reset_value = static_cast<decltype(software_watchdog_reset_value)>
-						(
-							watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
-						)
-						+ 1;
-					}
+				if (round_to_ceiling){ // constexpr
+					software_watchdog_reset_value =
+					static_cast<decltype(software_watchdog_reset_value)>(
+					ceil(
+					watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
+					)
+					);
+				}
+				if (truncate){ // constexpr
+					software_watchdog_reset_value = static_cast<decltype(software_watchdog_reset_value)>
+					(
+					watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
+					);
+				}
+				if (truncate_and_add_one){ // constexpr
+					software_watchdog_reset_value = static_cast<decltype(software_watchdog_reset_value)>
+					(
+					watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
+					)
+					+ 1;
+				}
 				); // macro_interrupt_critical
 			}
 			
@@ -402,7 +421,111 @@ namespace fsl {
 			hardware watchdog is set up with the hardware_watchdog_timeout.
 			Since it activates the hardware watchdog, make sure that the now_time_update_interrupt_handles is called again and again.
 			*/
-			uint8_t run();
+			uint8_t run(){
+				static_assert(TABLE_SIZE >= 1, "Table declared with size 0.");
+				flags.set_false(STOP_CALLED); // delete previous stop command
+				flags.set_true(IS_RUNNING); // set running flag
+				flags.set_false(EMPTY_TABLE_DETECTED); // check for empty table
+				wdt_enable(hardware_watchdog_timeout); // start hardware watchdog
+				wdt_reset();
+				software_watchdog_reset();
+				
+				central_control_loop:
+				while(true){
+					
+					software_watchdog_reset();
+					uint8_t choice; // index inside
+					macro_interrupt_critical_begin;
+					
+					if (flags.get(STOP_CALLED)){
+						// @when here: while loop must terminated because of a stop() call:
+						wdt_disable(); // stop watchdog
+						flags.set_false(IS_RUNNING); // delete running flag
+						macro_interrupt_critical_end;
+						return 1;
+					}
+					
+					/*** look for a timer that can be executed ***/
+					
+					time::ExtendedMetricTime now = fsl::os::system_time::get_instance()();
+					for(choice = 0; (choice < TABLE_SIZE) && (! ((table[choice].flags.get(IS_VALID) == false) || (table[choice].flags.get(IS_TIMER) == false)) ); ++choice){
+						// at current index we see a valid timer (int or non-int)
+						if (table[choice].flags.get(IS_ENABLED)){
+							// timer is enabled.
+							flags.set_false(EMPTY_TABLE_DETECTED);
+							if (now > *table[choice].specifics.timer().event_time) {
+								// timer has expired.
+								table[choice].flags.set_false(IS_ENABLED); // disable timer to avoid execution twice
+								goto execute;
+							}
+						}
+						// side affect of timer order in table: interrupting timers are always executed first
+					}
+					/*** end of looking for timer ***/
+					
+					// @when here: table may have or may not have timers or may consist only of timers inside, but no of the possibly present timers in table expired
+					// EMPTY_TABLE_DETECTED was set to false when looking through timers if there was at least one enabled timer
+					
+					if (flags.get(EMPTY_TABLE_DETECTED)){ // table empty, nothing to schedule anymore
+						wdt_disable();
+						flags.set_false(IS_RUNNING);
+						macro_interrupt_critical_end;
+						return 0;
+					}
+					
+					/*** look for a task that can be executed ***/
+					{
+						uint8_t min_entry_index{ TABLE_SIZE }; // means no entry
+						uint16_t min_entry_race_countdown{ 0xFFFF }; // means no entry
+						
+						/** look for a task with task_race_countdown == 0 **/
+						for (choice = TABLE_SIZE - 1; (choice < TABLE_SIZE) && (table[choice].flags.get(IS_VALID) == true) && (table[choice].flags.get(IS_TIMER) == false); --choice){
+							// choice is an index where we see a valid task entry
+							if (table[choice].flags.get(IS_ENABLED)){
+								// current task has to be considered as it is enabled
+								if (table[choice].specifics.task().task_race_countdown == 0){
+									goto task_execute;
+								}
+								if (static_cast<uint16_t>(table[choice].specifics.task().task_race_countdown) < min_entry_race_countdown){
+									min_entry_index = choice;
+									min_entry_race_countdown = table[choice].specifics.task().task_race_countdown;
+								}
+							}
+						}
+						
+						/** end of looking for task with countdown == 0 **/
+						
+						// @when here: reached end of (maybe empty, maybe max-sized, maybe between) task section, but no task_race_countdown was zero
+						
+						if (min_entry_index == TABLE_SIZE){ // <==> section has no enabled task <==> task section is called empty (but not 0-sized i.g. because of possibly disabled task entries)
+							flags.set_true(EMPTY_TABLE_DETECTED);
+							macro_interrupt_critical_end;
+							goto central_control_loop; // the task section is empty at the moment, run scheduler from begin.
+						}
+						
+						// @when here: reached end of non-empty task section (at least one task is valid and enabled), but no task_race_countdown was zero
+						
+						/** subtract minimum task_race_countdown from all count_downs in task section and let the min-countdown task be executed afterwards **/
+						for (choice = TABLE_SIZE - 1; (choice < TABLE_SIZE) && (table[choice].flags.get(IS_VALID) == true) && (table[choice].flags.get(IS_TIMER) == false); --choice){
+							if (table[choice].flags.get(IS_ENABLED)){
+								table[choice].specifics.task().task_race_countdown -= static_cast<uint8_t>(min_entry_race_countdown);
+							}
+						}
+						choice = min_entry_index;
+						
+						task_execute:
+						table[choice].specifics.task().task_race_countdown = table[choice].specifics.task().urgency;
+					}
+					execute:
+					fsl::str::standard_union_callback callback = table[choice].callback;
+					choice = table[choice].flags.get(IS_CALLABLE);
+					macro_interrupt_critical_end;
+					
+					my_handle_stack.push(table[choice].handle);
+					execute_callback(callback,choice);
+					my_handle_stack.drop();
+				}
+			}
 
 			/* make scheduler return after current executed task / timer */
 			inline void stop(){		macro_interrupt_critical(flags.set_true(STOP_CALLED););		}
@@ -413,14 +536,38 @@ namespace fsl {
 			if not successful NO_HANDLE is returned. In this case the table is already full with valid entries.
 			If both possible callback variants are non-nullptr the callable will be preferred.
 			*/
-			handle_type new_task(fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true);
+			handle_type new_task(fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true){
+				macro_interrupt_critical_begin;
+				
+				uint8_t free_index = new_table_line(true,false);
+				if (free_index == TABLE_SIZE) {
+					macro_interrupt_critical_end;
+					return NO_HANDLE;
+				}
+				table[free_index].flags.set_false(IS_ENABLED);
+				if (enable) table[free_index].flags.set_true(IS_ENABLED);
+				// callback and callback flag:
+				if (callable == nullptr){
+					table[free_index].callback.set_function_ptr(function);
+					table[free_index].flags.set_false(IS_CALLABLE);
+					} else {
+					table[free_index].callback.set_callable_ptr(callable);
+					table[free_index].flags.set_true(IS_CALLABLE);
+				}
+				// task specific information: task urgency and countdown:
+				table[free_index].specifics.task().urgency = urgency;
+				table[free_index].specifics.task().task_race_countdown = urgency; // 0;
+				handle_type free_handle = table[free_index].handle;
+				macro_interrupt_critical_end;
+				return free_handle;
+			}
 			
 			/* creates a new timer entry.
-			   for the event_time, the scheduler only saves a pointer to the given time object.
-			   You have to provide a time object in its memory space yourself in the background. 
-			   returns NO_HANDLE if table was already full, then table was not modified.
-			   otherwise: returns handle of created timer.
-			   If both, callable and void_function are non-null, the callable will be preferred */
+			for the event_time, the scheduler only saves a pointer to the given time object.
+			You have to provide a time object in its memory space yourself in the background.
+			returns NO_HANDLE if table was already full, then table was not modified.
+			otherwise: returns handle of created timer.
+			If both, callable and void_function are non-null, the callable will be preferred */
 			handle_type new_timer(volatile time::ExtendedMetricTime& time, fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
 				macro_interrupt_critical_begin;
 				
@@ -449,27 +596,27 @@ namespace fsl {
 			}
 			
 			/* returns the handle of the first disabled valid entry in table (returns NO_HANDLE iff there is no such entry)
-			   writes the first [count] handles with the outlined property into the [handle_array] (if there are enough of those).
-			   [count] determines the array size provided by the calling instance.
-			   After function return [count] is the number of entries in table with the outlined property.
-			   Writes exactly max(count@before, count@after) handles into [handle_array]. */
+			writes the first [count] handles with the outlined property into the [handle_array] (if there are enough of those).
+			[count] determines the array size provided by the calling instance.
+			After function return [count] is the number of entries in table with the outlined property.
+			Writes exactly max(count@before, count@after) handles into [handle_array]. */
 			handle_type get_disabled_entries(uint8_t& count, handle_type* handle_array = nullptr){
 				if (handle_array == nullptr) count = 0;
 				handle_type return_value = NO_HANDLE;
 				macro_interrupt_critical(
-					uint8_t counter{ 0 }; // next free array position
-					for(uint8_t index = 0; index < TABLE_SIZE; ++index){
-						if (table[index].flags.get(IS_VALID) && !table[index].flags.get(IS_ENABLED)){
-							if (counter < count){
-								handle_array[counter] = table[index].handle;
-							}
-							if (counter == 0){
-								return_value = table[index].handle;
-							}
-							++counter;
+				uint8_t counter{ 0 }; // next free array position
+				for(uint8_t index = 0; index < TABLE_SIZE; ++index){
+					if (table[index].flags.get(IS_VALID) && !table[index].flags.get(IS_ENABLED)){
+						if (counter < count){
+							handle_array[counter] = table[index].handle;
 						}
+						if (counter == 0){
+							return_value = table[index].handle;
+						}
+						++counter;
 					}
-					count = counter;
+				}
+				count = counter;
 				);
 				return return_value;
 			}
@@ -485,230 +632,81 @@ namespace fsl {
 			static_assert(sizeof(scheduler_line) == 6, "SchedulerMemoryLine has not the appropriate size.");
 
 		};
-
-		/************************************************************************/
-		/* FUNCTION IMPLEMENTATION                                              */
-		/************************************************************************/
-
-		template <uint8_t TABLE_SIZE>
-		uint8_t scheduler<TABLE_SIZE>::run() // method ready, checked twice!!!
-		{
-			static_assert(TABLE_SIZE >= 1, "Table declared with size 0.");
-			flags.set_false(STOP_CALLED); // delete previous stop command
-			flags.set_true(IS_RUNNING); // set running flag
-			flags.set_false(EMPTY_TABLE_DETECTED); // check for empty table
-			wdt_enable(hardware_watchdog_timeout); // start hardware watchdog
-			wdt_reset();
-			software_watchdog_reset();
-			
-			central_control_loop:
-			while(true){
-				
-				software_watchdog_reset();
-				uint8_t choice; // index inside
-				macro_interrupt_critical_begin;
-				
-				if (flags.get(STOP_CALLED)){
-					// @when here: while loop must terminated because of a stop() call:
-					wdt_disable(); // stop watchdog
-					flags.set_false(IS_RUNNING); // delete running flag
-					macro_interrupt_critical_end;
-					return 1;
-				}
-				
-				/*** look for a timer that can be executed ***/
-				{
-					time::ExtendedMetricTime now = fsl::os::system_time::get_instance()(); // system_time();
-					for(choice = 0;
-					/* in range */ (choice < TABLE_SIZE) && /* and */ (! /* not out of section */ ((table[choice].flags.get(IS_VALID) == false) || (table[choice].flags.get(IS_TIMER) == false)) );
-					++choice){
-						// at current index we see a valid timer (int or non-int)
-						if (table[choice].flags.get(IS_ENABLED)){
-							// timer is enabled.
-							flags.set_false(EMPTY_TABLE_DETECTED);
-							if (now > *table[choice].specifics.timer().event_time) {
-								// timer has expired.
-								table[choice].flags.set_false(IS_ENABLED); // disable timer to avoid execution twice
-								goto execute;
-							}
-						}
-						// side affect of timer order in table: interrupting timers are always executed first
-					}
-				} /*** end of looking for timer ***/
-					
-				// @when here: table may have or may not have timers or may consist only of timers inside, but no of the possibly present timers in table expired
-				// EMPTY_TABLE_DETECTED was set to false when looking through timers if there was at least one enabled timer
-					
-				if (flags.get(EMPTY_TABLE_DETECTED)){ // table empty, nothing to schedule anymore
-					wdt_disable();
-					flags.set_false(IS_RUNNING);
-					macro_interrupt_critical_end;
-					return 0;
-				}
-				
-				/*** look for a task that can be executed ***/
-				{
-					uint8_t min_entry_index{ TABLE_SIZE }; // means no entry
-					uint16_t min_entry_race_countdown{ 0xFFFF }; // means no entry
-					
-					/** look for a task with task_race_countdown == 0 **/
-					for (choice = TABLE_SIZE - 1;
-					(choice < TABLE_SIZE) && (table[choice].flags.get(IS_VALID) == true) && (table[choice].flags.get(IS_TIMER) == false);
-					--choice){
-						// choice is an index where we see a valid task entry
-						if (table[choice].flags.get(IS_ENABLED)){
-							// current task has to be considered as it is enabled
-							if (table[choice].specifics.task().task_race_countdown == 0){
-								goto task_execute;
-							}
-							if (static_cast<uint16_t>(table[choice].specifics.task().task_race_countdown) < min_entry_race_countdown){
-								min_entry_index = choice;
-								min_entry_race_countdown = table[choice].specifics.task().task_race_countdown;
-							}
-						}
-					} /** end of looking for task with countdown == 0 **/
-						
-					// @when here: reached end of (maybe empty, maybe max-sized, maybe between) task section, but no task_race_countdown was zero
-					
-					if (min_entry_index == TABLE_SIZE){ // <==> section has no enabled task <==> task section is called empty (but not 0-sized i.g. because of possibly disabled task entries)
-						flags.set_true(EMPTY_TABLE_DETECTED);
-						macro_interrupt_critical_end;
-						goto central_control_loop; // the task section is empty at the moment, run scheduler from begin.
-					}
-					
-					// @when here: reached end of non-empty task section (at least one task is valid and enabled), but no task_race_countdown was zero
-					
-					/** subtract minimum task_race_countdown from all count_downs in task section and let the min-countdown task be executed afterwards **/
-					for (choice = TABLE_SIZE - 1; (choice < TABLE_SIZE) && (table[choice].flags.get(IS_VALID) == true) && (table[choice].flags.get(IS_TIMER) == false); --choice){
-						if (table[choice].flags.get(IS_ENABLED)){
-							table[choice].specifics.task().task_race_countdown -= static_cast<uint8_t>(min_entry_race_countdown);
-						}
-					}
-					choice = min_entry_index;
-					
-					task_execute:
-					table[choice].specifics.task().task_race_countdown = table[choice].specifics.task().urgency;
-					// goto execute; // implicitly done
-					} /*** end of looking for task to be executed ***/
-					
-					execute:
-					{
-						fsl::str::standard_union_callback callback = table[choice].callback;
-						choice = table[choice].flags.get(IS_CALLABLE);
-						macro_interrupt_critical_end;
-						
-						my_handle_stack.push(table[choice].handle);
-						execute_callback(callback,choice);
-						my_handle_stack.drop();
-					} /*** end of execute ***/
-				}
-				
-				/*
-				task selection {
-				TIDY_UP_STRATEGY
-				go through all task until you find one with 0 racing, replace 0 racing by reset value and choose this task goto execute.
-				remember always the index with lowest racing value.
-				if no value == 0 found go through all entries again and subtract the min racing value that was detected.
-				take the one entry with the minimum as choice, reset it to its reset value and execute it.
-				=> in most cases we wont find 0, => we go twice through the list, the maybe-only 0 will be shifted away.
-				=> perhaps at next iteration we wont find a 0 again.
-				
-				better idea:
-				REBASE_WHEN_OVERFLOW_STRATEGY
-				alway search for the minimum, global minimum, if found zero we can break earlier.
-				execute this minimum and try to add its distance to the racing value.
-				if rancing value is overflowing that we need to go through all entries and make them all smaller.
-				
-				
-				third idea:
-				MOVING_ZERO_STRATEGY
-				nstead of "re baseing" we could also use an extra variable as last minimum, new minimum will be lowest number >= last min.
-				
-				// just implement one strategy and later implement the others and make it possible to choose by conditioned compiling.
-				}
-				*/
-			}
+		
+	}
+}
 
 
-
-						template <uint8_t TABLE_SIZE>
-						typename scheduler<TABLE_SIZE>::handle_type scheduler<TABLE_SIZE>::new_task(fsl::str::callable* callable /*= nullptr*/, fsl::str::void_function function /*= nullptr*/, uint8_t urgency /*= DEFAULT_URGENCY*/, bool enable /*= true*/)
-						{
-							macro_interrupt_critical_begin;
-							
-							uint8_t free_index = new_table_line(true,false);
-							if (free_index == TABLE_SIZE) {
-								macro_interrupt_critical_end;
-								return NO_HANDLE;
-							}
-							table[free_index].flags.set_false(IS_ENABLED);
-							if (enable) table[free_index].flags.set_true(IS_ENABLED);
-							// callback and callback flag:
-							if (callable == nullptr){
-								table[free_index].callback.set_function_ptr(function);
-								table[free_index].flags.set_false(IS_CALLABLE);
-								} else {
-								table[free_index].callback.set_callable_ptr(callable);
-								table[free_index].flags.set_true(IS_CALLABLE);
-							}
-							// task specific information: task urgency and countdown:
-							table[free_index].specifics.task().urgency = urgency;
-							table[free_index].specifics.task().task_race_countdown = urgency; // 0;
-							handle_type free_handle = table[free_index].handle;
-							macro_interrupt_critical_end;						
-							return free_handle;
-						}
-
-						
-					}
-				}
+#endif //__SCH2_H__
 
 
-				#endif //__SCH2_H__
+////////////////////////////////////////////////////////////////////////// conceptional:
+
+/*
+//static scheduler2<TABLE_SIZE>* instance; /// here is a big problem: our class is template. // someone (interrupt by now time update) cannot know which function to call
+// should be no problem if behaviour is like: each template instanciation has its own static instance pointer.
+// this is the case that every tempolate instanciation has its own static member, you have to extern define these members, otherwise linkage errors will come up.
+// user has to write an own function that is called by systime now update and only propergates i.e. calls MY_SCHEDULER::interrupt handler(); where
+// MY_SCHEDULER has to be defined with using ~ = scheduler2<20>; or similar
+
+// i think it is better to do not have this static member. user must provide one self-written function as callback handler which calls instance->time_update_interrupt_handler()
+*/
 
 
-				////////////////////////////////////////////////////////////////////////// conceptional:
+////
+/*
+ideas for further improvements
 
-				/*
-				//static scheduler2<TABLE_SIZE>* instance; /// here is a big problem: our class is template. // someone (interrupt by now time update) cannot know which function to call
-				// should be no problem if behaviour is like: each template instanciation has its own static instance pointer.
-				// this is the case that every tempolate instanciation has its own static member, you have to extern define these members, otherwise linkage errors will come up.
-				// user has to write an own function that is called by systime now update and only propergates i.e. calls MY_SCHEDULER::interrupt handler(); where
-				// MY_SCHEDULER has to be defined with using ~ = scheduler2<20>; or similar
-				
-				// i think it is better to do not have this static member. user must provide one self-written function as callback handler which calls instance->time_update_interrupt_handler()
-				*/
+always save a copy of earliest time a int timer has to be executed: This way it is no longer necessary to go through whole table on each timer interrupt
 
 
-				////
-				/*
-				ideas for further improvements
-				
-				always save a copy of earliest time a int timer has to be executed: This way it is no longer necessary to go through whole table on each timer interrupt
-				
-				
-				// replace hd watchdog calls in run() by calls to software watchdog. ####
-				hw watchdog timeout must be set in c-tor
+// replace hd watchdog calls in run() by calls to software watchdog. ####
+hw watchdog timeout must be set in c-tor
 
-				
-				viel später::: nachdem diese lib fertig ist:
-				Es besteht die Möglichkeit herauszufinden, ob ein Reset durch den Watchdog ausgelöst wurde (beim ATmega16 z. B. Bit WDRF in MCUCSR). Diese Information sollte auch genutzt werden, falls ein WD-Reset in der Anwendung nicht planmäßig implementiert wurde. Zum Beispiel kann man eine LED an einen freien Pin hängen, die nur bei einem Reset durch den WD aufleuchtet oder aber das "Ereignis WD-Reset" im internen EEPROM des AVR absichern, um die Information später z. B. über UART oder ein Display auszugeben (oder einfach den EEPROM-Inhalt über die ISP/JTAG-Schnittstelle auslesen).
 
-				Bei neueren AVR-Typen bleibt der Watchdog auch nach einem Reset durch den Watchdog aktiviert. Wenn ein Programm nach dem Neustart bis zur erstmaligen Rückstellung des Watchdogs länger braucht, als die im Watchdog eingestellte Zeit, sollte man den Watchdog explizit möglichst früh deaktivieren. Ansonsten resetet der Watchdog den Controller immerfort von Neuem. Die frühe Deaktivierung sollte durch eine Funktion erfolgen, die noch vor allen anderen Operationen (insbesondere vor dem mglw. länger andauernden internen Initialisierungen vor dem Sprung zu main()) ausgeführt wird. Näheres zur Implementierung mit avr-gcc/avr-libc findet sich in der Dokumentation der avr-libc (Suchbegriffe: attribut, section, init).
-				
-				-> to do: fsl::os soll den wert auslesen können.
-				-> os loader soll als erstes einen evtl ajktivierten watchdog deaktivieren.
-				
-				
+viel später::: nachdem diese lib fertig ist:
+Es besteht die Möglichkeit herauszufinden, ob ein Reset durch den Watchdog ausgelöst wurde (beim ATmega16 z. B. Bit WDRF in MCUCSR). Diese Information sollte auch genutzt werden, falls ein WD-Reset in der Anwendung nicht planmäßig implementiert wurde. Zum Beispiel kann man eine LED an einen freien Pin hängen, die nur bei einem Reset durch den WD aufleuchtet oder aber das "Ereignis WD-Reset" im internen EEPROM des AVR absichern, um die Information später z. B. über UART oder ein Display auszugeben (oder einfach den EEPROM-Inhalt über die ISP/JTAG-Schnittstelle auslesen).
+
+Bei neueren AVR-Typen bleibt der Watchdog auch nach einem Reset durch den Watchdog aktiviert. Wenn ein Programm nach dem Neustart bis zur erstmaligen Rückstellung des Watchdogs länger braucht, als die im Watchdog eingestellte Zeit, sollte man den Watchdog explizit möglichst früh deaktivieren. Ansonsten resetet der Watchdog den Controller immerfort von Neuem. Die frühe Deaktivierung sollte durch eine Funktion erfolgen, die noch vor allen anderen Operationen (insbesondere vor dem mglw. länger andauernden internen Initialisierungen vor dem Sprung zu main()) ausgeführt wird. Näheres zur Implementierung mit avr-gcc/avr-libc findet sich in der Dokumentation der avr-libc (Suchbegriffe: attribut, section, init).
+
+-> to do: fsl::os soll den wert auslesen können.
+-> os loader soll als erstes einen evtl ajktivierten watchdog deaktivieren.
 
 
 
 
-				
-								/// <<<< this is much work to find free handlers, think about allowing to put all entries unordered into the table.
-								// <<<<<< then we can always use the indices as handlers, -> we need less memory for the table (1 byte per line)
-								// <<<<<< furthermore finding free handlers will become much easier and faster
-								// <<<<<< searching in method run() will last a little bit longer, I think,
 
-				
-				*/
+
+
+/// <<<< this is much work to find free handlers, think about allowing to put all entries unordered into the table.
+// <<<<<< then we can always use the indices as handlers, -> we need less memory for the table (1 byte per line)
+// <<<<<< furthermore finding free handlers will become much easier and faster
+// <<<<<< searching in method run() will last a little bit longer, I think,
+
+
+*/
+
+/*
+task selection in run() {
+TIDY_UP_STRATEGY
+go through all task until you find one with 0 racing, replace 0 racing by reset value and choose this task goto execute.
+remember always the index with lowest racing value.
+if no value == 0 found go through all entries again and subtract the min racing value that was detected.
+take the one entry with the minimum as choice, reset it to its reset value and execute it.
+=> in most cases we wont find 0, => we go twice through the list, the maybe-only 0 will be shifted away.
+=> perhaps at next iteration we wont find a 0 again.
+
+better idea:
+REBASE_WHEN_OVERFLOW_STRATEGY
+alway search for the minimum, global minimum, if found zero we can break earlier.
+execute this minimum and try to add its distance to the racing value.
+if rancing value is overflowing that we need to go through all entries and make them all smaller.
+
+
+third idea:
+MOVING_ZERO_STRATEGY
+nstead of "re baseing" we could also use an extra variable as last minimum, new minimum will be lowest number >= last min.
+
+// just implement one strategy and later implement the others and make it possible to choose by conditioned compiling.
+}
+*/
