@@ -9,6 +9,8 @@
 #ifndef ISTACK_H_
 #define ISTACK_H_
 
+#include <stdint.h>
+
 namespace fsl {
 	namespace con {
 		
