@@ -24,6 +24,30 @@ namespace fsl {
 			virtual void operator()() const = 0;
 		};
 		
+		template <typename callable_type>
+		class union_callback {
+			private:
+			union intern_union {
+				fsl::str::void_function function_ptr;
+				callable_type* callable_ptr;
+				
+				intern_union(): function_ptr(nullptr){}
+			};
+			intern_union _union;
+			
+			public:
+			/* set a function pointer, replaces the previously stored function pointer oder callable pointer */
+			inline void set_function_ptr(fsl::str::void_function ptr){ _union.function_ptr = ptr; }
+			/* set a callable pointer, replaces the previously stored function pointer oder callable pointer */
+			inline void set_callable_ptr(callable_type* ptr) { _union.callable_ptr = ptr; }
+			
+			/* treat intern stored callback as of type "void_function" and call if non-nullptr */
+			inline void call_function() const { if (_union.function_ptr != nullptr) _union.function_ptr(); }
+			/* treat intern stored callback as of type "callable" and call if non-nullptr */
+			inline void call_callable() const { if (_union.callable_ptr != nullptr) (*_union.callable_ptr)(); }
+		};
+		
+		using standard_union_callback = union_callback<callable>;
 	}
 }
 

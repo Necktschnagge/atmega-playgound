@@ -60,14 +60,14 @@ x_array_begin	2	3	x_size
 			/* points to first GPIOPin of x-row/col pins, y pins follow immediately
 			reserved pins are {x_array_begin, ... , x_array_begin + x_size + y_size -1 }
 			*/
-			fsl::hw::IOPin _x_array_begin;
+			fsl::hw::gpio_pin _x_array_begin;
 			
-			constexpr fsl::hw::IOPin array_begin(){ return _x_array_begin; }
-			constexpr fsl::hw::IOPin array_end(){ return _x_array_begin + count_GPIOs(); }
-			constexpr fsl::hw::IOPin x_array_begin(){ return _x_array_begin; }
-			constexpr fsl::hw::IOPin x_array_end(){ return _x_array_begin + x_size; }
-			constexpr fsl::hw::IOPin y_array_begin(){ return _x_array_begin + x_size; }
-			constexpr fsl::hw::IOPin y_array_end(){ return _x_array_begin + count_GPIOs(); }
+			constexpr fsl::hw::gpio_pin array_begin(){ return _x_array_begin; }
+			constexpr fsl::hw::gpio_pin array_end(){ return _x_array_begin + count_GPIOs(); }
+			constexpr fsl::hw::gpio_pin x_array_begin(){ return _x_array_begin; }
+			constexpr fsl::hw::gpio_pin x_array_end(){ return _x_array_begin + x_size; }
+			constexpr fsl::hw::gpio_pin y_array_begin(){ return _x_array_begin + x_size; }
+			constexpr fsl::hw::gpio_pin y_array_end(){ return _x_array_begin + count_GPIOs(); }
 			
 			public:
 			
@@ -76,7 +76,7 @@ x_array_begin	2	3	x_size
 			/* the number of (theoretical) keys on the matrix keyboard */
 			static constexpr uint16_t key_count(){	return static_cast<uint16_t>(x_size) * y_size;	}
 			/* the past-the-end iterator for the used GPIO pins*/
-			constexpr fsl::hw::IOPin GPIO_end(){ return array_end(); } // <<< is constexpr allowed here???
+			constexpr fsl::hw::gpio_pin GPIO_end(){ return array_end(); } // <<< is constexpr allowed here???
 			
 			/* enum class for number of pressed keys */
 			enum class key_down_count : uint8_t {
@@ -122,8 +122,8 @@ x_array_begin	2	3	x_size
 			past-the-end iterator can be accessed via GPIO_end()
 			make sure this class is exclusively using these pins
 			*/
-			inline matrix_keyboard(fsl::hw::IOPin x_array_begin) : _x_array_begin(x_array_begin) {
-				for(fsl::hw::IOPin iter = array_begin(); iter != array_end(); ++ iter){
+			inline matrix_keyboard(fsl::hw::gpio_pin x_array_begin) : _x_array_begin(x_array_begin) {
+				for(fsl::hw::gpio_pin iter = array_begin(); iter != array_end(); ++ iter){
 					iter.set_as_input(); // get a safe state first
 					iter.set_pull_up(true); // activate pull-up
 				}
@@ -132,10 +132,10 @@ x_array_begin	2	3	x_size
 			/* read the current key state of matrix_keyboard */
 			key_state operator()(){
 				key_state result;
-				for(fsl::hw::IOPin iter = x_array_begin(); iter != x_array_end() ; ++ iter){
+				for(fsl::hw::gpio_pin iter = x_array_begin(); iter != x_array_end() ; ++ iter){
 					iter.write_PORT(false);	// i.e. deactivate pullup, goal: output 0V
 					iter.set_as_output(); // output 0 on pin iter (x-panel)
-					for(fsl::hw::IOPin jter = y_array_begin(); jter != y_array_end(); ++jter){
+					for(fsl::hw::gpio_pin jter = y_array_begin(); jter != y_array_end(); ++jter){
 						if (jter.read_PIN() == false){
 							result.inc_counter();
 							result.x = iter - x_array_begin();

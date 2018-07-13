@@ -76,11 +76,11 @@
 
 #include "f_scheduler.h"
 
-#include "f_systime.h"
+#include "f_system_time.h"
 
 namespace scheduler {
 	
-	SysTime* sys_time; // ## i did not care about init yet.
+	system_time* sys_time; // ## i did not care about init yet.
 	SchedulerMemoryLine* p_table {nullptr}; // ptr to the table
 	uint8_t s_table {0}; // table size as the number of SchedulerMemoryLines
 		

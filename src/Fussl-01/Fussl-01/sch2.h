@@ -19,7 +19,8 @@
 #include "f_flags.h"
 #include "f_callbacks.h"
 #include "f_time.h"
-#include "f_systime.h"
+#include "f_system_time.h"
+#include "f_stack.h"
 
 template <uint8_t TABLE_SIZE>
 class scheduler2 {
@@ -30,12 +31,12 @@ class scheduler2 {
 	
 	/*** public types ***/
 	
-	using SchedulerHandle = fsl::lg::range_int<uint8_t,TABLE_SIZE,true,true>;
+	using handle_type = fsl::lg::range_int<uint8_t,TABLE_SIZE,true,true>;
 	
 	/*** public constexpr constants ***/
 	
 	/* refers to none of the entries in scheduler table */
-	static constexpr SchedulerHandle NO_HANDLE{ SchedulerHandle::OUT_OF_RANGE };
+	static constexpr handle_type NO_HANDLE{ handle_type::OUT_OF_RANGE };
 	
 	/* the default urgency for task entries in scheduler table */
 	static constexpr uint8_t DEFAULT_URGENCY{ 50 };
@@ -43,27 +44,9 @@ class scheduler2 {
 	private:
 	
 	/*** private types ***/
-
-		/* instances of this type contain either a pointer to fsl::str::callable or a fsl::str::void_function */	
-	class UnionCallback {
-		private:
-		union InternUnion {
-			fsl::str::void_function function_ptr;
-			fsl::str::callable* callable_ptr;
-			
-			InternUnion(): function_ptr(nullptr){}
-		};
-		InternUnion _union;
-		
-		public:			
-		/* set a function pointer, replaces the previously stored function pointer oder callable pointer */
-		inline void set_function_ptr(fsl::str::void_function ptr){ _union.function_ptr = ptr; }
-		inline void set_callable_ptr(fsl::str::callable* ptr) { _union.callable_ptr = ptr; }
-		inline void call_function() const { if (_union.function_ptr != nullptr) _union.function_ptr(); }
-		inline void call_callable() const { if (_union.callable_ptr != nullptr) (*_union.callable_ptr)(); }
-	};
-		
-	struct TaskSpecifics {
+	
+	/* specific data only needed for tasks */
+	struct task_specifics {
 		/* value, that is added to task_race_countdown after each callback execution
 		   255 .. least important ... 0 ... most important
 		*/
@@ -76,28 +59,31 @@ class scheduler2 {
 		uint8_t task_race_countdown;		
 	};
 
-	struct TimerSpecifics {
+	/* specific data only needed for timers */
+	struct timer_specifics {
 		/* earliest time when timer can be executed */
 		volatile time::ExtendedMetricTime* event_time;
 	};
 	
-	class UnionSpecifics {
+	/* class for union storage of timer/task - specific data */
+	class union_specifics {
 		private:
-		union InternUnion {
-			TaskSpecifics task;
-			TimerSpecifics timer;
+		union intern_union {
+			task_specifics task;
+			timer_specifics timer;
 		};
-		InternUnion _union;
+		intern_union _union;
 		public:
-		TaskSpecifics& task() { return _union.task; }
-		TimerSpecifics& timer() { return _union.timer; }
-		// design decision justification: using direct references makes objects become larger by 2*ptrsize, I tried it
+		task_specifics& task() { return _union.task; }
+		timer_specifics& timer() { return _union.timer; }
+		// <<< design decision justification: using direct references makes objects become larger by 2*ptrsize, I tried it
 	};
 	
-	struct SchedulerMemoryLine {
-		SchedulerHandle handle; // 1
-		UnionCallback callback; // 2
-		UnionSpecifics specifics; // 2
+	/* class for one scheduler line containing everything else */
+	struct scheduler_line {
+		handle_type handle; // 1
+		fsl::str::standard_union_callback callback; // 2
+		union_specifics specifics; // 2
 		fsl::lg::single_flags flags; // 1
 	};
 	
@@ -124,6 +110,8 @@ class scheduler2 {
 	/* the scheduler object's flags */
 	volatile fsl::lg::single_flags flags;
 	
+	/* stack for handles of callbacks that were called*/
+	volatile fsl::con::stack<handle_type,2> my_handle_stack;
 	
 	/* table containing all timers and tasks
 	table layout definition:
@@ -147,7 +135,7 @@ class scheduler2 {
 		if you do not own TABLE_LOCKED you are only allowed to read the table, but there is no guarantee that table is non-volatile and also
 		no guaranty that table is in a consistent state if you are the interrupt during some table modification.
 	*/
-	volatile SchedulerMemoryLine table[TABLE_SIZE];
+	volatile scheduler_line table[TABLE_SIZE];
 
 	// see: https://www.mikrocontroller.net/articles/AVR-GCC-Tutorial/Der_Watchdog
 	/* timeout value for initialization of hardware watchdog 
@@ -178,7 +166,7 @@ class scheduler2 {
 	/* executes a callback. if callback pointer is nullptr, nothing will be done 
 	   iff (free_and_unfree_lock) the table_locked will be turned off right before callback and turned on right after callback */
 	template<bool free_and_unfree_lock = false>
-	inline void execute_callback(UnionCallback callback, bool is_callable){
+	inline void execute_callback(fsl::str::standard_union_callback callback, bool is_callable){
 		if (free_and_unfree_lock) flags.set_false(TABLE_LOCKED);
 		(is_callable) ? callback.call_callable() : callback.call_function();
 		if (free_and_unfree_lock) flags.set_true(TABLE_LOCKED);
@@ -201,7 +189,7 @@ class scheduler2 {
 	*/   
 	inline uint8_t execute_interrupting_timers(){
 		time::ExtendedMetricTime new_earliest_interrupting_timer_release = time::ExtendedMetricTime::MAX();
-		time::ExtendedMetricTime now = scheduler::SysTime::get_instance()();
+		time::ExtendedMetricTime now = fsl::os::system_time::get_instance()();
 		
 		if (now < earliest_interrupting_timer_release)		return 2; 
 		if (flags.get(TABLE_LOCKED))						return 0;
@@ -236,7 +224,9 @@ class scheduler2 {
 			if (table[index].flags.get(IS_ENABLED)){
 					if (now >= *table[index].specifics.timer().event_time){
 						table[index].flags.set_false(IS_ENABLED);
+						my_handle_stack.push(table[index].handle);
 						execute_callback<true>(index);
+						my_handle_stack.drop();
 						index = 0;
 						continue;
 					} else {
@@ -278,23 +268,27 @@ class scheduler2 {
 	
 	/*** public methods ***/
 	
+	inline const handle_type& my_handle(){ return my_handle_stack.ctop(); }
+	
 	/* executes all stuff that should be done on now_time update, including hardware watchdog reset, int-timer execution e.a.
 	   should be called once on every update of the now time */
 	inline void time_update_interrupt_handler(){
+		//# only execute if is_Running ????? otherwise interrupts throw before run started.
 		if ((software_watchdog_reset_value == 0) /*software watchdog disabled*/ || (software_watchdog_countdown_value > 0) /*software watchdog not exceeded*/)
 		{
 			--software_watchdog_countdown_value;
-			wdt_reset();
+			
 			// replace hd watchdog calls in run() by calls to software watchdog. ####
 			//#1
 		}
+		wdt_reset();
 		if (flags.get(SOFTWARE_INTERRUPTS_ENABLE) && (flags.get(STOP_CALLED) == false)) execute_interrupting_timers();
 	}
 	
 	/* returns size in bytes of one SchedulerMemoryLine */
-	static constexpr uint8_t table_line_size_of(){ return sizeof(SchedulerMemoryLine); }
+	static constexpr uint8_t table_line_size_of(){ return sizeof(scheduler_line); }
 	/* returns size in bytes of the whole scheduler table */
-	static constexpr uint16_t table_size_of(){ return sizeof(SchedulerMemoryLine)*TABLE_SIZE; }
+	static constexpr uint16_t table_size_of(){ return sizeof(scheduler_line)*TABLE_SIZE; }
 	
 	/* deactivates software watchdog
 	   note that hardware watchdog is still in use and reboots controller if 
@@ -315,20 +309,20 @@ class scheduler2 {
 				software_watchdog_reset_value =
 				static_cast<decltype(software_watchdog_reset_value)>(
 					ceil(
-						static_cast<long double>(watchdog.value) * (scheduler::SysTime::get_instance().precision())
+						watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
 					)
 				);
 			} 
 			if (truncate){
 				software_watchdog_reset_value = static_cast<decltype(software_watchdog_reset_value)>
 					(
-						static_cast<long double>(watchdog.value) * (scheduler::SysTime::get_instance().precision())
+						watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
 					);			
 			}
 			if (truncate_and_add_one){
 				software_watchdog_reset_value = static_cast<decltype(software_watchdog_reset_value)>
 				(
-				static_cast<long double>(watchdog.value) * (scheduler::SysTime::get_instance().precision())
+					watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
 				)
 				+ 1;
 			}
@@ -356,7 +350,7 @@ class scheduler2 {
 	returns SchedulerHandle of created task
 	if not successful NO_HANDLE is returned.
 	*/
-	SchedulerHandle new_task(fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true);
+	handle_type new_task(fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true);
 	
 	inline bool is_table_locked(){ bool b; macro_interrupt_critical( b = flags.get(TABLE_LOCKED); ); return b; }
 	
@@ -388,13 +382,13 @@ class scheduler2 {
 		found_invalid_entry:
 		uint8_t free_index{ index };
 		/*@when here: The table has a free line, we store that index as free_index */
-		SchedulerHandle free_handle{ NO_HANDLE };
+		handle_type free_handle{ NO_HANDLE };
 
 		// if we want to create an interrupting timer we need to swap position with first non_int timer.
 		
 		// search for free handle // there must be a free handle since there is at least one free line in the table
 		constexpr uint8_t c_candidates {3};
-		SchedulerHandle candidates[c_candidates] = {index, table[index].handle, index};
+		handle_type candidates[c_candidates] = {index, table[index].handle, index};
 		// prefer handle == index in table.... index may grow up during handler life, when task with greater index is deleted
 		// second idea: handle = handle of last entry that was written here. // because this handle is possibly free since the entry was marked disabled
 		// second idea: same as first idea, but different update strategy.
@@ -457,7 +451,7 @@ class scheduler2 {
 		return free_index;
 	}
 	
-	SchedulerHandle new_timer(const time::ExtendedMetricTime& time, fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
+	handle_type new_timer(const time::ExtendedMetricTime& time, fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, bool is_interrupting = false, bool enable = true){
 		//#### go one here and with function new table line
 		// check whether we can modify table:
 		macro_interrupt_critical(
@@ -479,10 +473,10 @@ class scheduler2 {
 		found_invalid_entry:
 		
 		uint8_t free_index{ index };
-		SchedulerHandle free_handle{ NO_HANDLE };
+		handle_type free_handle{ NO_HANDLE };
 		
 		// search for free handle
-		SchedulerHandle candidates[2] = {index, table[index].handle};
+		handle_type candidates[2] = {index, table[index].handle};
 		// prefer handle == index in table.... index may grow up during handler life, when task with greater index is deleted
 		// second idea: handle = handle of last entry that was written here.
 		uint8_t check_until_index[2] = {index, index};
@@ -539,7 +533,7 @@ class scheduler2 {
 		return free_handle;
 	}
 	
-	SchedulerHandle get_disabled_entries(uint8_t& count, SchedulerHandle* array = nullptr){
+	handle_type get_disabled_entries(uint8_t& count, handle_type* array = nullptr){
 		macro_interrupt_critical(
 		if (flags.get(TABLE_LOCKED)) {
 			count = 0xFF;
@@ -548,7 +542,7 @@ class scheduler2 {
 		flags.set_true(TABLE_LOCKED);
 		);
 		uint8_t counter{ 0 };
-		SchedulerHandle return_value;
+		handle_type return_value;
 		for(uint8_t index = 0; index < TABLE_SIZE; ++index){
 			if (table[index].flags.get(IS_VALID) && !table[index].flags.get(IS_ENABLED)){
 				if (counter < count){
@@ -569,11 +563,11 @@ class scheduler2 {
 
 	/*** static assertions ***/
 		
-	static_assert(sizeof(SchedulerHandle) == 1, "SchedulerHandle has not the appropriate size.");
-	static_assert(sizeof(UnionCallback) == 2, "UnionCallback has not the appropriate size.");
-	static_assert(sizeof(UnionSpecifics) == 2, "UnionSpecifics has not the appropriate size.");
+	static_assert(sizeof(handle_type) == 1, "SchedulerHandle has not the appropriate size.");
+	static_assert(sizeof(fsl::str::standard_union_callback) == 2, "UnionCallback has not the appropriate size.");
+	static_assert(sizeof(union_specifics) == 2, "UnionSpecifics has not the appropriate size.");
 	static_assert(sizeof(fsl::lg::single_flags) == 1, "fsl::lg::single_flags has not the appropriate size.");
-	static_assert(sizeof(SchedulerMemoryLine) == 6, "SchedulerMemoryLine has not the appropriate size.");
+	static_assert(sizeof(scheduler_line) == 6, "SchedulerMemoryLine has not the appropriate size.");
 
 };
 
@@ -609,7 +603,7 @@ uint8_t scheduler2<TABLE_SIZE>::run() // method ready, checked twice!!!
 		
 		/*** look for a timer that can be executed ***/
 		{
-			time::ExtendedMetricTime now = scheduler::SysTime::get_instance()(); // system_time();
+			time::ExtendedMetricTime now = fsl::os::system_time::get_instance()(); // system_time();
 			for(choice = 0;
 				/* in range */ (choice < TABLE_SIZE) && /* and */ (! /* not out of section */ ((table[choice].flags.get(IS_VALID) == false) || (table[choice].flags.get(IS_TIMER) == false)) );
 				++choice){
@@ -685,10 +679,12 @@ uint8_t scheduler2<TABLE_SIZE>::run() // method ready, checked twice!!!
 		execute:
 		{
 			const bool is_callable = table[choice].flags.get(IS_CALLABLE);
-			UnionCallback callback = table[choice].callback;
+			fsl::str::standard_union_callback callback = table[choice].callback;
 			flags.set_false(TABLE_LOCKED);
 			
+			my_handle_stack.push(table[choice].handle);
 			execute_callback(callback,is_callable);
+			my_handle_stack.drop();
 		} /*** end of execute ***/
 	}
 	/* reasons for exit run() */
@@ -749,7 +745,7 @@ uint8_t scheduler2<TABLE_SIZE>::run() // method ready, checked twice!!!
 
 
 template <uint8_t TABLE_SIZE>
-typename scheduler2<TABLE_SIZE>::SchedulerHandle scheduler2<TABLE_SIZE>::new_task(fsl::str::callable* callable /*= nullptr*/, fsl::str::void_function function /*= nullptr*/, uint8_t urgency /*= DEFAULT_URGENCY*/, bool enable /*= true*/)
+typename scheduler2<TABLE_SIZE>::handle_type scheduler2<TABLE_SIZE>::new_task(fsl::str::callable* callable /*= nullptr*/, fsl::str::void_function function /*= nullptr*/, uint8_t urgency /*= DEFAULT_URGENCY*/, bool enable /*= true*/)
 {
 	macro_interrupt_critical(
 	if (flags.get(TABLE_LOCKED)) return NO_HANDLE;
@@ -766,10 +762,10 @@ typename scheduler2<TABLE_SIZE>::SchedulerHandle scheduler2<TABLE_SIZE>::new_tas
 	found_invalid_entry:
 	
 	uint8_t free_index{ index };
-	SchedulerHandle free_handle{ NO_HANDLE };
+	handle_type free_handle{ NO_HANDLE };
 	
 	// search for free handle
-	SchedulerHandle candidates[2] = {index, table[index].handle};
+	handle_type candidates[2] = {index, table[index].handle};
 	// prefer handle == index in table.... index may grow up during handler life, when task with greater index is deleted
 	// second idea: handle = handle of last entry that was written here.
 	uint8_t check_until_index[2] = {index, index};
@@ -849,5 +845,13 @@ typename scheduler2<TABLE_SIZE>::SchedulerHandle scheduler2<TABLE_SIZE>::new_tas
  
  
  
+ 
+ viel später::: nachdem diese lib fertig ist:
+ Es besteht die Möglichkeit herauszufinden, ob ein Reset durch den Watchdog ausgelöst wurde (beim ATmega16 z. B. Bit WDRF in MCUCSR). Diese Information sollte auch genutzt werden, falls ein WD-Reset in der Anwendung nicht planmäßig implementiert wurde. Zum Beispiel kann man eine LED an einen freien Pin hängen, die nur bei einem Reset durch den WD aufleuchtet oder aber das "Ereignis WD-Reset" im internen EEPROM des AVR absichern, um die Information später z. B. über UART oder ein Display auszugeben (oder einfach den EEPROM-Inhalt über die ISP/JTAG-Schnittstelle auslesen).
+
+ Bei neueren AVR-Typen bleibt der Watchdog auch nach einem Reset durch den Watchdog aktiviert. Wenn ein Programm nach dem Neustart bis zur erstmaligen Rückstellung des Watchdogs länger braucht, als die im Watchdog eingestellte Zeit, sollte man den Watchdog explizit möglichst früh deaktivieren. Ansonsten resetet der Watchdog den Controller immerfort von Neuem. Die frühe Deaktivierung sollte durch eine Funktion erfolgen, die noch vor allen anderen Operationen (insbesondere vor dem mglw. länger andauernden internen Initialisierungen vor dem Sprung zu main()) ausgeführt wird. Näheres zur Implementierung mit avr-gcc/avr-libc findet sich in der Dokumentation der avr-libc (Suchbegriffe: attribut, section, init).
+ 
+ -> to do: fsl::os soll den wert auslesen können.
+ -> os loader soll als erstes einen evtl ajktivierten watchdog deaktivieren.
  
  */

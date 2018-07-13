@@ -23,7 +23,7 @@ namespace fsl {
 		
 		/* an IOPin object is something like an iterator to a GPIO pin */
 		/* it only contains an index value referring to one of the controller's GPIO pins */
-		class IOPin {
+		class gpio_pin {
 			public:
 			
 			/*** public constants, types and constexpr functions ***/
@@ -56,7 +56,7 @@ namespace fsl {
 			static constexpr id NO_IOPIN_ID{ id::OUT_OF_RANGE };
 			
 			/* return the no-IOPin object */
-			static constexpr IOPin NO_IOPIN(){ return IOPin(IOPin::NO_IOPIN_ID); }
+			static constexpr gpio_pin NO_IOPIN(){ return gpio_pin(gpio_pin::NO_IOPIN_ID); }
 			
 			/* calculates pin_id of given port and bit inside port */
 			inline static constexpr id pin_id(Port port, uint8_t bit){
@@ -85,10 +85,10 @@ namespace fsl {
 			/*** c-tors ***/
 			
 			/* construct IOPin with given pin id */
-			inline constexpr IOPin(id _id): _id(_id) {}
+			inline constexpr gpio_pin(id _id): _id(_id) {}
 			
 			/* construct IOPin with given port and bit of port */
-			inline constexpr IOPin(Port port, uint8_t bit_of_port) : _id(pin_id(port,bit_of_port)) {}
+			inline constexpr gpio_pin(Port port, uint8_t bit_of_port) : _id(pin_id(port,bit_of_port)) {}
 			
 			/*** Validness and Invalidness of IOPin objects ***/
 
@@ -229,21 +229,21 @@ namespace fsl {
 			* whenever an overflow / underflow happens, NO_IOPIN is returned
 			* whenever left operand (i.e. the IOPin) is already NO_IOPIN (call it invalid), result is also NO_IOPIN and parameter difference will be ignored
 			*/
-			inline constexpr IOPin operator + (uint8_t difference) const { return IOPin(this->_id + difference); }
-			inline constexpr IOPin operator - (uint8_t difference) const { return IOPin(this->_id - difference); }
+			inline constexpr gpio_pin operator + (uint8_t difference) const { return gpio_pin(this->_id + difference); }
+			inline constexpr gpio_pin operator - (uint8_t difference) const { return gpio_pin(this->_id - difference); }
 			
-			inline IOPin& operator ++ () { ++_id; return *this; }
-			inline IOPin operator ++ (int) { IOPin copy(*this); ++_id; return copy; }
-			inline IOPin& operator -- () { --_id; return *this; }
-			inline IOPin operator -- (int) { IOPin copy(*this); --_id; return copy; }
+			inline gpio_pin& operator ++ () { ++_id; return *this; }
+			inline gpio_pin operator ++ (int) { gpio_pin copy(*this); ++_id; return copy; }
+			inline gpio_pin& operator -- () { --_id; return *this; }
+			inline gpio_pin operator -- (int) { gpio_pin copy(*this); --_id; return copy; }
 			
 			
-			inline IOPin& operator = (IOPin rop) { this->_id = rop._id; return *this; }
-			inline constexpr bool operator == (IOPin rop) const { return this->_id == rop._id; }
-			inline constexpr bool operator != (IOPin rop) const { return this->_id != rop._id; }
+			inline gpio_pin& operator = (gpio_pin rop) { this->_id = rop._id; return *this; }
+			inline constexpr bool operator == (gpio_pin rop) const { return this->_id == rop._id; }
+			inline constexpr bool operator != (gpio_pin rop) const { return this->_id != rop._id; }
 			
-			inline IOPin& operator += (uint8_t difference) { return invalid() ? *this : *this = *this + difference; } // think about what behaviour we want
-			inline IOPin& operator -= (uint8_t difference) { return invalid() ? *this : *this = *this - difference; }
+			inline gpio_pin& operator += (uint8_t difference) { return invalid() ? *this : *this = *this + difference; } // think about what behaviour we want
+			inline gpio_pin& operator -= (uint8_t difference) { return invalid() ? *this : *this = *this - difference; }
 		};
 		
 	}

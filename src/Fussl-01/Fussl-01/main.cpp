@@ -370,7 +370,7 @@ int main(void){
 	led::init(8);
 	guiBootScreen();
 	led::clear();
-	fsl::hw::IOPin iopin(fsl::hw::IOPin::Port::A,0);
+	fsl::hw::gpio_pin iopin(fsl::hw::gpio_pin::Port::A,0);
 
 	
 	led::printString("D-SERVER");

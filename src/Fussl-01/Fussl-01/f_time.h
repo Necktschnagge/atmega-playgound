@@ -265,6 +265,8 @@ namespace time {
 
 	class ExtendedMetricTime { // seems ready, only some <<<< test sth out.
 	private:
+		int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed-dot-integer
+
 	public:
 		using inner_type = int64_t; //  <<< this line was added somewhen later, when I thought it would be nice to have such a type alias
 		// maybe it would be useful to replace all intXX_t by this type alias ???
@@ -273,7 +275,6 @@ namespace time {
 		static constexpr ExtendedMetricTime MAX(){ return ExtendedMetricTime(0x7FFFFFFFFFFFFFFF); }
 		static constexpr ExtendedMetricTime MIN(){ return ExtendedMetricTime(0x8000000000000000); }
 
-		int64_t value; // seconds := value / 2^16	0x:   XX XX  XX XX   XX XX . XX XX // fixed-dot-integer
 
 	public:
 		/* assignment operators */
@@ -287,7 +288,12 @@ namespace time {
 		inline constexpr ExtendedMetricTime(int64_t value) : value(value) {}	// implicit conversion int64 ->  EMT
 		inline ExtendedMetricTime(const HumanTime& time, const HumanTime& perspective = CHRIST_0);
 
-		//inline int64_t& inner_value()								{	return value;	}
+		/* getter */
+		inline inner_type& inner_value() {	return value;	}
+		inline const inner_type& inner_value() const {	return value;	}
+		inline volatile inner_type& inner_value() volatile {	return value;	}
+		inline const volatile inner_type& inner_value() const volatile {	return value;	}
+		inline long double get_in_seconds() const { return static_cast<long double>(value) / (1LL << 16); }
 
 			/* setter (supposedly for time differences) */
 		inline void setFromSeconds(int32_t seconds) { value = (1LL << 16) * seconds; }
@@ -432,23 +438,23 @@ bool constexpr time::HumanTime::isLeapYear(int16_t year){ // ready, checked
 							);
 }
 
-inline bool operator == (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value == rop.value; }
-inline bool operator <  (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value <  rop.value; }
-inline bool operator <  (const volatile time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop)	{ return lop.value <  rop.value; }
-inline bool operator >  (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value >  rop.value; }
-inline bool operator <= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value <= rop.value; }
-inline bool operator >= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.value >= rop.value; }
+inline bool operator == (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() == rop.inner_value(); }
+inline bool operator <  (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() <  rop.inner_value(); }
+inline bool operator <  (const volatile time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop)	{ return lop.inner_value() <  rop.inner_value(); }
+inline bool operator >  (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() >  rop.inner_value(); }
+inline bool operator <= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() <= rop.inner_value(); }
+inline bool operator >= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() >= rop.inner_value(); }
 
-inline time::ExtendedMetricTime operator + (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop) { return lop.value + rop.value; }
-inline time::ExtendedMetricTime operator - (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop) { return lop.value - rop.value; }
+inline time::ExtendedMetricTime operator + (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop) { return lop.inner_value() + rop.inner_value(); }
+inline time::ExtendedMetricTime operator - (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop) { return lop.inner_value() - rop.inner_value(); }
 template <typename T>
-inline time::ExtendedMetricTime operator * (time::ExtendedMetricTime emt, T factor) { return emt.value * static_cast<int64_t>(factor); }
+inline time::ExtendedMetricTime operator * (time::ExtendedMetricTime emt, T factor) { return emt.inner_value() * static_cast<int64_t>(factor); }
 template <typename T>
-inline time::ExtendedMetricTime operator * (T factor, time::ExtendedMetricTime emt) { return emt.value * static_cast<int64_t>(factor); }
+inline time::ExtendedMetricTime operator * (T factor, time::ExtendedMetricTime emt) { return emt.inner_value() * static_cast<int64_t>(factor); }
 template <typename T>
-inline time::ExtendedMetricTime operator / (time::ExtendedMetricTime emt, T divisor) { return emt.value / static_cast<int64_t>(divisor); }
+inline time::ExtendedMetricTime operator / (time::ExtendedMetricTime emt, T divisor) { return emt.inner_value() / static_cast<int64_t>(divisor); }
 template <typename T>
-inline void div(const time::ExtendedMetricTime& dividend, const time::ExtendedMetricTime divisor, T& quotient) { quotient = static_cast<T>(dividend.value / divisor.value); }
+inline void div(const time::ExtendedMetricTime& dividend, const time::ExtendedMetricTime divisor, T& quotient) { quotient = static_cast<T>(dividend.inner_value() / divisor.inner_value()); }
 
 #endif /* F_TIME_H_ */
 
