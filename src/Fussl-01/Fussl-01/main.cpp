@@ -16,7 +16,7 @@
 #include "display_server.h"
 
 #include "f_iopin.h"
-#include "sch2.h"
+#include "f_scheduler.h"
 
 void guiBootScreen(){
 	hardware::delay(10);	

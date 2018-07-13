@@ -9,6 +9,8 @@
 #ifndef F_STACK_H_
 #define F_STACK_H_
 
+#include <stdint.h>
+
 namespace fsl {
 	namespace con {
 		

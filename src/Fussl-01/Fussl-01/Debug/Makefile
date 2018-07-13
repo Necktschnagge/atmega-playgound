@@ -38,11 +38,10 @@ SUBDIRS :=
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS +=  \
 ../display_server.cpp \
+../dummy_includer.cpp \
 ../f_arch.cpp \
 ../f_cmi.cpp \
 ../f_cmr.cpp \
-../f_exceptional.cpp \
-../f_flags.cpp \
 ../f_gui.cpp \
 ../f_hardware.cpp \
 ../f_hcsr04.cpp \
@@ -51,16 +50,14 @@ C_SRCS +=  \
 ../f_item_selector.cpp \
 ../f_ledline.cpp \
 ../f_list_item_manager.cpp \
-../f_matrix_keyboard.cpp \
 ../f_range_int.cpp \
-../f_scheduler.cpp \
 ../f_system_time.cpp \
 ../f_task_runner.cpp \
 ../f_test.cpp \
 ../f_time.cpp \
 ../main.cpp \
 ../f_systime_old_alpha.cpp \
-../sch2.cpp
+../f_scheduler.cpp
 
 
 PREPROCESSING_SRCS += 
@@ -71,11 +68,10 @@ ASM_SRCS +=
 
 OBJS +=  \
 display_server.o \
+dummy_includer.o \
 f_arch.o \
 f_cmi.o \
 f_cmr.o \
-f_exceptional.o \
-f_flags.o \
 f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
@@ -84,24 +80,21 @@ f_item_manager.o \
 f_item_selector.o \
 f_ledline.o \
 f_list_item_manager.o \
-f_matrix_keyboard.o \
 f_range_int.o \
-f_scheduler.o \
 f_system_time.o \
 f_task_runner.o \
 f_test.o \
 f_time.o \
 main.o \
 f_systime_old_alpha.o \
-sch2.o
+f_scheduler.o
 
 OBJS_AS_ARGS +=  \
 display_server.o \
+dummy_includer.o \
 f_arch.o \
 f_cmi.o \
 f_cmr.o \
-f_exceptional.o \
-f_flags.o \
 f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
@@ -110,24 +103,21 @@ f_item_manager.o \
 f_item_selector.o \
 f_ledline.o \
 f_list_item_manager.o \
-f_matrix_keyboard.o \
 f_range_int.o \
-f_scheduler.o \
 f_system_time.o \
 f_task_runner.o \
 f_test.o \
 f_time.o \
 main.o \
 f_systime_old_alpha.o \
-sch2.o
+f_scheduler.o
 
 C_DEPS +=  \
 display_server.d \
+dummy_includer.d \
 f_arch.d \
 f_cmi.d \
 f_cmr.d \
-f_exceptional.d \
-f_flags.d \
 f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
@@ -136,24 +126,21 @@ f_item_manager.d \
 f_item_selector.d \
 f_ledline.d \
 f_list_item_manager.d \
-f_matrix_keyboard.d \
 f_range_int.d \
-f_scheduler.d \
 f_system_time.d \
 f_task_runner.d \
 f_test.d \
 f_time.d \
 main.d \
 f_systime_old_alpha.d \
-sch2.d
+f_scheduler.d
 
 C_DEPS_AS_ARGS +=  \
 display_server.d \
+dummy_includer.d \
 f_arch.d \
 f_cmi.d \
 f_cmr.d \
-f_exceptional.d \
-f_flags.d \
 f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
@@ -162,16 +149,14 @@ f_item_manager.d \
 f_item_selector.d \
 f_ledline.d \
 f_list_item_manager.d \
-f_matrix_keyboard.d \
 f_range_int.d \
-f_scheduler.d \
 f_system_time.d \
 f_task_runner.d \
 f_test.d \
 f_time.d \
 main.d \
 f_systime_old_alpha.d \
-sch2.d
+f_scheduler.d
 
 OUTPUT_FILE_PATH +=Fussl-01.elf
 
@@ -187,6 +172,8 @@ LINKER_SCRIPT_DEP+=
 
 
 # AVR32/GNU C Compiler
+
+
 
 
 ./f_arch.o: .././f_arch.cpp
@@ -209,10 +196,6 @@ LINKER_SCRIPT_DEP+=
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.150\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.150\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
 	@echo Finished building: $<
 	
-
-
-
-
 
 ./f_gui.o: .././f_gui.cpp
 	@echo Building file: $<
@@ -250,16 +233,12 @@ LINKER_SCRIPT_DEP+=
 
 
 
-
-
 ./f_range_int.o: .././f_range_int.cpp
 	@echo Building file: $<
 	@echo Invoking: AVR8/GNU C Compiler : 5.4.0
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.150\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.150\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++17 -o "$@" "$<" 
 	@echo Finished building: $<
 	
-
-
 
 
 

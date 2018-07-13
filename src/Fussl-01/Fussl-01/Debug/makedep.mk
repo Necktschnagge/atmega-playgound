@@ -4,15 +4,13 @@
 
 display_server.cpp
 
+dummy_includer.cpp
+
 f_arch.cpp
 
 f_cmi.cpp
 
 f_cmr.cpp
-
-f_exceptional.cpp
-
-f_flags.cpp
 
 f_gui.cpp
 
@@ -30,11 +28,7 @@ f_ledline.cpp
 
 f_list_item_manager.cpp
 
-f_matrix_keyboard.cpp
-
 f_range_int.cpp
-
-f_scheduler.cpp
 
 f_system_time.cpp
 
@@ -48,5 +42,5 @@ main.cpp
 
 f_systime_old_alpha.cpp
 
-sch2.cpp
+f_scheduler.cpp
 

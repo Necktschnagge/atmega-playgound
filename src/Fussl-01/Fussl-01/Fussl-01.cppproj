@@ -205,6 +205,9 @@
     <Compile Include="display_server.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="dummy_includer.cpp">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_arch.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
@@ -212,6 +215,9 @@
     <Compile Include="f_arch.h">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_buffer.h">
+      <SubType>compile</SubType>
     </Compile>
     <Compile Include="f_callbacks.h">
       <SubType>compile</SubType>
@@ -230,13 +236,7 @@
     <Compile Include="f_cmr.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="f_exceptional.cpp">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="f_exceptional.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="f_flags.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="f_flags.h">
@@ -300,9 +300,6 @@
     <Compile Include="f_macros.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="f_matrix_keyboard.cpp">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="f_matrix_keyboard.h">
       <SubType>compile</SubType>
     </Compile>
@@ -311,14 +308,6 @@
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++17</CustomCompilationSetting>
     </Compile>
     <Compile Include="f_range_int.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="f_scheduler.cpp">
-      <SubType>compile</SubType>
-      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
-      </CustomCompilationSetting>
-    </Compile>
-    <Compile Include="f_scheduler.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="f_stack.h">
@@ -370,10 +359,10 @@
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
-    <Compile Include="sch2.cpp">
+    <Compile Include="f_scheduler.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="sch2.h">
+    <Compile Include="f_scheduler.h">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
