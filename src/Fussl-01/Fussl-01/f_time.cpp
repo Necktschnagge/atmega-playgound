@@ -32,7 +32,7 @@ bool time::HumanTime::HDate::is_valid(bool isLeapYear) const {
 
 
 time::HumanTime::HumanTime(const ExtendedMetricTime& emt){
-	int64_t value = emt.value;
+	int64_t value = emt.inner_value();
 				//divisions_of_second = value % 0x10000;
 				//value -= divisions_of_second;
 	value = value >> 16;
