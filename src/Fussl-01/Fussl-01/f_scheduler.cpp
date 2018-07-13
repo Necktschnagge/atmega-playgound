@@ -9,5 +9,5 @@
 #include "f_scheduler.h"
 //#warning "this is to comment out all current work"
 
-using XTest = scheduler2<20>;
+using XTest = fsl::os::scheduler<20>;
 XTest xx;
