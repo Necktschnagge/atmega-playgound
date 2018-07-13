@@ -15,6 +15,9 @@
       * callable
       * const_callable
       * exceptional<...>
+   * con (container classes especially for microcontroller)
+      * stack
+      * istack
    * dev (communication for _devices_, such as multi sensor measurement tool, pump controller)
 
 
