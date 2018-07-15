@@ -219,6 +219,12 @@
     <Compile Include="f_buffer.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_bytewise.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_bytewise.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_callbacks.h">
       <SubType>compile</SubType>
     </Compile>

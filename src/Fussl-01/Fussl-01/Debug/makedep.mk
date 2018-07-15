@@ -8,6 +8,8 @@ dummy_includer.cpp
 
 f_arch.cpp
 
+f_bytewise.cpp
+
 f_cmi.cpp
 
 f_cmr.cpp
