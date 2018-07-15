@@ -22,6 +22,7 @@
 #include "f_time.h"
 #include "f_system_time.h"
 #include "f_stack.h"
+#include "f_order.h"
 
 namespace fsl {
 	namespace os {
@@ -35,13 +36,21 @@ namespace fsl {
 			
 			using handle_type = fsl::lg::range_int<uint8_t,TABLE_SIZE,true,true>;
 			
+			enum class entry_type : uint8_t {
+				TASK = 0, TIMER = 1, INTTIMER = 2, INVALID = 255
+			};
+			
+			enum class callback_type : uint8_t {
+				INVALID = 0, VOID_FUNCTION = 1, CALLABLE = 2
+			};
+			
 			/*** public constexpr constants ***/
 			
 			/* handle that refers to none of the entries in scheduler table */
 			static constexpr handle_type NO_HANDLE{ handle_type::OUT_OF_RANGE };
 			
 			/* the default urgency for task entries in scheduler table */
-			static constexpr uint8_t DEFAULT_URGENCY{ 50 };
+			static constexpr uint8_t DEFAULT_URGENCY{ 25 };
 			
 			private:
 			
@@ -59,6 +68,12 @@ namespace fsl {
 				To do so, determine the min task_race_countdown and subtract this value from all task_race_countdowns.
 				*/
 				uint8_t task_race_countdown;
+				
+				/* decrease urgency_inverse == encrease urgency */
+				inline uint8_t increase_urgency(){ urgency_inverse = static_cast<uint16_t>(urgency_inverse) * 4 / 5; return urgency_inverse = urgency_inverse + !urgency_inverse; }
+				
+				/* increase urgency_inverse == decrease urgency */
+				inline uint8_t decrease_urgency(){ uint16_t urgency_inverse_2 = static_cast<uint16_t>(urgency_inverse) * 5 / 4; return urgency_inverse = urgency_inverse_2 > 255 ? 255 : static_cast<uint8_t>(urgency_inverse_2); }
 			};
 
 			/* specific data only needed for timers */
@@ -165,8 +180,9 @@ namespace fsl {
 				return static_cast<uint8_t>( (static_cast<uint16_t>(uint) + static_cast<uint16_t>(TABLE_SIZE -1)) % static_cast<uint16_t>(TABLE_SIZE) );
 			}
 			
-			/* returns index of table where given handle can be found */
-			/* only call from inside an atomic section */
+			/* returns index of table where given handle can be found
+			only call from inside an atomic section
+			returns TABLE_SIZE iff there is no valid entry with given handle */
 			uint8_t get_index(handle_type handle){
 				uint16_t candidate = handle;
 				for (uint8_t i = 0; i < (TABLE_SIZE + 1) /2; ++i){
@@ -175,7 +191,6 @@ namespace fsl {
 				}
 				return TABLE_SIZE; // there is no such entry
 			}
-			
 			
 			/* reset the software watchdog. should be called after any completion of a task or timer */
 			inline void software_watchdog_reset(){ macro_interrupt_critical(software_watchdog_countdown_value = software_watchdog_reset_value;); }
@@ -186,6 +201,7 @@ namespace fsl {
 			/* executes callback of given table index.
 			The callback will automatically be checked if it is nullptr, in this case nothing will be done
 			Make sure that table is non-volatile during function call - You should own table inside an atomic section. */
+			// <<< corruption: call will be made in an atomic region, but we want calls not to be there
 			inline void execute_callback(uint8_t table_index){
 				return execute_callback(table[table_index].callback,table[table_index].flags.get(IS_CALLABLE));
 			}
@@ -234,6 +250,13 @@ namespace fsl {
 				/*@ reached end of int timer section, all expired timers executed */
 				earliest_interrupting_timer_release = new_earliest_interrupting_timer_release;
 				return true;
+			}
+			
+			/* get entry type of given handle. only call from inside an atomic section */
+			inline entry_type get_entry_type_unsave(handle_type handle){
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) return entry_type::INVALID;
+				return table[index].flags.get(IS_TIMER) ? (table[index].flags.get(IS_INTTIMER) ? entry_type::INTTIMER : entry_type::TIMER) : entry_type::TASK;
 			}
 			
 			/* prepares an unused (= not IS_VALID) line to add a new task or timer or int-timer there
@@ -326,21 +349,20 @@ namespace fsl {
 			}
 			
 			/* activate hardware watchdog and set the timeout to hardware_watchdog_timeout */
-			void activate_hardware_watchdog(){
+			inline void activate_hardware_watchdog(){
 				macro_interrupt_critical(
 				wdt_enable(hardware_watchdog_timeout);
 				);
 			}
 			
 			/* deactivate hw watchdog */
-			void deactivate_hardware_watchdog(){
+			inline void deactivate_hardware_watchdog(){
 				macro_interrupt_critical(
 				wdt_disable();
 				);
 			}
 			
 			public:
-			
 			/*** public methods ***/
 			
 			/* activate software interrupts / activate interrupting timers */
@@ -350,6 +372,263 @@ namespace fsl {
 			void disable_software_interrupts(){ macro_interrupt_critical( flags.set_false(SOFTWARE_INTERRUPTS_ENABLE);); }
 			
 			inline const handle_type& my_handle(){ return my_handle_stack.ctop(); }
+			
+			inline bool is_running(){ return flags.get(IS_RUNNING); }
+			
+			inline bool was_stop_called(){ return flags.get(STOP_CALLED); }
+			
+			/* get entry type of given handle */
+			inline entry_type get_entry_type(handle_type handle){
+				entry_type result;
+				macro_interrupt_critical( result = get_entry_type_unsave(handle); );
+				return result;
+			}
+			
+			/* set task_race_countdown to 0. The task will be on top of the tasks with low countdown.
+			returns		0:	reset done without any errors
+			1:	invalid handle, nothing done
+			2:	handle is associated with a timer / int-timer entry
+			*/
+			uint8_t push_task_to_front(handle_type handle){
+				uint8_t error_code{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) error_code = 1;
+				if (!error_code){
+					if (table[index].flags.get(IS_TIMER)) error_code = 2;
+				}
+				if (!error_code) table[index].specifics.task().task_race_countdown = 0;
+				);
+				return error_code;
+			}
+			
+			/* set task_urgency_inverse. This value must not be 0. 0 will replaced by 1.
+			returns		0:	done without any errors
+			1:	invalid handle, nothing done
+			2:	handle is associated with a timer / int-timer entry
+			*/
+			uint8_t set_task_urgency_inverse(handle_type handle, uint8_t urgency_inverse){
+				uint8_t error_code{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) error_code = 1;
+				if (!error_code){
+					if (table[index].flags.get(IS_TIMER)) error_code = 2;
+				}
+				if (!error_code) table[index].specifics.task().urgency_inverse = urgency_inverse + !(urgency_inverse);
+				);
+				return error_code;
+			}
+			
+			/* reset task_urgency_inverse to standard urgency.
+			returns		0:	done without any errors
+			1:	invalid handle, nothing done
+			2:	handle is associated with a timer / int-timer entry
+			*/
+			uint8_t set_task_urgency_inverse(handle_type handle){
+				uint8_t error_code{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) error_code = 1;
+				if (!error_code){
+					if (table[index].flags.get(IS_TIMER)) error_code = 2;
+				}
+				if (!error_code) table[index].specifics.task().urgency_inverse = DEFAULT_URGENCY;
+				);
+				return error_code;
+			}
+			
+			/* increase task_urgency / decrease_task_urgency_inverse.
+			returns		0:	done without any errors
+			1:	invalid handle, nothing done
+			2:	handle is associated with a timer / int-timer entry
+			*/
+			uint8_t increase_task_urgency(handle_type handle){
+				uint8_t error_code{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) error_code = 1;
+				if (!error_code){
+					if (table[index].flags.get(IS_TIMER)) error_code = 2;
+				}
+				if (!error_code) table[index].specifics.task().increase_urgency();
+				);
+				return error_code;
+			}
+
+			/* decrease task_urgency / increase_task_urgency_inverse.
+			returns		0:	done without any errors
+			1:	invalid handle, nothing done
+			2:	handle is associated with a timer / int-timer entry
+			*/
+			uint8_t decrease_task_urgency(handle_type handle){
+				uint8_t error_code{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) error_code = 1;
+				if (!error_code){
+					if (table[index].flags.get(IS_TIMER)) error_code = 2;
+				}
+				if (!error_code) table[index].specifics.task().decrease_urgency();
+				);
+				return error_code;
+			}
+			
+			//##effizientere get_:index suche nach handle implementieren.
+			
+			/* Set callback of entry associated with given handle.
+			returns 0 if successful, returns 1 if handle does not meet a valid entry. */
+			inline void set_callback(handle_type handle, decltype(nullptr) callback){	set_callback(handle,fsl::str::void_function(callback));	}
+			
+			inline void set_callback(handle_type handle, fsl::str::void_function callback){
+				macro_interrupt_critical_begin;
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) {
+					macro_interrupt_critical_end;
+					return 1;
+				}
+				table[index].callback.set_function_ptr(callback);
+				macro_interrupt_critical_end;
+				return 0;
+			}
+			
+			inline void set_callback(handle_type handle, fsl::str::callable* callback){
+				macro_interrupt_critical_begin;
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) {
+					macro_interrupt_critical_end;
+					return 1;
+				}
+				table[index].callback.set_callable_ptr(callback);
+				macro_interrupt_critical_end;
+				return 0;
+			}
+			
+			inline void reset_callback(handle_type handle){ return set_callback(handle,nullptr); }
+			
+			/* Write callback pointer into [callback], returns the callback_type written to callback. */
+			// <<< mark the void_ptr() of callback class as deprecated and this function too.
+			inline callback_type get_callback(handle_type handle, void*& callback){
+				callback_type result{ callback_type::INVALID };
+				macro_interrupt_critical_begin;
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) {
+					macro_interrupt_critical_end;
+					callback = nullptr;
+					return callback_type::INVALID;
+				}
+				result = table[index].flags.get(IS_CALLABLE) ? callback_type::CALLABLE : callback_type::VOID_FUNCTION;
+				callback = table[index].callback.void_ptr();
+				macro_interrupt_critical_end;
+				return result;
+			}
+			
+			// <<< better version of this function:
+			// <<<< remove callback_type
+			inline void get_callback(handle_type handle, fsl::str::standard_union_callback& callback, bool& is_callable){
+				callback.set_function_ptr(nullptr);
+				is_callable = false;
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index != TABLE_SIZE) {
+					is_callable = table[index].flags.get(IS_CALLABLE);
+					callback = table[index].callback;
+				}
+				);
+			}
+			
+			/* execute callback of given handle, if handle is valid and callback is nun-nullptr */
+			inline void execute_callback(handle_type handle){
+				fsl::str::standard_union_callback callback;
+				bool is_callable;
+				get_callback(handle,callback,is_callable);
+				execute_callback(callback,is_callable);
+			}
+			
+			inline uint8_t clear_entry(handle_type handle){
+				macro_interrupt_critical_begin;
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) {
+					macro_interrupt_critical_end;
+					return 1;
+				}
+				table[index].flags.set_false(IS_VALID);
+				macro_interrupt_critical_end;
+				return 0;
+			}
+			
+			inline uint8_t set_entry_enable(handle_type handle, bool enable){
+				macro_interrupt_critical_begin;
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) {
+					macro_interrupt_critical_end;
+					return 1;
+				}
+				table[index].flags.set(IS_ENABLED,enable);
+				macro_interrupt_critical_end;
+				return 0;
+			}
+			
+			inline uint8_t enable_entry(handle_type handle){ return set_entry_enable(handle,true); }
+				
+			inline uint8_t disable_entry(handle_type handle){ return set_entry_enable(handle,false); }
+			
+			inline bool is_task(handle_type handle){ return get_entry_type(handle) == entry_type::TASK; }
+			
+			inline bool is_non_int_timer(handle_type handle){ return get_entry_type(handle) == entry_type::TIMER; }
+			
+			inline bool is_int_timer(handle_type handle){ return get_entry_type(handle) == entry_type::INTTIMER; }
+			
+			/* invalidate all table entries */
+			void clear_table(){	macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) table[i].flags.set_false(IS_VALID);); }
+			
+			/* invalidate all task entries */
+			inline void clear_tasks(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (!table[i].flags.get(IS_TIMER)) table[i].flags.set_false(IS_VALID););}
+			
+			/* invalidate all non-int-timer and all int-timer entries */
+			inline void clear_all_timers(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (table[i].flags.get(IS_TIMER)) table[i].flags.set_false(IS_VALID););}
+
+			/* invalidate all int-timer entries */
+			inline void clear_int_timers(){
+				macro_interrupt_critical(
+					uint8_t count_int_timer{ 0 };
+					uint8_t count_timer{ 0 };
+					for(uint8_t i = 0; i < TABLE_SIZE; ++i){ 
+						if (table[i].flags.get(IS_TIMER)){
+							 if (table[i].flags.get(IS_INTTIMER)) ++count_int_timer; else ++count_timer;
+						}
+					}
+					// reorder table and overwrite / delete int_timers :
+					const uint8_t move_size{ fsl::lg::min(count_int_timer, count_timer) };
+					const uint8_t move_src_begin{ count_int_timer + count_timer - move_size };
+					for(uint8_t i = 0; i < move_size; ++i){
+						const uint8_t src{ move_src_begin + i };
+						table[i] = table[src];
+						table[src].flags.set_false(IS_VALID);
+					}
+				);
+				}
+
+			/* invalidate all non-int-timer entries */
+			inline void clear_non_int_timers(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (table[i].flags.get(IS_TIMER) && (!table[i].flags.get(IS_INTTIMER))) table[i].flags.set_false(IS_VALID););}
+			
+			/* disable all table entries */
+			void disable_table(){	macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) table[i].flags.set_false(IS_ENABLED);); }
+			
+			/* disable all task entries */
+			inline void disable_tasks(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (!table[i].flags.get(IS_TIMER)) table[i].flags.set_false(IS_ENABLED););}
+			
+			/* disable all non-int-timer and all int-timer entries */
+			inline void disable_all_timers(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (table[i].flags.get(IS_TIMER)) table[i].flags.set_false(IS_ENABLED););}
+
+			/* disable all int-timer entries */
+			inline void disable_int_timers(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (table[i].flags.get(IS_TIMER) && table[i].flags.get(IS_INTTIMER)) table[i].flags.set_false(IS_ENABLED););}
+
+			/* disable all non-int-timer entries */
+			inline void disable_non_int_timers(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (table[i].flags.get(IS_TIMER) && (!table[i].flags.get(IS_INTTIMER))) table[i].flags.set_false(IS_ENABLED););}
+			
+			/* enable all task entries */
+			inline void enable_tasks(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (!table[i].flags.get(IS_TIMER)) table[i].flags.set_true(IS_ENABLED););}
 			
 			/* executes all stuff that should be done on now_time update, including hardware watchdog reset, int-timer execution e.a.
 			should be called once on every update of the now time and only called by interrupt, children function assume interrupt-freedom */
@@ -367,8 +646,14 @@ namespace fsl {
 			
 			/* returns size in bytes of one SchedulerMemoryLine */
 			static constexpr uint8_t table_line_size_of(){ return sizeof(scheduler_line); }
+			
 			/* returns size in bytes of the whole scheduler table */
 			static constexpr uint16_t table_size_of(){ return sizeof(scheduler_line)*TABLE_SIZE; }
+			
+			/* set value of timeout of hardware, use predefined macros WDTO_15MS, WDTO_30MS ... */
+			inline void set_hardware_watchdog_timeout(uint8_t value){
+				hardware_watchdog_timeout = value; //###### do this
+			}
 			
 			/* deactivates software watchdog
 			note that hardware watchdog is still in use and reboots controller if
@@ -426,7 +711,7 @@ namespace fsl {
 				flags.set_false(STOP_CALLED); // delete previous stop command
 				flags.set_true(IS_RUNNING); // set running flag
 				flags.set_false(EMPTY_TABLE_DETECTED); // check for empty table
-				wdt_enable(hardware_watchdog_timeout); // start hardware watchdog
+				activate_hardware_watchdog();
 				wdt_reset();
 				software_watchdog_reset();
 				
@@ -439,7 +724,7 @@ namespace fsl {
 					
 					if (flags.get(STOP_CALLED)){
 						// @when here: while loop must terminated because of a stop() call:
-						wdt_disable(); // stop watchdog
+						deactivate_hardware_watchdog();// wdt_disable(); // stop watchdog
 						flags.set_false(IS_RUNNING); // delete running flag
 						macro_interrupt_critical_end;
 						return 1;
@@ -467,7 +752,7 @@ namespace fsl {
 					// EMPTY_TABLE_DETECTED was set to false when looking through timers if there was at least one enabled timer
 					
 					if (flags.get(EMPTY_TABLE_DETECTED)){ // table empty, nothing to schedule anymore
-						wdt_disable();
+						deactivate_hardware_watchdog();
 						flags.set_false(IS_RUNNING);
 						macro_interrupt_critical_end;
 						return 0;
@@ -555,7 +840,7 @@ namespace fsl {
 					table[free_index].flags.set_true(IS_CALLABLE);
 				}
 				// task specific information: task urgency and countdown:
-				table[free_index].specifics.task().urgency = urgency;
+				table[free_index].specifics.task().urgency = urgency + (!urgency);
 				table[free_index].specifics.task().task_race_countdown = urgency; // 0;
 				handle_type free_handle = table[free_index].handle;
 				macro_interrupt_critical_end;
@@ -622,7 +907,6 @@ namespace fsl {
 			}
 			
 			
-
 			/*** static assertions ***/
 			
 			static_assert(sizeof(handle_type) == 1, "SchedulerHandle has not the appropriate size.");
@@ -650,10 +934,13 @@ namespace fsl {
 // MY_SCHEDULER has to be defined with using ~ = scheduler2<20>; or similar
 
 // i think it is better to do not have this static member. user must provide one self-written function as callback handler which calls instance->time_update_interrupt_handler()
-*/
+// über den stack nachdenken der my_handle bereit hält:
+am besten sollte der stack nicht existieren, da man ja auch manuell callbacks aufrufen kann. 
+stattdessen sollte der my_handle-stack in den function call stack integriert werden,
+d.h. wann immer wir ein callback nach handle ausführen, dann sollte my_handle auf das assozierte handle des callbacks gesetzt werden, der alte wert soll zwischengespeichert und nach dem return zurückgesetzt werden.
+das setzten und rücksetzen des callbacks muss evetuell atomar gemacht werden, falls während dieses vorgangs ein interrupt kommt.
 
-
-////
+*/////
 /*
 ideas for further improvements
 
@@ -710,3 +997,50 @@ nstead of "re baseing" we could also use an extra variable as last minimum, new 
 // just implement one strategy and later implement the others and make it possible to choose by conditioned compiling.
 }
 */
+
+// create a new class concept for interrupt critical stuff
+#if false
+class atomic {
+	
+	bool active;
+	uint8_t sreg;
+	
+	public:
+	inline atomic() : active(true) { sreg = SREG; cli(); }
+	inline atomic(bool active) : active(active) { if (active) {sreg = SREG; cli(); } }
+	inline ~atomic() { if (active) SREG = sreg; }
+	
+	atomic(const atomic&) = delete;
+	atomic& operator = (const atomic&) = delete;
+	
+	inline atomic(atomic&& obj) : active(obj.active) { sreg = obj.sreg; obj.active = false; }
+	inline atomic& operator = (atomic&& obj) { active = obj.active; sreg = obj.sreg; obj.active = false; }
+	
+};
+/* when you need atomic environment until any return in a function, just create an atomic at the begin of the function, it will be destroyed right when you return. */
+
+
+class Table_Entry : atomic {
+	inline Table_Entry(const handle_type& handle) : atomic() { }
+	
+	uint8_t table_index;
+	public:
+	static exceptional<Table_Entry> get_Table_Entry(fsl::os::scheduler<TABLE_SIZE>::handle_type handle){}
+
+	void set_callback(){
+		
+	}
+};
+
+class Task_Entry : Table_Entry {
+	
+	public:
+	
+	
+}
+
+class Timer_Entry : Table_Entry {
+	
+}
+
+#endif

@@ -24,5 +24,4 @@
 #define macro_atomic_no_sublevel(code)		macro_interrupt_critical_begin; code { macro_interrupt_critical_end; }
 
 
-
 #endif /* F_MACROS_H_ */

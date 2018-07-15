@@ -45,6 +45,8 @@ namespace fsl {
 			inline void call_function() const { if (_union.function_ptr != nullptr) _union.function_ptr(); }
 			/* treat intern stored callback as of type "callable" and call if non-nullptr */
 			inline void call_callable() const { if (_union.callable_ptr != nullptr) (*_union.callable_ptr)(); }
+				
+			inline void* void_ptr(){ return _union.function_ptr; }
 		};
 		
 		using standard_union_callback = union_callback<callable>;
