@@ -23,6 +23,7 @@
 #include "f_system_time.h"
 #include "f_stack.h"
 #include "f_order.h"
+#include "f_bytewise.h"
 
 namespace fsl {
 	namespace os {
@@ -572,6 +573,118 @@ namespace fsl {
 			inline uint8_t enable_entry(handle_type handle){ return set_entry_enable(handle,true); }
 				
 			inline uint8_t disable_entry(handle_type handle){ return set_entry_enable(handle,false); }
+				
+			uint8_t count_int_timers(){
+				uint8_t lower_bound{ 0 };
+				uint8_t upper_bound{ TABLE_SIZE };
+				while (lower_bound != upper_bound){
+					const uint8_t pivot = (static_cast<uint16_t>(lower_bound) + upper_bound) / 2;
+					if (table[pivot].flags.get(IS_VALID) && table[pivot].flags.get(IS_TIMER) && table[pivot].flags.get(IS_INTTIMER)){
+						lower_bound = pivot + 1;
+					} else {
+						upper_bound = pivot;
+					}
+				}
+				return lower_bound;
+			}
+			
+			uint8_t count_all_timers(){
+				uint8_t lower_bound{ 0 };
+				uint8_t upper_bound{ TABLE_SIZE };
+				while (lower_bound != upper_bound){
+					const uint8_t pivot = (static_cast<uint16_t>(lower_bound) + upper_bound) / 2;
+					if (table[pivot].flags.get(IS_VALID) && table[pivot].flags.get(IS_TIMER)){
+						lower_bound = pivot + 1;
+						} else {
+						upper_bound = pivot;
+					}
+				}
+				return lower_bound;
+			}
+			
+			inline uint8_t count_non_int_timers(){	return count_all_timers()-count_int_timers();	}
+
+			uint8_t count_tasks(){
+				uint8_t lower_bound{ 0 };
+				uint8_t upper_bound{ TABLE_SIZE };
+				while (lower_bound != upper_bound){
+					const uint8_t pivot = (static_cast<uint16_t>(lower_bound) + upper_bound) / 2;
+					if (!(table[pivot].flags.get(IS_VALID) && (!table[pivot].flags.get(IS_TIMER)))){ /* not a valid task */
+						lower_bound = pivot + 1;
+						} else {
+						upper_bound = pivot;
+					}
+				}
+				return TABLE_SIZE - lower_bound;
+			}
+			
+			inline uint8_t count_gaps(){ return TABLE_SIZE - count_all_timers() -count_tasks(); }
+			
+				
+			/* convert timer to int-timer.
+			returns		0:	reset done without any errors
+			1:	invalid handle, nothing done
+			2:	handle is associated with a task entry
+			4:	handle is already listed as int-timer. no conversion necessary
+			*/
+			uint8_t convert_to_int_timer(handle_type handle){
+				uint8_t error_code{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) error_code = 1;
+				if (!error_code)	if (!table[index].flags.get(IS_TIMER)) error_code = 2;
+				if (!error_code)	if (table[index].flags.get(IS_INTTIMER)) error_code = 4;
+				if (!error_code){
+					const uint8_t swap { count_int_timers() };
+					byte_swap(table[index],table[swap]);
+					table[swap].flags.set_true(IS_INTTIMER);
+					}
+				);
+				return error_code;
+			}
+				
+			/* convert timer to non-int-timer.
+			returns		0:	reset done without any errors
+			1:	invalid handle, nothing done
+			2:	handle is associated with a task entry
+			4:	handle is already listed as normal timer. no conversion necessary
+			*/
+			uint8_t convert_to_normal_timer(handle_type handle){
+				uint8_t error_code{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) error_code = 1;
+				if (!error_code)	if (!table[index].flags.get(IS_TIMER)) error_code = 2;
+				if (!error_code)	if (!table[index].flags.get(IS_INTTIMER)) error_code = 4;
+				if (!error_code){
+					const uint8_t swap { count_int_timers() - 1 };
+					byte_swap(table[index],table[swap]);
+					table[swap].flags.set_false(IS_INTTIMER);
+					}
+				);
+				return error_code;
+			}
+				
+			inline void set_event_time_object(handle_type handle, volatile time::ExtendedMetricTime& time_object){
+				uint8_t error_code{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index == TABLE_SIZE) error_code = 1;
+				if (!error_code)	if (!table[index].flags.get(IS_TIMER)) error_code = 2;
+				if (!error_code)	table[index].specifics.timer().event_time = &time_object;
+				);
+				return error_code;
+			}
+			
+			// if you change time to earlier, you should update earliest int timer time, if it is an inttimer.!!!
+			inline volatile time::ExtendedMetricTime* get_event_time(handle_type handle){
+				time::ExtendedMetricTime* result{ nullptr };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				if (index != TABLE_SIZE) if (!table[index].flags.get(IS_TIMER)) result = table[index].specifics.timer().event_time;
+				);
+				return result;
+			}
 			
 			inline bool is_task(handle_type handle){ return get_entry_type(handle) == entry_type::TASK; }
 			

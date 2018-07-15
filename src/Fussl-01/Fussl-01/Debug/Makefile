@@ -40,6 +40,7 @@ C_SRCS +=  \
 ../display_server.cpp \
 ../dummy_includer.cpp \
 ../f_arch.cpp \
+../f_bytewise.cpp \
 ../f_cmi.cpp \
 ../f_cmr.cpp \
 ../f_gui.cpp \
@@ -70,6 +71,7 @@ OBJS +=  \
 display_server.o \
 dummy_includer.o \
 f_arch.o \
+f_bytewise.o \
 f_cmi.o \
 f_cmr.o \
 f_gui.o \
@@ -93,6 +95,7 @@ OBJS_AS_ARGS +=  \
 display_server.o \
 dummy_includer.o \
 f_arch.o \
+f_bytewise.o \
 f_cmi.o \
 f_cmr.o \
 f_gui.o \
@@ -116,6 +119,7 @@ C_DEPS +=  \
 display_server.d \
 dummy_includer.d \
 f_arch.d \
+f_bytewise.d \
 f_cmi.d \
 f_cmr.d \
 f_gui.d \
@@ -139,6 +143,7 @@ C_DEPS_AS_ARGS +=  \
 display_server.d \
 dummy_includer.d \
 f_arch.d \
+f_bytewise.d \
 f_cmi.d \
 f_cmr.d \
 f_gui.d \
@@ -182,6 +187,8 @@ LINKER_SCRIPT_DEP+=
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
 	@echo Finished building: $<
 	
+
+
 
 ./f_cmi.o: .././f_cmi.cpp
 	@echo Building file: $<
