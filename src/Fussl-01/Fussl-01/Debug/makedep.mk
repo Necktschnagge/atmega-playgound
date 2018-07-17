@@ -14,8 +14,6 @@ f_cmi.cpp
 
 f_cmr.cpp
 
-f_gui.cpp
-
 f_hardware.cpp
 
 f_hcsr04.cpp
@@ -40,9 +38,13 @@ f_test.cpp
 
 f_time.cpp
 
+f_ui_concept.cpp
+
 main.cpp
 
 f_systime_old_alpha.cpp
 
 f_scheduler.cpp
+
+old_or_deprecated\f_gui.cpp
 
