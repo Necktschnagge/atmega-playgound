@@ -8,7 +8,7 @@
 */
 
 #include "f_item_selector.h"
-#include "f_gui.h"
+#include "old_or_deprecated/f_gui.h"
 #include "f_ledline.h"
 
 void ui::ItemSelector::OkayCall::operator ()() {

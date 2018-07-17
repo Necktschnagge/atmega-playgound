@@ -24,9 +24,11 @@
 #ifndef F_GUI_H_
 #define F_GUI_H_
 
-#include "f_arch.h"
-#include "f_callbacks.h"
+#include "../f_arch.h"
+#include "../f_callbacks.h"
 
+//######### read the input of the button array.
+//######### this will be replaced by a new implementation using a template class
 namespace input {
 	/* input (for now) is like a static object (for java people) which holds the information
 	which buttons are pressed or released and what changed from last look up*/

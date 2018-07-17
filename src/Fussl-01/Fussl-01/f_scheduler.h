@@ -27,7 +27,7 @@
 
 namespace fsl {
 	namespace os {
-
+		
 		template <uint8_t TABLE_SIZE>
 		class scheduler {
 			
@@ -41,17 +41,23 @@ namespace fsl {
 				TASK = 0, TIMER = 1, INTTIMER = 2, INVALID = 255
 			};
 			
-			enum class callback_type : uint8_t {
+/*			enum class callback_type : uint8_t {
 				INVALID = 0, VOID_FUNCTION = 1, CALLABLE = 2
 			};
-			
+	*/		
 			/*** public constexpr constants ***/
+			
+			template <uint8_t linear_urgency>
+			static constexpr uint8_t calc_urgency_inverse(){
+				static_assert(linear_urgency <= 20, "Linear urgency must be a value 0..20 (least important .. most important)");
+				return !linear_urgency ? 255 : static_cast<uint8_t>( static_cast<uint16_t>(calc_urgency_inverse<linear_urgency-1>()) * 4 / 5);
+			}
 			
 			/* handle that refers to none of the entries in scheduler table */
 			static constexpr handle_type NO_HANDLE{ handle_type::OUT_OF_RANGE };
 			
 			/* the default urgency for task entries in scheduler table */
-			static constexpr uint8_t DEFAULT_URGENCY{ 25 };
+			static constexpr uint8_t DEFAULT_URGENCY{ calc_urgency_inverse<10>() };
 			
 			private:
 			
@@ -129,6 +135,8 @@ namespace fsl {
 			
 			/* stack for handles of callbacks that were called*/
 			volatile fsl::con::stack<handle_type,2> my_handle_stack;
+			
+			volatile handle_type callback_handle;
 			
 			/* table containing all timers and tasks
 			table layout definition:
@@ -364,6 +372,15 @@ namespace fsl {
 			}
 			
 			public:
+			
+			/*** public constructor ***/
+			
+			inline scheduler(bool software_interrupt_enable, uint8_t hardware_watchdog_timeout, const time::ExtendedMetricTime& watchdog) : 
+				flags(0), callback_handle(NO_HANDLE),  hardware_watchdog_timeout(hardware_watchdog_timeout), earliest_interrupting_timer_release(time::EMT::MIN()){
+				clear_table();
+				activate_software_watchdog(watchdog);
+				}
+						
 			/*** public methods ***/
 			
 			/* activate software interrupts / activate interrupting timers */
@@ -372,7 +389,7 @@ namespace fsl {
 			/* deactivate software interrupts / deactivate interrupting timers */
 			void disable_software_interrupts(){ macro_interrupt_critical( flags.set_false(SOFTWARE_INTERRUPTS_ENABLE);); }
 			
-			inline const handle_type& my_handle(){ return my_handle_stack.ctop(); }
+			inline const handle_type& my_handle(){ return callback_handle; }
 			
 			inline bool is_running(){ return flags.get(IS_RUNNING); }
 			
@@ -426,7 +443,7 @@ namespace fsl {
 			1:	invalid handle, nothing done
 			2:	handle is associated with a timer / int-timer entry
 			*/
-			uint8_t set_task_urgency_inverse(handle_type handle){
+			uint8_t reset_task_urgency_inverse(handle_type handle){
 				uint8_t error_code{ 0 };
 				macro_interrupt_critical(
 				uint8_t index = get_index(handle);
@@ -507,8 +524,10 @@ namespace fsl {
 			
 			inline void reset_callback(handle_type handle){ return set_callback(handle,nullptr); }
 			
+#if false
 			/* Write callback pointer into [callback], returns the callback_type written to callback. */
 			// <<< mark the void_ptr() of callback class as deprecated and this function too.
+			// <<< maybe delete this implementation:
 			inline callback_type get_callback(handle_type handle, void*& callback){
 				callback_type result{ callback_type::INVALID };
 				macro_interrupt_critical_begin;
@@ -523,6 +542,7 @@ namespace fsl {
 				macro_interrupt_critical_end;
 				return result;
 			}
+#endif
 			
 			// <<< better version of this function:
 			// <<<< remove callback_type
@@ -558,6 +578,15 @@ namespace fsl {
 				return 0;
 			}
 			
+			inline uint8_t get_entry_enable(handle_type handle){
+				uint8_t result{ 0 };
+				macro_interrupt_critical(
+				uint8_t index = get_index(handle);
+				result = (index == TABLE_SIZE) ? 255 : table[index].flags.get(IS_ENABLED);
+				);
+				return result;
+			}
+			
 			inline uint8_t set_entry_enable(handle_type handle, bool enable){
 				macro_interrupt_critical_begin;
 				uint8_t index = get_index(handle);
@@ -571,9 +600,9 @@ namespace fsl {
 			}
 			
 			inline uint8_t enable_entry(handle_type handle){ return set_entry_enable(handle,true); }
-				
+			
 			inline uint8_t disable_entry(handle_type handle){ return set_entry_enable(handle,false); }
-				
+			
 			uint8_t count_int_timers(){
 				uint8_t lower_bound{ 0 };
 				uint8_t upper_bound{ TABLE_SIZE };
@@ -581,7 +610,7 @@ namespace fsl {
 					const uint8_t pivot = (static_cast<uint16_t>(lower_bound) + upper_bound) / 2;
 					if (table[pivot].flags.get(IS_VALID) && table[pivot].flags.get(IS_TIMER) && table[pivot].flags.get(IS_INTTIMER)){
 						lower_bound = pivot + 1;
-					} else {
+						} else {
 						upper_bound = pivot;
 					}
 				}
@@ -618,9 +647,11 @@ namespace fsl {
 				return TABLE_SIZE - lower_bound;
 			}
 			
-			inline uint8_t count_gaps(){ return TABLE_SIZE - count_all_timers() -count_tasks(); }
+			inline uint8_t count_gaps(){ return TABLE_SIZE - count_all_timers() - count_tasks(); }
 			
-				
+			inline bool table_full(){ return count_gaps() == 0; }
+			inline bool table_empty(){ return count_gaps() == TABLE_SIZE; }
+			
 			/* convert timer to int-timer.
 			returns		0:	reset done without any errors
 			1:	invalid handle, nothing done
@@ -638,11 +669,11 @@ namespace fsl {
 					const uint8_t swap { count_int_timers() };
 					byte_swap(table[index],table[swap]);
 					table[swap].flags.set_true(IS_INTTIMER);
-					}
+				}
 				);
 				return error_code;
 			}
-				
+			
 			/* convert timer to non-int-timer.
 			returns		0:	reset done without any errors
 			1:	invalid handle, nothing done
@@ -660,11 +691,11 @@ namespace fsl {
 					const uint8_t swap { count_int_timers() - 1 };
 					byte_swap(table[index],table[swap]);
 					table[swap].flags.set_false(IS_INTTIMER);
-					}
+				}
 				);
 				return error_code;
 			}
-				
+			
 			inline void set_event_time_object(handle_type handle, volatile time::ExtendedMetricTime& time_object){
 				uint8_t error_code{ 0 };
 				macro_interrupt_critical(
@@ -677,6 +708,7 @@ namespace fsl {
 			}
 			
 			// if you change time to earlier, you should update earliest int timer time, if it is an inttimer.!!!
+			// better return only as const
 			inline volatile time::ExtendedMetricTime* get_event_time(handle_type handle){
 				time::ExtendedMetricTime* result{ nullptr };
 				macro_interrupt_critical(
@@ -685,12 +717,26 @@ namespace fsl {
 				);
 				return result;
 			}
+
+			inline bool set_event_time(handle_type handle, time::ExtendedMetricTime& t){
+				volatile time::ExtendedMetricTime* event_time = get_event_time(handle);
+				if (!event_time) return false;
+				macro_interrupt_critical(
+				if (t < *event_time) reset_int_timer_prefetcher();
+				*event_time = t;
+				);
+				return true;
+			}
+			
+			inline void reset_int_timer_prefetcher(){ earliest_interrupting_timer_release = time::ExtendedMetricTime::MIN(); }
 			
 			inline bool is_task(handle_type handle){ return get_entry_type(handle) == entry_type::TASK; }
 			
 			inline bool is_non_int_timer(handle_type handle){ return get_entry_type(handle) == entry_type::TIMER; }
 			
 			inline bool is_int_timer(handle_type handle){ return get_entry_type(handle) == entry_type::INTTIMER; }
+			
+			inline bool is_any_timer(handle_type handle){ return is_non_int_timer() || is_int_timer(); }
 			
 			/* invalidate all table entries */
 			void clear_table(){	macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) table[i].flags.set_false(IS_VALID);); }
@@ -704,23 +750,23 @@ namespace fsl {
 			/* invalidate all int-timer entries */
 			inline void clear_int_timers(){
 				macro_interrupt_critical(
-					uint8_t count_int_timer{ 0 };
-					uint8_t count_timer{ 0 };
-					for(uint8_t i = 0; i < TABLE_SIZE; ++i){ 
-						if (table[i].flags.get(IS_TIMER)){
-							 if (table[i].flags.get(IS_INTTIMER)) ++count_int_timer; else ++count_timer;
-						}
+				uint8_t count_int_timer{ 0 };
+				uint8_t count_timer{ 0 };
+				for(uint8_t i = 0; i < TABLE_SIZE; ++i){
+					if (table[i].flags.get(IS_TIMER)){
+						if (table[i].flags.get(IS_INTTIMER)) ++count_int_timer; else ++count_timer;
 					}
-					// reorder table and overwrite / delete int_timers :
-					const uint8_t move_size{ fsl::lg::min(count_int_timer, count_timer) };
-					const uint8_t move_src_begin{ count_int_timer + count_timer - move_size };
-					for(uint8_t i = 0; i < move_size; ++i){
-						const uint8_t src{ move_src_begin + i };
-						table[i] = table[src];
-						table[src].flags.set_false(IS_VALID);
-					}
-				);
 				}
+				// reorder table and overwrite / delete int_timers :
+				const uint8_t move_size{ fsl::lg::min(count_int_timer, count_timer) };
+				const uint8_t move_src_begin{ count_int_timer + count_timer - move_size };
+				for(uint8_t i = 0; i < move_size; ++i){
+					const uint8_t src{ move_src_begin + i };
+					table[i] = table[src];
+					table[src].flags.set_false(IS_VALID);
+				}
+				);
+			}
 
 			/* invalidate all non-int-timer entries */
 			inline void clear_non_int_timers(){ macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) if (table[i].flags.get(IS_TIMER) && (!table[i].flags.get(IS_INTTIMER))) table[i].flags.set_false(IS_VALID););}
@@ -808,6 +854,7 @@ namespace fsl {
 					)
 					+ 1;
 				}
+				software_watchdog_countdown_value = software_watchdog_reset_value; // create own private method for that!!!s
 				); // macro_interrupt_critical
 			}
 			
@@ -1048,7 +1095,7 @@ namespace fsl {
 
 // i think it is better to do not have this static member. user must provide one self-written function as callback handler which calls instance->time_update_interrupt_handler()
 // über den stack nachdenken der my_handle bereit hält:
-am besten sollte der stack nicht existieren, da man ja auch manuell callbacks aufrufen kann. 
+am besten sollte der stack nicht existieren, da man ja auch manuell callbacks aufrufen kann.
 stattdessen sollte der my_handle-stack in den function call stack integriert werden,
 d.h. wann immer wir ein callback nach handle ausführen, dann sollte my_handle auf das assozierte handle des callbacks gesetzt werden, der alte wert soll zwischengespeichert und nach dem return zurückgesetzt werden.
 das setzten und rücksetzen des callbacks muss evetuell atomar gemacht werden, falls während dieses vorgangs ein interrupt kommt.

@@ -32,7 +32,8 @@ LIB_DEP:=
 LINKER_SCRIPT_DEP:=
 
 # Every subdirectory with source files must be described here
-SUBDIRS := 
+SUBDIRS :=  \
+../old_or_deprecated
 
 
 # Add inputs and outputs from these tool invocations to the build variables 
@@ -43,7 +44,6 @@ C_SRCS +=  \
 ../f_bytewise.cpp \
 ../f_cmi.cpp \
 ../f_cmr.cpp \
-../f_gui.cpp \
 ../f_hardware.cpp \
 ../f_hcsr04.cpp \
 ../f_iopin.cpp \
@@ -56,9 +56,11 @@ C_SRCS +=  \
 ../f_task_runner.cpp \
 ../f_test.cpp \
 ../f_time.cpp \
+../f_ui_concept.cpp \
 ../main.cpp \
 ../f_systime_old_alpha.cpp \
-../f_scheduler.cpp
+../f_scheduler.cpp \
+../old_or_deprecated/f_gui.cpp
 
 
 PREPROCESSING_SRCS += 
@@ -74,7 +76,6 @@ f_arch.o \
 f_bytewise.o \
 f_cmi.o \
 f_cmr.o \
-f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
 f_iopin.o \
@@ -87,9 +88,11 @@ f_system_time.o \
 f_task_runner.o \
 f_test.o \
 f_time.o \
+f_ui_concept.o \
 main.o \
 f_systime_old_alpha.o \
-f_scheduler.o
+f_scheduler.o \
+old_or_deprecated/f_gui.o
 
 OBJS_AS_ARGS +=  \
 display_server.o \
@@ -98,7 +101,6 @@ f_arch.o \
 f_bytewise.o \
 f_cmi.o \
 f_cmr.o \
-f_gui.o \
 f_hardware.o \
 f_hcsr04.o \
 f_iopin.o \
@@ -111,9 +113,11 @@ f_system_time.o \
 f_task_runner.o \
 f_test.o \
 f_time.o \
+f_ui_concept.o \
 main.o \
 f_systime_old_alpha.o \
-f_scheduler.o
+f_scheduler.o \
+old_or_deprecated/f_gui.o
 
 C_DEPS +=  \
 display_server.d \
@@ -122,7 +126,6 @@ f_arch.d \
 f_bytewise.d \
 f_cmi.d \
 f_cmr.d \
-f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
 f_iopin.d \
@@ -135,9 +138,11 @@ f_system_time.d \
 f_task_runner.d \
 f_test.d \
 f_time.d \
+f_ui_concept.d \
 main.d \
 f_systime_old_alpha.d \
-f_scheduler.d
+f_scheduler.d \
+old_or_deprecated/f_gui.d
 
 C_DEPS_AS_ARGS +=  \
 display_server.d \
@@ -146,7 +151,6 @@ f_arch.d \
 f_bytewise.d \
 f_cmi.d \
 f_cmr.d \
-f_gui.d \
 f_hardware.d \
 f_hcsr04.d \
 f_iopin.d \
@@ -159,9 +163,11 @@ f_system_time.d \
 f_task_runner.d \
 f_test.d \
 f_time.d \
+f_ui_concept.d \
 main.d \
 f_systime_old_alpha.d \
-f_scheduler.d
+f_scheduler.d \
+old_or_deprecated/f_gui.d
 
 OUTPUT_FILE_PATH +=Fussl-01.elf
 
@@ -198,13 +204,6 @@ LINKER_SCRIPT_DEP+=
 	
 
 ./f_cmr.o: .././f_cmr.cpp
-	@echo Building file: $<
-	@echo Invoking: AVR8/GNU C Compiler : 5.4.0
-	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
-	@echo Finished building: $<
-	
-
-./f_gui.o: .././f_gui.cpp
 	@echo Building file: $<
 	@echo Invoking: AVR8/GNU C Compiler : 5.4.0
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
@@ -265,6 +264,8 @@ LINKER_SCRIPT_DEP+=
 	@echo Finished building: $<
 	
 
+
+
 ./main.o: .././main.cpp
 	@echo Building file: $<
 	@echo Invoking: AVR8/GNU C Compiler : 5.4.0
@@ -282,7 +283,16 @@ LINKER_SCRIPT_DEP+=
 
 
 
+
+
 ./%.o: .././%.cpp
+	@echo Building file: $<
+	@echo Invoking: AVR8/GNU C Compiler : 5.4.0
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
+	@echo Finished building: $<
+	
+
+old_or_deprecated/%.o: ../old_or_deprecated/%.cpp
 	@echo Building file: $<
 	@echo Invoking: AVR8/GNU C Compiler : 5.4.0
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
