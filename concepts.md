@@ -4,6 +4,10 @@
    * con (container classes especially for microcontroller)
       * istack
       * stack
+	  * buffer
+	  * rtbuffer
+	  * wtbuffer
+	  * wrtbuffer
    * dev (communication for _devices_, such as multi sensor measurement tool, pump controller)
    * hw (hardware, hardware abstraction)
       * gpio_pin
@@ -20,6 +24,7 @@
       * const_callable
       * exceptional<...>
       * void_function
+	  * maybe<...>
    * ui (user interface stuff)
       * matrix_keyboard
    * util (utilities)

@@ -1,4 +1,4 @@
-/* 
+/*
 * f_ui_concept.h
 *
 * Created: 16.07.2018 20:11:41
@@ -18,17 +18,17 @@ namespace fsl {
 	namespace ui {
 		
 		class element {
-		public:
+			public:
 			virtual element* work() = 0;
 		};
 		
-		class controller {
+		class controller : public fsl::str::callable {
 			element* current_element;
 			
-			void operator()(){
+			void operator()() override {
 				current_element = current_element->work();
 			}
-			};
+		};
 		
 		/* just output stuff */
 		class monolog : public element {
@@ -38,8 +38,8 @@ namespace fsl {
 		/* read input buffer and probably use monolog elements */
 		class dialog : public element {
 			
-			};
-			
+		};
+		
 		class item_selector : public dialog {
 			
 		};
@@ -52,7 +52,7 @@ namespace fsl {
 		template <uint8_t string_size>
 		class string_input : public dialog {
 			
-			};
+		};
 		
 		class action : public element {
 			element* successor;
@@ -62,18 +62,28 @@ namespace fsl {
 				(*callable)();
 				return successor;
 			}
-			};
+		};
+		
+		class systime_tick_delay : public element {
+			uint16_t ticks; // uinion with timer specific information?
 			
-		class delay : public element {
+			// go to scheduler, disable our own task.
+			// write a new timer to when we begin again
+			element* work() override {
+				
+			}
+		};
+		
+		class delay_end : public element {
 			
-			};
+			
+		};
+		#if false
 
-#if false
+		controller my_controller;
+		
 
-	controller my_controller;
-	
-
-#endif
+		#endif
 
 
 
