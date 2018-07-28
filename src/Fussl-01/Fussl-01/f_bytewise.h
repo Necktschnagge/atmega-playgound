@@ -2,7 +2,7 @@
 * f_bytewise.h
 *
 * Created: 15.07.2018 20:33:41
-* Author: F-NET-ADMIN
+* Author: Maximilian Starke
 */
 
 
@@ -15,7 +15,7 @@ namespace fsl {
 	namespace util {
 		
 		template <typename T>
-		void byte_swap(T& a, T& b){
+		inline void byte_swap(T& a, T& b){
 			uint8_t swap_byte;
 			uint8_t* p_a{ reinterpret_cast<uint8_t*>(&a) };
 			uint8_t* p_b{ reinterpret_cast<uint8_t*>(&b) };
@@ -24,6 +24,13 @@ namespace fsl {
 				a[i] = b[i];
 				b[i] = swap_byte;
 			}
+		}
+		
+		template <typename T>
+		inline void normal_swap(T& a, T&b){
+			T copy = a;
+			a = b;
+			b = copy;
 		}
 	}
 }
