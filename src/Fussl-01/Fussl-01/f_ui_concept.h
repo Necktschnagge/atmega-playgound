@@ -24,6 +24,8 @@ namespace fsl {
 		
 		class controller : public fsl::str::callable {
 			element* current_element;
+			fsl::con::write_through_buffer<char,20> ostream; // better idea???: something independent from the buffer size
+			fsl::con::write_through_buffer<char, 20> istream; //
 			
 			void operator()() override {
 				current_element = current_element->work();
@@ -40,8 +42,21 @@ namespace fsl {
 			
 		};
 		
+		using char_to_bool_function = bool (* )(char);
+		
+		template<char_to_bool_function UP_KEY, char_to_bool_function DOWN_KEY, char_to_bool_function OK_KEY, char TEXT_SEPARATOR>
 		class item_selector : public dialog {
+			const char* item_texts; // separated with TEXT_SEPARATOR
+			element* successor_elements;
+			uint8_t position;
 			
+			public:
+			item_selector(const char* item_texts, element* successor_elements, uint8_t position = 0) : item_texts(item_texts), successor_elements(successor_elements), position(position) {}
+			
+			element* work() override {
+				if (!istream )
+				char x 
+			}
 		};
 		
 		template <typename int_type>
