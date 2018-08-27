@@ -12,9 +12,9 @@
    * hw (hardware, hardware abstraction)
       * gpio_pin
    * lg (logical stuff, that has no connection to the microcontroller at all)
-      * flags<...>
+      * flags<..>
       * f_order.h (for min, max)
-      * range_int<...>
+      * range_int<..>
       * single_flags
    * os (typical operating system features: like scheduler, taskrunner)
       * scheduler
@@ -22,9 +22,10 @@
    * str (structural stuff, classes etc)
       * callable
       * const_callable
-      * exceptional<...>
+      * exceptional<..>
+      * maybe<..>
+      * resettable<..>
       * void_function
-	  * maybe<...>
    * ui (user interface stuff)
       * matrix_keyboard
    * util (utilities)

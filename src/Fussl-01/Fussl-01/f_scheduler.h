@@ -6,24 +6,25 @@
 */
 /* lib description: you must not activate interrupts during the execution of some interrupt handler. this will end up in undefined behavior since somemethods, e.g. execute_interrupting_timers() assume they're always running uninterrupted. */
 
-//// ###think about volatile stuff in this class
 
-#ifndef __SCH2_H__
-#define __SCH2_H__
+#ifndef __SCHEDULER_H__
+#define __SCHEDULER_H__
 
-#include <stdint.h>
-#include <avr/wdt.h>
-#include <math.h>
+#include <stdint.h>			// uint8_t
+#include <avr/wdt.h>		// wdt_enable, wdt_disable, wdt_reset
+#include <math.h>			// ceil
 
-#include "f_macros.h"
-#include "f_range_int.h"
-#include "f_flags.h"
+#include "f_macros.h"		// macro_interrupt_critical_begin, macro_interrupt_critical_end, macro_interrupt_critical
+#include "f_range_int.h"	// handle_type
+#include "f_flags.h"		// scheduler::flags, .. flags of table line
 #include "f_callbacks.h"
+#include "f_resettable.h"	// earliest_interrupting_timer_release
 #include "f_time.h"
 #include "f_system_time.h"
 #include "f_stack.h"
 #include "f_order.h"
 #include "f_bytewise.h"
+
 
 namespace fsl {
 	namespace os {
@@ -180,6 +181,7 @@ namespace fsl {
 			/* event time of the enabled interrupt timer with the smallest event time.
 			on construction of scheduler it must be set to EMT::MIN()
 			Whenever a new interrupt timers has been added or an existing one has been enabled, it must be updated to min(old, new_int_timer.event_time) */
+			//volatile fsl::str::resettable<time::ExtendedMetricTime, 0> earliest_interrupting_timer_release;
 			volatile time::ExtendedMetricTime earliest_interrupting_timer_release;
 
 			/*** private methods ***/
@@ -214,6 +216,10 @@ namespace fsl {
 			inline void execute_callback(uint8_t table_index){
 				return execute_callback(table[table_index].callback,table[table_index].flags.get(IS_CALLABLE));
 			}
+			/* comment on read through print edit: execute_callback offers all functiobnality we need. 
+			   opverload get_callback for table index too: then if someone wants this functionality he must use this funxction tpgether with execute_callback taking the callback copy. and between both function alls the atomic must be closed. 
+			   mark this function as deprecated and comment out.
+			   */
 			
 			/* goes through all (valid) int timer entries and executes the callback if execution_time expired and entry is enabled.
 			Method must not be interrupted during its execution. It does not explicitly turns off interrupts since it should only be called as interrupt subroutine.
@@ -1081,7 +1087,7 @@ namespace fsl {
 }
 
 
-#endif //__SCH2_H__
+#endif //__SCHEDULER_H__
 
 
 ////////////////////////////////////////////////////////////////////////// conceptional:
@@ -1156,6 +1162,9 @@ nstead of "re baseing" we could also use an extra variable as last minimum, new 
 
 // just implement one strategy and later implement the others and make it possible to choose by conditioned compiling.
 }
+
+//// ###think about volatile stuff in this class
+
 */
 
 // create a new class concept for interrupt critical stuff
