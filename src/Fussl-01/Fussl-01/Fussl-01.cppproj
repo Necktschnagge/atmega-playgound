@@ -301,6 +301,9 @@
     <Compile Include="f_matrix_keyboard.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_maybe.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_ncrg.h">
       <SubType>compile</SubType>
     </Compile>
