@@ -135,7 +135,7 @@ namespace fsl {
 			volatile fsl::lg::single_flags flags;
 			
 			/* stack for handles of callbacks that were called*/
-			volatile fsl::con::stack<handle_type,2> my_handle_stack;
+			//volatile fsl::con::stack<handle_type,2> my_handle_stack; delete
 			
 			volatile handle_type callback_handle;
 			
@@ -247,9 +247,10 @@ namespace fsl {
 					if (table[index].flags.get(IS_ENABLED)){
 						if (now >= *table[index].specifics.timer().event_time){
 							table[index].flags.set_false(IS_ENABLED);
-							my_handle_stack.push(table[index].handle);
+							handle_type local_stack = callback_handle;
+							callback_handle = table[index].handle;
 							execute_callback(index);
-							my_handle_stack.drop();
+							callback_handle = local_stack;
 							//	index = 0;	continue; // start from begin again again, because table might be modified by callback procedure.
 							return true; // prevention against some infinite loop of executing int timers. Next timer should wait for next now_time_update.
 							// <<< one of those two strategies must be chosen.
@@ -367,6 +368,7 @@ namespace fsl {
 			inline void activate_hardware_watchdog(){
 				macro_interrupt_critical(
 				wdt_enable(hardware_watchdog_timeout);
+				wdt_reset();
 				);
 			}
 			
@@ -878,7 +880,6 @@ namespace fsl {
 				flags.set_true(IS_RUNNING); // set running flag
 				flags.set_false(EMPTY_TABLE_DETECTED); // check for empty table
 				activate_hardware_watchdog();
-				wdt_reset();
 				software_watchdog_reset();
 				
 				central_control_loop:
@@ -969,12 +970,13 @@ namespace fsl {
 					}
 					execute:
 					fsl::str::standard_union_callback callback = table[choice].callback;
+					handle_type local_stack = callback_handle;
+					callback_handle = table[choice].handle;
 					choice = table[choice].flags.get(IS_CALLABLE);
 					macro_interrupt_critical_end;
 					
-					my_handle_stack.push(table[choice].handle);
 					execute_callback(callback,choice);
-					my_handle_stack.drop();
+					callback_handle = local_stack;
 				}
 			}
 
