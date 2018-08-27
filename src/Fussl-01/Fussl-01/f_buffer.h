@@ -24,13 +24,33 @@ namespace fsl {
 			virtual bool full() = 0;
 			
 			virtual T read() = 0;
-			virtual bool write() = 0;
+			virtual void write(const T& element) = 0;
+			
+		};
+		
+		template <typename T>
+		class rt_buffer : public virtual buffer<T> {
+			fsl::str::callable* fill_buffer;
+			
+			public:
+			inline rt_buffer(fsl::str::callable* fill_buffer) : buffer<T>(), fill_buffer(fill_buffer) {}
+			inline void prepare_read(){ while(buffer<T>::empty()) (*fill_buffer)(); }
+			
+		};
+		
+		template <typename T>
+		class wt_buffer : public virtual buffer<T> {
+			fsl::str::callable* drain_buffer;
+			
+			public:
+			inline wt_buffer(fsl::str::callable* drain_buffer) : buffer<T>(), drain_buffer(drain_buffer) {}
+			inline void prepare_write(){ while(buffer<T>::empty()) (*drain_buffer)(); }
 			
 		};
 		
 		template <class T, uint8_t size>
-		class array_buffer : public buffer<T> {
-			protected: // chekc the "parent::" in inheriuting classes and whether they're necessary, maybe only the "private" was my mistake
+		class array_buffer : public virtual buffer<T> {
+			protected:
 			T array[size];
 			
 			uint8_t read_pos; // read position;
@@ -48,55 +68,47 @@ namespace fsl {
 			
 			inline array_buffer(): read_pos(0), filled(0) {}
 				
-			inline bool empty(){ return !filled; }
-			inline bool full(){ return filled == size; }
-c			
-			inline virtual T read(){ if (empty()){ return array[read_pos]; } else { --filled; return array[read_pos_pp()]; } }
-		//	inline virtual const T& read_reference(){ if (empty()) { return array[read_pos]; } else { --filled; return array[read_pos_pp()]; } }
-		//	inline virtual fsl::str::maybe<T> read_maybe(){ if (empty()) return fsl::str::maybe<T>(); else return fsl::str::maybe<T>(array[read_pos_pp()]); }
-			inline virtual bool write(const T& element){ if (full()) return false; else { array[(static_cast<uint16_t>(read_pos) + (filled++)) % size] = element; return true; } }
-		//	inline virtual bool write(T&& element){ if (full()) return false; else { array[(static_cast<uint16_t>(read_pos) + (filled++)) % size] = element; return true; } }
+			inline virtual bool empty() override { return !filled; }
+			inline virtual bool full() override { return filled == size; }
+			
+			// unsave read
+			inline virtual T read() override { --filled; return array[read_pos_pp()]; }
+			// unsave write
+			inline virtual void write(const T& element) override { array[(static_cast<uint16_t>(read_pos) + (filled++)) % size] = element; }
 		};
 		
-		/* when you try to read and th buffer is empty a callback is called to fill the buffer */
+		/* when you try to read and the buffer is empty a callback is called to fill the buffer */
 		template <class T, uint8_t size>
-		class read_through_buffer : public virtual array_buffer<T,size> { // rtbuffer
-			fsl::str::callable* fill_buffer;
-			using parent = array_buffer<T,size>;
+		class rt_array_buffer : public virtual rt_buffer<T>, public virtual array_buffer<T,size> {
 			public:
-			inline read_through_buffer(fsl::str::callable* fill_buffer) : parent(), fill_buffer(fill_buffer) {}
-			
-			inline virtual T read() override { while(parent::empty()) (*fill_buffer)(); --parent::filled; return parent::array[parent::read_pos_pp()]; }// <<< make this functions virtual??? -> but than we have ugly vTables on our microcontroller.
-			//inline virtual const T& read_reference() override { while(parent::empty()) (*fill_buffer)(); --parent::filled; return parent::array[parent::read_pos_pp()]; }
-			//inline virtual fsl::str::maybe<T> read_maybe() override { if (parent::empty()) (*fill_buffer)(); if (parent::empty()) return fsl::str::maybe<T>(); else return fsl::str::maybe<T>(parent::array[parent::read_pos_pp()]); }
-			
+			inline rt_array_buffer(fsl::str::callable* fill_buffer) : array_buffer<T,size>(), rt_buffer<T>(fill_buffer) {}
+			inline virtual T read() override { rt_buffer<T>::prepare_read(); return array_buffer<T,size>::read(); }
 		};
 		
 		template <class T, uint8_t size>
-		class write_through_buffer : public virtual array_buffer<T,size> {//<< wtbuffer
-			fsl::str::callable* drain_buffer;
-			using parent = array_buffer<T,size>;
-			
+		class wt_array_buffer : public virtual wt_buffer<T>, public virtual array_buffer<T,size> {
 			public:
-			inline write_through_buffer(fsl::str::callable* drain_buffer) : parent(), drain_buffer(drain_buffer) {}
-			
-			inline virtual bool write(const T& element) override { while(parent::full()) (*drain_buffer)(); parent::array[(static_cast<uint16_t>(parent::read_pos) + (parent::filled++)) % size] = element; return true; }
-			//inline virtual bool write(T&& element) override { while(parent::full()) (*drain_buffer)(); parent::array[(static_cast<uint16_t>(parent::read_pos) + (parent::filled++)) % size] = element; return true; }
-			
+			inline wt_array_buffer(fsl::str::callable* drain_buffer) : wt_buffer<T>(drain_buffer), array_buffer<T,size>() {}
+			inline virtual void write(const T& element) override { wt_buffer<T>::prepare_write(); return array_buffer<T,size>::write(element); }
 		};
 		
-		//<<<< make diamond complete.!!!#####
 		template <class T, uint8_t size>
-		class wrtbufferr : public write_through_buffer<T,size>, public read_through_buffer<T,size> {
+		class wrt_array_bufferr : public wt_array_buffer<T,size>, public rt_array_buffer<T,size> {
 			using parent = array_buffer<T,size>;
-			using rparent = read_through_buffer<T,size>;
-			using wparent = write_through_buffer<T,size>;
+			using rparent = rt_array_buffer<T,size>;
+			using wparent = wt_array_buffer<T,size>;
 			
 			public:
-			inline wrtbufferr(fsl::str::callable* drain_buffer, fsl::str::callable* fill_buffer) : parent(), wparent(drain_buffer), rparent(fill_buffer) {}
+			inline wrt_array_bufferr(fsl::str::callable* drain_buffer, fsl::str::callable* fill_buffer) : parent(), wparent(drain_buffer), rparent(fill_buffer) {}
 				
 			//check ambiguity of calls to read and write!!!!#####
 		};
+		
+		template <typename T>
+		inline wt_buffer<T>& operator <<(wt_buffer<T>& buffer, const char* string){
+			for (; *string != '\0'; ++string) buffer.write(*string);
+			return buffer;
+		}
 	}
 }
 

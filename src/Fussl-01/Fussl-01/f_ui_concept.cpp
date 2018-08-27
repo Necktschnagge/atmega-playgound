@@ -16,5 +16,5 @@ PUMP
 
 fsl::ui::char_to_bool_function x = [](char x){ return x == '0'; };
 
-fsl::ui::item_selector<> selector();
+//fsl::ui::item_selector<> selector();
 
