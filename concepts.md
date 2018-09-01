@@ -11,6 +11,7 @@
    * dev (communication for _devices_, such as multi sensor measurement tool, pump controller)
    * hw (hardware, hardware abstraction)
       * gpio_pin
+      * f_interrupt.h (atomic, simple_atomic)
    * lg (logical stuff, that has no connection to the microcontroller at all)
       * flags<..>
       * f_order.h (for min, max)
