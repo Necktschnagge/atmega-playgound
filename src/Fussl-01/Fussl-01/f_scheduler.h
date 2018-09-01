@@ -18,13 +18,12 @@
 #include "f_range_int.h"	// handle_type
 #include "f_flags.h"		// scheduler::flags, .. flags of table line
 #include "f_callbacks.h"
+#include "f_exceptional.h"
+#include "f_interrupt.h"
 #include "f_resettable.h"	// earliest_interrupting_timer_release
 #include "f_time.h"
 #include "f_system_time.h"
-#include "f_stack.h"
-#include "f_order.h"
-#include "f_bytewise.h"
-
+#include "f_order.h"		// fsl::lg::min(..) for moving parts of table when reordering
 
 namespace fsl {
 	namespace os {
@@ -32,9 +31,7 @@ namespace fsl {
 		template <uint8_t TABLE_SIZE>
 		class scheduler {
 			
-			public:
-			
-			/*** public types ***/
+			public:		/*** public types ***/
 			
 			using handle_type = fsl::lg::range_int<uint8_t,TABLE_SIZE,true,true>;
 			
@@ -42,11 +39,8 @@ namespace fsl {
 				TASK = 0, TIMER = 1, INTTIMER = 2, INVALID = 255
 			};
 			
-/*			enum class callback_type : uint8_t {
-				INVALID = 0, VOID_FUNCTION = 1, CALLABLE = 2
-			};
-	*/		
-			/*** public constexpr constants ***/
+			
+			public:		/*** public constexpr values + functions ***/
 			
 			template <uint8_t linear_urgency>
 			static constexpr uint8_t calc_urgency_inverse(){
@@ -60,9 +54,8 @@ namespace fsl {
 			/* the default urgency for task entries in scheduler table */
 			static constexpr uint8_t DEFAULT_URGENCY{ calc_urgency_inverse<10>() };
 			
-			private:
 			
-			/*** private types ***/
+			private:		/*** private types ***/
 			
 			/* specific data only needed for tasks */
 			struct task_specifics {
@@ -81,7 +74,7 @@ namespace fsl {
 				inline uint8_t increase_urgency(){ urgency_inverse = static_cast<uint16_t>(urgency_inverse) * 4 / 5; return urgency_inverse = urgency_inverse + !urgency_inverse; }
 				
 				/* increase urgency_inverse == decrease urgency */
-				inline uint8_t decrease_urgency(){ uint16_t urgency_inverse_2 = static_cast<uint16_t>(urgency_inverse) * 5 / 4; return urgency_inverse = urgency_inverse_2 > 255 ? 255 : static_cast<uint8_t>(urgency_inverse_2); }
+				inline uint8_t decrease_urgency(){ uint32_t urgency_inverse_2 = (static_cast<uint32_t>(urgency_inverse) * (256 + 64) + 255) >> 8; return urgency_inverse = urgency_inverse_2 > 255 ? 255 : static_cast<uint8_t>(urgency_inverse_2); }
 			};
 
 			/* specific data only needed for timers */
@@ -1083,6 +1076,30 @@ namespace fsl {
 			static_assert(sizeof(fsl::lg::single_flags) == 1, "fsl::lg::single_flags has not the appropriate size.");
 			static_assert(sizeof(scheduler_line) == 6, "SchedulerMemoryLine has not the appropriate size.");
 
+
+			class table_entry_accessor : private fsl::hw::simple_atomic {
+				inline table_entry_accessor(handle_type handle) : fsl::hw::simple_atomic() { }
+				
+				uint8_t table_index;
+				public:
+				static fsl::str::exceptional<table_entry_accessor, void> get_table_entry(handle_type handle){}
+
+				void set_callback(){
+					
+				}
+			};
+/*
+			class Task_Entry : Table_Entry {
+				
+				public:
+				
+				
+			};
+
+			class Timer_Entry : Table_Entry {
+				
+			};
+			*/
 		};
 		
 	}
@@ -1090,6 +1107,20 @@ namespace fsl {
 
 
 #endif //__SCHEDULER_H__
+
+
+/******** REFACTORING ISSUES **************/
+/*
+
+
+-2. Think about inlining.
+
+-1. Add all reasons for including the include files.
+
+*/
+
+
+
 
 
 ////////////////////////////////////////////////////////////////////////// conceptional:
@@ -1168,50 +1199,3 @@ nstead of "re baseing" we could also use an extra variable as last minimum, new 
 //// ###think about volatile stuff in this class
 
 */
-
-// create a new class concept for interrupt critical stuff
-#if false
-class atomic {
-	
-	bool active;
-	uint8_t sreg;
-	
-	public:
-	inline atomic() : active(true) { sreg = SREG; cli(); }
-	inline atomic(bool active) : active(active) { if (active) {sreg = SREG; cli(); } }
-	inline ~atomic() { if (active) SREG = sreg; }
-	
-	atomic(const atomic&) = delete;
-	atomic& operator = (const atomic&) = delete;
-	
-	inline atomic(atomic&& obj) : active(obj.active) { sreg = obj.sreg; obj.active = false; }
-	inline atomic& operator = (atomic&& obj) { active = obj.active; sreg = obj.sreg; obj.active = false; }
-	
-};
-/* when you need atomic environment until any return in a function, just create an atomic at the begin of the function, it will be destroyed right when you return. */
-
-
-class Table_Entry : atomic {
-	inline Table_Entry(const handle_type& handle) : atomic() { }
-	
-	uint8_t table_index;
-	public:
-	static exceptional<Table_Entry> get_Table_Entry(fsl::os::scheduler<TABLE_SIZE>::handle_type handle){}
-
-	void set_callback(){
-		
-	}
-};
-
-class Task_Entry : Table_Entry {
-	
-	public:
-	
-	
-}
-
-class Timer_Entry : Table_Entry {
-	
-}
-
-#endif
