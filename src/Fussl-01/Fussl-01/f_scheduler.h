@@ -14,16 +14,17 @@
 #include <avr/wdt.h>		// wdt_enable, wdt_disable, wdt_reset
 #include <math.h>			// ceil
 
-#include "f_macros.h"		// macro_interrupt_critical_begin, macro_interrupt_critical_end, macro_interrupt_critical
-#include "f_range_int.h"	// handle_type
-#include "f_flags.h"		// scheduler::flags, .. flags of table line
 #include "f_callbacks.h"
 #include "f_exceptional.h"
+#include "f_flags.h"		// scheduler::flags, .. flags of table line
 #include "f_interrupt.h"
-#include "f_resettable.h"	// earliest_interrupting_timer_release
-#include "f_time.h"
-#include "f_system_time.h"
+#include "f_macros.h"		// macro_interrupt_critical_begin, macro_interrupt_critical_end, macro_interrupt_critical
 #include "f_order.h"		// fsl::lg::min(..) for moving parts of table when reordering
+#include "f_range_int.h"	// handle_type
+#include "f_resettable.h"	// earliest_interrupting_timer_release
+#include "f_system_time.h"
+#include "f_time.h"
+#include "f_urgency.h"
 
 namespace fsl {
 	namespace os {
@@ -39,42 +40,27 @@ namespace fsl {
 				TASK = 0, TIMER = 1, INTTIMER = 2, INVALID = 255
 			};
 			
-			
-			public:		/*** public constexpr values + functions ***/
-			
-			template <uint8_t linear_urgency>
-			static constexpr uint8_t calc_urgency_inverse(){
-				static_assert(linear_urgency <= 20, "Linear urgency must be a value 0..20 (least important .. most important)");
-				return !linear_urgency ? 255 : static_cast<uint8_t>( static_cast<uint16_t>(calc_urgency_inverse<linear_urgency-1>()) * 4 / 5);
-			}
+			public:		/*** public constexpr values ***/
 			
 			/* handle that refers to none of the entries in scheduler table */
 			static constexpr handle_type NO_HANDLE{ handle_type::OUT_OF_RANGE };
 			
 			/* the default urgency for task entries in scheduler table */
-			static constexpr uint8_t DEFAULT_URGENCY{ calc_urgency_inverse<10>() };
+			static constexpr urgency DEFAULT_URGENCY{ urgency::normal_urgency() };
 			
 			
 			private:		/*** private types ***/
 			
 			/* specific data only needed for tasks */
 			struct task_specifics {
-				/* value, that is added to task_race_countdown after each callback execution
-				255 .. least important ... 0 ... most important
-				*/
-				uint8_t urgency_inverse;
+				urgency task_urgency;
+				
 				/* Always the task with the smallest task_race_countdown will be executed. If this is ambiguous one of them will be executed.
 				After a task is executed task_race_countdown will be increased by urgency_inverse.
 				At least when a task_race_countdown would overflow if it has to be increased, all task_race_countdowns have to be shorten together.
 				To do so, determine the min task_race_countdown and subtract this value from all task_race_countdowns.
 				*/
 				uint8_t task_race_countdown;
-				
-				/* decrease urgency_inverse == encrease urgency */
-				inline uint8_t increase_urgency(){ urgency_inverse = static_cast<uint16_t>(urgency_inverse) * 4 / 5; return urgency_inverse = urgency_inverse + !urgency_inverse; }
-				
-				/* increase urgency_inverse == decrease urgency */
-				inline uint8_t decrease_urgency(){ uint32_t urgency_inverse_2 = (static_cast<uint32_t>(urgency_inverse) * (256 + 64) + 255) >> 8; return urgency_inverse = urgency_inverse_2 > 255 ? 255 : static_cast<uint8_t>(urgency_inverse_2); }
 			};
 
 			/* specific data only needed for timers */

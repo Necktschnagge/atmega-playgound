@@ -93,9 +93,10 @@ namespace fsl {
 			using flag_id = range_int<uint8_t,bytes * 8, true, true>;
 			
 			private:
-			memory_t memory;
 			
 			public:
+			memory_t memory;
+
 			/* c-tors */
 			inline flags();
 
