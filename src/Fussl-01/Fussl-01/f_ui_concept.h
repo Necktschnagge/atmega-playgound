@@ -37,30 +37,54 @@ namespace fsl {
 			inline fsl::con::wt_buffer<char>& in() const { return *istream; }
 		};
 		
-		/* just output stuff */
+		/* just output stuff, i.e. does not save any values calculated from input
+		and does not invoke individual actions dependent on input,
+		but may read input for the purpose of waiting until ok pressed */
 		class monolog : public element {
+			
+		};
+
+		template<char OK>		
+		class ok_monolog {
+		};
+		
+		template<char OK>
+		class string_output : public ok_monolog<OK> {
 			const char* string;
 			element* successor;
+			enum class state { SHOW_MESSAGE, WAIT_OK };
+			state my_state;
 			
 			public:
-			inline monolog(const char* string, element* successor) : string(string), successor(successor) {}
+			inline string_output(const char* string, element* successor) : string(string), successor(successor) {}
 			
+			inline void reset(){ my_state = state::SHOW_MESSAGE; }
+				
+			inline void set_string(const char* string){ this->string = string; }
+
 			inline virtual element* work(controller& c){
-				c.out() << "\f" << string;
-				return successor;
+				if (my_state == state::SHOW_MESSAGE){
+					c.out() << "\f" << string;
+					my_state = state::WAIT_OK;
+				} else {
+					if ((!c.in().empty()) && (c.in().read() == OK)) {
+						reset();
+						return successor;
+					}
+				}
+				return *this;
 			}
 		};
 		
-		/* read input buffer and probably use monolog elements */
+		/* read input buffer to create values from input stream or invoke different actions depending on input */
 		class dialog : public element {
-			
 		};
 		
 		using char_to_bool_function = bool (* )(char);
 		
 		template<char_to_bool_function UP_KEY, char_to_bool_function DOWN_KEY, char_to_bool_function OK_KEY, char TEXT_SEPARATOR>
 		class item_selector : public dialog {
-			const char* item_texts; // separated with TEXT_SEPARATOR
+			const char* item_texts; // separated with TEXT_SEPARATOR, max 256 items
 			element* successor_elements;
 			uint8_t position;
 			
