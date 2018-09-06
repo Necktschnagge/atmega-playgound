@@ -103,7 +103,7 @@ namespace fsl {
 			
 				inline urgency& operator--(){ urg_inv = urg_inv - (urg_inv == 0xFF) + 1; return *this;}
 			
-				inline uint8_t get_inverse_value() const { return urg_inv; }
+				inline uint8_t inverse_value() const { return urg_inv; }
 			
 				inline bool operator<(urgency rhs) const { return this->urg_inv > rhs.urg_inv; }
 			
