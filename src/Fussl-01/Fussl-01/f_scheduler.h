@@ -22,15 +22,16 @@
 #include "f_order.h"		// fsl::lg::min(..) for moving parts of table when reordering
 #include "f_range_int.h"	// handle_type
 #include "f_resettable.h"	// earliest_interrupting_timer_release
-#include "f_system_time.h"
-#include "f_time.h"
-#include "f_urgency.h"
+#include "f_system_time.h"	// 
+#include "f_time.h"			// ExtendedMetricTime
+#include "f_urgency.h"		// class urgency;
 
 namespace fsl {
 	namespace os {
 		
 		template <uint8_t TABLE_SIZE>
 		class scheduler {
+			
 			
 			public:		/*** public types ***/
 			
@@ -39,6 +40,7 @@ namespace fsl {
 			enum class entry_type : uint8_t {
 				TASK = 0, TIMER = 1, INTTIMER = 2, INVALID = 255
 			};
+			
 			
 			public:		/*** public constexpr values ***/
 			
@@ -53,6 +55,7 @@ namespace fsl {
 			
 			/* specific data only needed for tasks */
 			struct task_specifics {
+				
 				urgency task_urgency;
 				
 				/* Always the task with the smallest task_race_countdown will be executed. If this is ambiguous one of them will be executed.
@@ -83,7 +86,7 @@ namespace fsl {
 			};
 			
 			/* class for one scheduler line containing everything needed for one timer / task entry */
-			struct scheduler_line {
+			struct entry {
 				handle_type handle;
 				fsl::str::standard_union_callback callback;
 				union_specifics specifics;
@@ -138,7 +141,7 @@ namespace fsl {
 			since otherwise there is no particular guaranty for reading from a consistent table, since anyone could interrupt you and modify the table,
 			even while you write one multi-byte datum.
 			*/
-			volatile scheduler_line table[TABLE_SIZE];
+			volatile entry table[TABLE_SIZE];
 
 			// see: https://www.mikrocontroller.net/articles/AVR-GCC-Tutorial/Der_Watchdog
 			/* timeout value for initialization of hardware watchdog
@@ -791,10 +794,10 @@ namespace fsl {
 			}
 			
 			/* returns size in bytes of one SchedulerMemoryLine */
-			static constexpr uint8_t table_line_size_of(){ return sizeof(scheduler_line); }
+			static constexpr uint8_t table_line_size_of(){ return sizeof(entry); }
 			
 			/* returns size in bytes of the whole scheduler table */
-			static constexpr uint16_t table_size_of(){ return sizeof(scheduler_line)*TABLE_SIZE; }
+			static constexpr uint16_t table_size_of(){ return sizeof(entry)*TABLE_SIZE; }
 			
 			/* set value of timeout of hardware, use predefined macros WDTO_15MS, WDTO_30MS ... */
 			inline void set_hardware_watchdog_timeout(uint8_t value){
@@ -945,7 +948,7 @@ namespace fsl {
 						choice = min_entry_index;
 						
 						task_execute:
-						table[choice].specifics.task().task_race_countdown = table[choice].specifics.task().urgency;
+						table[choice].specifics.task().task_race_countdown = table[choice].specifics.task().task_urgency.inverse_value();
 					}
 					execute:
 					fsl::str::standard_union_callback callback = table[choice].callback;
@@ -968,7 +971,7 @@ namespace fsl {
 			if not successful NO_HANDLE is returned. In this case the table is already full with valid entries.
 			If both possible callback variants are non-nullptr the callable will be preferred.
 			*/
-			handle_type new_task(fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, uint8_t urgency = DEFAULT_URGENCY, bool enable = true){
+			handle_type new_task(fsl::str::callable* callable = nullptr, fsl::str::void_function function = nullptr, urgency task_urgency = DEFAULT_URGENCY, bool enable = true){
 				macro_interrupt_critical_begin;
 				
 				uint8_t free_index = new_table_line(true,false);
@@ -987,8 +990,8 @@ namespace fsl {
 					table[free_index].flags.set_true(IS_CALLABLE);
 				}
 				// task specific information: task urgency and countdown:
-				table[free_index].specifics.task().urgency = urgency + (!urgency);
-				table[free_index].specifics.task().task_race_countdown = urgency; // 0;
+				table[free_index].specifics.task().task_urgency = task_urgency;
+				table[free_index].specifics.task().task_race_countdown = task_urgency.inverse_value(); // or start with 0;
 				handle_type free_handle = table[free_index].handle;
 				macro_interrupt_critical_end;
 				return free_handle;
@@ -1060,7 +1063,7 @@ namespace fsl {
 			static_assert(sizeof(fsl::str::standard_union_callback) == 2, "UnionCallback has not the appropriate size.");
 			static_assert(sizeof(union_specifics) == 2, "UnionSpecifics has not the appropriate size.");
 			static_assert(sizeof(fsl::lg::single_flags) == 1, "fsl::lg::single_flags has not the appropriate size.");
-			static_assert(sizeof(scheduler_line) == 6, "SchedulerMemoryLine has not the appropriate size.");
+			static_assert(sizeof(entry) == 6, "SchedulerMemoryLine has not the appropriate size.");
 
 
 			class table_entry_accessor : private fsl::hw::simple_atomic {

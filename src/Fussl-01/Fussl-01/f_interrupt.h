@@ -7,6 +7,7 @@
 FPS:
 		all atomic classes are ready.
 		please test them. please test memory consumption of different atomic solutions
+		please check descriptions
 		write the cimota classes !!!
 */
 
@@ -135,6 +136,9 @@ namespace fsl {
 		
 		/* deprecated since it has size 1 byte, but you could also just write cli() and sei() */
 		class stupid_atomic {
+			// << put it into an extra header and add a:
+			//#warning Using this class is deprecated
+			// which appears as soon as you include this header.
 			inline stupid_atomic() { cli(); }
 			inline ~stupid_atomic() { sei(); }
 		};
