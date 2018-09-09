@@ -242,6 +242,9 @@
     <Compile Include="f_cmr.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_countdown.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="f_exceptional.h">
       <SubType>compile</SubType>
     </Compile>
