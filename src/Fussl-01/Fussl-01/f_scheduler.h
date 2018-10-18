@@ -7,9 +7,36 @@
 /* lib description: you must not activate interrupts during the execution of some interrupt handler. this will end up in undefined behavior since somemethods, e.g. execute_interrupting_timers() assume they're always running uninterrupted. */
 
 /*
-here: some explanation how software and hw watchdog work together, see at description of software_watchdog und andere.
+	Watchdogs:
+	
+	There are two so-called "watchdogs" in the context of the scheduler, the hardware watchdog and the software watchdog.
+	With the hardware watchdog you check against exceeding atomic sections.
+	With the software watchdog you check against callback routines
+	that are scheduled but do not return in the appropriate amount of time (even if they do not use exceeding atomic sections).
 
-
+	hardware watchdog:
+	The hardware watchdog / built-in watchdog of your MCU will be used by the scheduler.
+	You just have to tell the scheduler the hardware watchdog timeout on construction. (Therefor see the description of the constructor)
+	How it works internally:
+	The scheduler resets the built-in watchdog (implemented in hardware) on every now time update (interrupt)
+	so that it cannot restart the controller.
+	Only in case someone (the scheduler itself or the programmer using the scheduler) uses too long atomic sections
+	(where interrupts are turned off) or too long interrupt handlers (..same..) the hardware watchdog will not be reseted
+	so it will reset the controller.
+	The hardware watchdog will be startet automatically when you call my_scheduler.run() and stopped if run() returns.
+	
+	software watchdog:
+	With the software watchdog you check against callback routines
+	that are scheduled but do not return in the appropriate amount of time (even if they do not use exceeding atomic sections).
+	The software watchdog is a watchdog fully implemented in software by the class scheduler.
+	You may activate or deactivate the software watchdog whenever you want.
+	
+	Having the software watchdog deactivated the following (probably undesired) scenario may occur:
+	There is one task that does never use atomic sections but also does not eventually return.
+	Once this task is scheduled by the scheduler, all interrupting timers will eventually be executed
+	but neither a non-interrupting timer nor another task will be executed anymore.
+	
+	
 
 */
 
@@ -23,7 +50,7 @@ here: some explanation how software and hw watchdog work together, see at descri
 
 #include "f_bytewise.h"
 #include "f_callbacks.h"
-#include "f_countdown.h"
+#include "f_countdown.h"	// software_watchdog is a fsl::lg::countdown
 #include "f_exceptional.h"
 #include "f_flags.h"		// scheduler::flags, .. flags of table line
 #include "f_interrupt.h"
@@ -51,7 +78,7 @@ namespace fsl {
 			};
 			
 			
-			public:		/*** public constexpr values ***/
+			public:		/*** public static constexpr values ***/
 			
 			/* handle that refers to none of the entries in scheduler table */
 			static constexpr handle_type NO_HANDLE{ handle_type::OUT_OF_RANGE };
@@ -59,9 +86,22 @@ namespace fsl {
 			/* the default urgency for task entries in scheduler table */
 			static constexpr urgency DEFAULT_URGENCY{ urgency::normal_urgency() };
 			
+
+			public:		/*** public static constexpr functions ***/
+			
+			/* returns size in bytes of one SchedulerMemoryLine */
+			static constexpr uint8_t table_line_size_of(){ return sizeof(entry); }
+			
+			/* returns size in bytes of the whole scheduler table */
+			static constexpr uint16_t table_size_of(){ return sizeof(entry)*TABLE_SIZE; }
+			
 			
 			private:	/*** private types ***/
 			
+			/* integral type used by the software watchdog countdown object */
+			using software_watchdog_base_type = uint32_t;
+			
+			///### add description!!!!
 			struct index_cache {	handle_type handle;		uint8_t index;	};
 			
 			/* specific data only needed for tasks */
@@ -105,7 +145,7 @@ namespace fsl {
 			};
 			
 			
-			private: /*** private constexpr values + functions ***/
+			private:	/*** private static constexpr values ***/
 			
 			/* flags for each scheduler entry / each scheduler table line */
 			static constexpr fsl::lg::single_flags::flag_id ENTRY_VALID{ 0 }; // if an entry is not valid, the entry may be overwritten.
@@ -124,16 +164,15 @@ namespace fsl {
 			static constexpr fsl::lg::single_flags::flag_id EMPTY_TABLE_DETECTED{ 3 }; // for function-local internal use in run() only.
 			static constexpr fsl::lg::single_flags::flag_id ONE_INTERRUPT_TIMER_ONLY{ 4 }; // for function-local internal use in run() only.
 				// set and reset of this flag must be available for one from the outside. #########
-
-
-			private: /*** private static constexpr fucntions ***/
+			
+			
+			private:	/*** private static constexpr fucntions ***/
 			/* {0, 1, .. , TABLE_SIZE - 1} -> {0, 1, .. , TABLE_SIZE - 1} : x |-> (x - 1) mod TABLE_SIZE */
 			inline static constexpr uint8_t minus_one_mod_table_size(uint8_t uint){
 				return static_cast<uint8_t>( (static_cast<uint16_t>(uint) + static_cast<uint16_t>(TABLE_SIZE -1)) % static_cast<uint16_t>(TABLE_SIZE) );
 			}
-
 			
-			private: /*** private data ***/
+			private:	/*** private data ***/
 			
 			/* the scheduler object's flags */
 			volatile fsl::lg::single_flags flags;
@@ -173,9 +212,6 @@ namespace fsl {
 			*/
 			uint8_t hardware_watchdog_timeout; // really used in no interrupt environment ???? <<<<<< missing volatile
 			
-			/* integral type used by the software watchdog countdown object */
-			using software_watchdog_base_type = uint32_t;
-
 			/* software_watchdog.value() is a value proportional to the time which passes until the software watchdog "resets the controller",
 			i.e. stops to reset the hardware watchdog with wdt_reset().
 			exactly spoken, the value is the number of time_update_interrupt_handler() calls left until sw watchdog triggers controller reset.
@@ -192,10 +228,14 @@ namespace fsl {
 			Whenever a new interrupt timers has been added or an existing one has been enabled, it must be updated to min(old, new_int_timer.event_time) */
 			//volatile fsl::str::resettable<time::ExtendedMetricTime, 0> earliest_interrupting_timer_release; // <<<< not possible 
 			volatile time::ExtendedMetricTime earliest_interrupting_timer_release;
-
 			
-			private: /*** private methods ***/
-						
+			
+			private:	/*** private methods ***/
+			
+			
+			/* sets earliest_interrupting_timer_release to the min of earliest_interrupting_timer_release and t
+			   to be called if you enable an interrupting timer or change it's execution time */
+			inline void adjust_earliest_interrupting_timer_release(const time::ExtendedMetricTime t){ if (t < earliest_interrupting_timer_release) earliest_interrupting_timer_release = t; }
 			
 			/* returns index of table where given handle can be found
 			only call from inside an atomic section
@@ -432,9 +472,8 @@ namespace fsl {
 				);
 			}
 			
-			public:
 			
-			/*** public constructor ***/
+			public:		/*** public constructor ***/
 			
 			/* for hardware_watchdog_timeout use the predefined macros from avr/wdt.h like WDTO_15MS, WDTO_30MS, ... or consult your MCUs data sheet. */
 			/* the value must be greater than the time between two now time updates. */
@@ -443,8 +482,9 @@ namespace fsl {
 				clear_table();
 				activate_software_watchdog(watchdog);
 				}
-						
-			/*** public methods ***/
+			
+			
+			public:		/*** public methods ***/
 			
 			/* activate software interrupts / activate interrupting timers
 			notice that these functions will also be executed, but only by non-interrupting calls */
@@ -568,80 +608,80 @@ namespace fsl {
 				return error_code;
 			}
 			
-			//##effizientere get_:index suche nach handle implementieren.
+			/* Set callback of entry associated with given handle.
+			returns 0 if successful, returns 1 if handle does not meet a valid entry. */
+			inline uint8_t set_callback(handle_type handle, decltype(nullptr) callback){	return reset_callback(handle,fsl::str::void_function(nullptr));	}
 			
 			/* Set callback of entry associated with given handle.
 			returns 0 if successful, returns 1 if handle does not meet a valid entry. */
-			inline void set_callback(handle_type handle, decltype(nullptr) callback){	set_callback(handle,fsl::str::void_function(callback));	}
-			
-			inline void set_callback(handle_type handle, fsl::str::void_function callback){
-				macro_interrupt_critical_begin;
+			inline uint8_t set_callback(handle_type handle, fsl::str::void_function callback){
+				macro_interrupt_critical_begin; // duplicate: see push_task_to_front $598
 				uint8_t index = get_index(handle);
 				if (index == TABLE_SIZE) {
 					macro_interrupt_critical_end;
 					return 1;
 				}
 				table[index].callback.set_function_ptr(callback);
+				table[index].flags.set_false(ENTRY_CALLABLE);
 				macro_interrupt_critical_end;
 				return 0;
 			}
 			
-			inline void set_callback(handle_type handle, fsl::str::callable* callback){
-				macro_interrupt_critical_begin;
+			/* Set callback of entry associated with given handle.
+			returns 0 if successful, returns 1 if handle does not meet a valid entry. */
+			inline uint8_t set_callback(handle_type handle, fsl::str::callable* callback){
+				macro_interrupt_critical_begin;// duplicate: see push_task_to_front $598
 				uint8_t index = get_index(handle);
 				if (index == TABLE_SIZE) {
 					macro_interrupt_critical_end;
 					return 1;
 				}
 				table[index].callback.set_callable_ptr(callback);
+				table[index].flags.set_true(ENTRY_CALLABLE);
 				macro_interrupt_critical_end;
 				return 0;
 			}
 			
-			inline void reset_callback(handle_type handle){ return set_callback(handle,nullptr); }
+			/* set callback procedure to nullptr */
+			inline uint8_t reset_callback(handle_type handle){ return set_callback(handle,nullptr); }
 			
-#if false
-			/* Write callback pointer into [callback], returns the callback_type written to callback. */
-			// <<< mark the void_ptr() of callback class as deprecated and this function too.
-			// <<< maybe delete this implementation:
-			inline callback_type get_callback(handle_type handle, void*& callback){
-				callback_type result{ callback_type::INVALID };
-				macro_interrupt_critical_begin;
-				uint8_t index = get_index(handle);
-				if (index == TABLE_SIZE) {
-					macro_interrupt_critical_end;
-					callback = nullptr;
-					return callback_type::INVALID;
-				}
-				result = table[index].flags.get(ENTRY_CALLABLE) ? callback_type::CALLABLE : callback_type::VOID_FUNCTION;
-				callback = table[index].callback.void_ptr();
-				macro_interrupt_critical_end;
-				return result;
-			}
-#endif
-			
-			// <<< better version of this function:
-			// <<<< remove callback_type
-			inline void get_callback(handle_type handle, fsl::str::standard_union_callback& callback, bool& is_callable){
-				callback.set_function_ptr(nullptr);
-				is_callable = false;
+			/* Write the associated standard_union_callback into callback, set is_callable flag of entry matching to given handle
+			returns 0 if successful,
+			returns 1 if there was no matching entry for given handle, anything remains unchanged
+			*/
+			inline uint8_t get_callback(handle_type handle, fsl::str::standard_union_callback& callback, bool& is_callable){
+				// callback.set_function_ptr(nullptr); // unchanged
+				// is_callable = false; // unchanged
+				uint8_t index;
 				macro_interrupt_critical(
-				uint8_t index = get_index(handle);
+				index = get_index(handle);
 				if (index != TABLE_SIZE) {
 					is_callable = table[index].flags.get(ENTRY_CALLABLE);
 					callback = table[index].callback;
 				}
 				);
+				return !(index != TABLE_SIZE);
 			}
 			
-			/* execute callback of given handle, if handle is valid and callback is nun-nullptr */
-			inline void execute_callback(handle_type handle){
+			/* execute callback of given handle, if handle is valid and callback is nun-nullptr 
+			return 0: everything successful
+			return 1: no matching entry for given handle, nothing done */
+			inline uint8_t execute_callback(handle_type handle){
 				fsl::str::standard_union_callback callback;
 				bool is_callable;
-				get_callback(handle,callback,is_callable);
+				/*@when here: callback is nullptr. */
+				if (get_callback(handle,callback,is_callable)) return 1;
+				handle_type local_stack = callback_handle;
+				callback_handle = handle;
 				execute_callback<false>(callback,is_callable);
+				callback_handle = local_stack;
+				return 0;
 			}
 			
+			/* delete entry corresponding to given handle (and reorder table)*/
+			/* return 0: successful
+			   return 1: no matching scheduler table entry
+			*/
 			inline uint8_t clear_entry(handle_type handle){
 				macro_interrupt_critical_begin;
 				uint8_t index = get_index(handle);
@@ -650,12 +690,23 @@ namespace fsl {
 					return 1;
 				}
 				table[index].flags.set_false(ENTRY_VALID);
+				/* reorder table: */
+				while ((index != TABLE_SIZE - 1) && (table[index + 1].flags.get(ENTRY_VALID)) && (table[index + 1].flags.get(ENTRY_TIMER)) ){
+					fsl::util::byte_swap(table[index], table[index+1]);
+					++index;
+				}
+				while ((index != 0) && (table[index - 1].flags.get(ENTRY_VALID)) && (table[index + 1].flags.get(ENTRY_TIMER) == false) ){
+					fsl::util::byte_swap(table[index], table[index-1]);
+					--index;
+				}
 				macro_interrupt_critical_end;
 				return 0;
 			}
 			
+			/* returns true (1) if entry corresponding to handle is enabled, otherwise false (0),
+			   returns 255 (~true) if no entry matches handle */
 			inline uint8_t get_entry_enable(handle_type handle){
-				uint8_t result{ 0 };
+				uint8_t result;
 				macro_interrupt_critical(
 				uint8_t index = get_index(handle);
 				result = (index == TABLE_SIZE) ? 255 : table[index].flags.get(ENTRY_ENABLED);
@@ -663,6 +714,10 @@ namespace fsl {
 				return result;
 			}
 			
+			/* set enable flag of entry corresponding to handle
+			return 0: successful
+			return 1: no matching entry, aborted
+			*/
 			inline uint8_t set_entry_enable(handle_type handle, bool enable){
 				macro_interrupt_critical_begin;
 				uint8_t index = get_index(handle);
@@ -675,11 +730,17 @@ namespace fsl {
 				return 0;
 			}
 			
+			/* see description of set_entry_enable */
 			inline uint8_t enable_entry(handle_type handle){ return set_entry_enable(handle,true); }
 			
+			/* see description of set_entry_enable */
 			inline uint8_t disable_entry(handle_type handle){ return set_entry_enable(handle,false); }
 			
+			/* returns the number of interrupting timers.
+			   you may call this function from anywhere,
+			   but call from inside an atomic section, if you want guaranty that no interrupt changes number of int timers in between. */
 			uint8_t count_int_timers(){
+				fsl::hw::simple_atomic atomic; // open atomic section
 				uint8_t lower_bound{ 0 };
 				uint8_t upper_bound{ TABLE_SIZE };
 				while (lower_bound != upper_bound){
@@ -692,8 +753,14 @@ namespace fsl {
 				}
 				return lower_bound;
 			}
+			// <<< to avoid much dups one could use some function for counting table sections, giving some evaluation function that decribes the section.
+			// count_entry_section(   bool(scheduler<..>::* evaluator)(uint8_t index)   )
 			
+			/* returns the number of all timers.
+			   you may call this function from anywhere,
+			   but call from inside an atomic section, if you want guaranty that no interrupt changes number of int timers in between. */
 			uint8_t count_all_timers(){
+				fsl::hw::simple_atomic atomic; // open atomic section
 				uint8_t lower_bound{ 0 };
 				uint8_t upper_bound{ TABLE_SIZE };
 				while (lower_bound != upper_bound){
@@ -707,9 +774,11 @@ namespace fsl {
 				return lower_bound;
 			}
 			
-			inline uint8_t count_non_int_timers(){	return count_all_timers()-count_int_timers();	}
-
+			/* returns the number of tasks.
+			   you may call this function from anywhere,
+			   but call from inside an atomic section, if you want guaranty that no interrupt changes number of int timers in between. */
 			uint8_t count_tasks(){
+				fsl::hw::simple_atomic atomic; // open atomic section
 				uint8_t lower_bound{ 0 };
 				uint8_t upper_bound{ TABLE_SIZE };
 				while (lower_bound != upper_bound){
@@ -723,17 +792,33 @@ namespace fsl {
 				return TABLE_SIZE - lower_bound;
 			}
 			
-			inline uint8_t count_gaps(){ return TABLE_SIZE - count_all_timers() - count_tasks(); }
+			/* returns the number of non-interrupting timers.
+			   you may call this function from anywhere,
+			   but call from inside an atomic section, if you want guaranty that no interrupt changes number of int timers in between. */
+			inline uint8_t count_non_int_timers(){	fsl::hw::simple_atomic atomic; return count_all_timers()-count_int_timers();	}
+			// here we have duplicated simple_atomics because of function calls, maybe create private unsave versions und public save wrappers for functions. <<<<<
 			
+			/* returns the number of gap lines.
+			   you may call this function from anywhere,
+			   but call from inside an atomic section, if you want guaranty that no interrupt changes number of int timers in between. */
+			inline uint8_t count_gaps(){ fsl::hw::simple_atomic atomic; return TABLE_SIZE - count_all_timers() - count_tasks(); }
+			// here we have duplicated simple_atomics because of function calls, maybe create private unsave versions und public save wrappers for functions. <<<<<
+			
+			/* returns true iff table is full.
+			   you may call this function from anywhere,
+			   but call from inside an atomic section, if you want guaranty that no interrupt changes number of entries in between. */
 			inline bool table_full(){ return count_gaps() == 0; }
+			
+			/* returns true iff table is empty
+			   you may call this function from anywhere,
+			   but call from inside an atomic section, if you want guaranty that no interrupt changes number of entries in between. */
 			inline bool table_empty(){ return count_gaps() == TABLE_SIZE; }
 			
 			/* convert timer to int-timer.
-			returns		0:	reset done without any errors
-			1:	invalid handle, nothing done
-			2:	handle is associated with a task entry
-			4:	handle is already listed as int-timer. no conversion necessary
-			*/
+			returns		0:	conversion done without any errors
+						1:	invalid handle, nothing done
+						2:	handle is associated with a task entry
+						4:	handle is already listed as int-timer. no conversion necessary */
 			uint8_t convert_to_int_timer(handle_type handle){
 				uint8_t error_code{ 0 };
 				macro_interrupt_critical(
@@ -751,10 +836,10 @@ namespace fsl {
 			}
 			
 			/* convert timer to non-int-timer.
-			returns		0:	reset done without any errors
-			1:	invalid handle, nothing done
-			2:	handle is associated with a task entry
-			4:	handle is already listed as normal timer. no conversion necessary
+			returns		0:	conversion done without any errors
+						1:	invalid handle, nothing done
+						2:	handle is associated with a task entry
+						4:	handle is already listed as normal timer. no conversion necessary
 			*/
 			uint8_t convert_to_normal_timer(handle_type handle){
 				uint8_t error_code{ 0 };
@@ -772,47 +857,74 @@ namespace fsl {
 				return error_code;
 			}
 			
-			inline void set_event_time_object(handle_type handle, volatile time::ExtendedMetricTime& time_object){
+			/* set entry-internal time object pointer to a new time object.
+			returns		0:	done without any errors
+						1:	invalid handle, nothing done
+						2:	handle is associated with a task entry
+			*/
+			inline uint8_t set_event_time_object(handle_type handle, volatile time::ExtendedMetricTime& time_object){
 				uint8_t error_code{ 0 };
 				macro_interrupt_critical(
 				uint8_t index = get_index(handle);
 				if (index == TABLE_SIZE) error_code = 1;
 				if (!error_code)	if (!table[index].flags.get(ENTRY_TIMER)) error_code = 2;
-				if (!error_code)	table[index].specifics.timer().event_time = &time_object;
+				if (!error_code)	{
+					table[index].specifics.timer().event_time = &time_object;
+					if ((table[index].flags.get(ENTRY_INTERRUPTING)) && (table[index].flags.get(ENTRY_ENABLED))){
+						adjust_earliest_interrupting_timer_release(time_object);
+					}
+				}
 				);
 				return error_code;
 			}
 			
-			// if you change time to earlier, you should update earliest int timer time, if it is an inttimer.!!!
-			// better return only as const
-			inline volatile time::ExtendedMetricTime* get_event_time(handle_type handle){
+			/* return pointer to time object associated to given timer handle (if possible)
+			   returns nullptr if there is no valid entry matching handle or matching entry is not of type timer
+			   You may cast the 'const' away of the returned value to modify the time despite this is deprecated,
+			   but after modifying event_time you should update / reset earliest_interrupting_timer_release in case it is an interrupting timer and you change time to earlier.
+			   You can do this update by disabling and enabling entry again. Or call reset_int_timer_prefetcher(); .
+			*/
+			inline const volatile time::ExtendedMetricTime* get_event_time(handle_type handle){
 				time::ExtendedMetricTime* result{ nullptr };
 				macro_interrupt_critical(
 				uint8_t index = get_index(handle);
-				if (index != TABLE_SIZE) if (!table[index].flags.get(ENTRY_TIMER)) result = table[index].specifics.timer().event_time;
+				if (index != TABLE_SIZE) if (table[index].flags.get(ENTRY_TIMER)) result = table[index].specifics.timer().event_time;
 				);
 				return result;
 			}
-
-			inline bool set_event_time(handle_type handle, time::ExtendedMetricTime& t){
-				volatile time::ExtendedMetricTime* event_time = get_event_time(handle);
-				if (!event_time) return false;
+			/* set event time referenced by the entry associated with handle to given time t */
+			/* return 0: successful
+			   return 1: no matching timer entry for given handle */
+			inline uint8_t set_event_time(handle_type handle, time::ExtendedMetricTime& t){
+				volatile time::ExtendedMetricTime* event_time = const_cast<volatile time::ExtendedMetricTime*>(get_event_time(handle));
+				if (!event_time) return 1;
 				macro_interrupt_critical(
 				if (t < *event_time) reset_int_timer_prefetcher();
+				// for better performance: just consider the effected table entry and check whether we got an int_timer, if so update earliest_... to min of self and t.
+				// this can be easily done as soon as we have accessor objects / (classes). Then this method would become method of timer_entry-specific accessor class.
 				*event_time = t;
 				);
-				return true;
+				return 0;
 			}
 			
+			/* resets the earliest_interrupting_timer_release value to its minimum to invoke its calculation by scheduler.
+			   this function should not be called unless some description tells you to do so. */
+			/* <<< as soon as accessor classes are available this method is supposed to become useless. */
 			inline void reset_int_timer_prefetcher(){ earliest_interrupting_timer_release = time::ExtendedMetricTime::MIN(); }
 			
+			/* returns true if given handle matches to valid task entry */
 			inline bool is_task(handle_type handle){ return get_entry_type(handle) == entry_type::TASK; }
 			
+			/* returns true iff given handle matches to valid non-int timer entry */
 			inline bool is_non_int_timer(handle_type handle){ return get_entry_type(handle) == entry_type::TIMER; }
 			
+			/* returns true iff given handle matches to valid int-timer entry */
 			inline bool is_int_timer(handle_type handle){ return get_entry_type(handle) == entry_type::INTTIMER; }
 			
+			/* returns true iff given handle matches to valid (int- or non-int) timer entry */
 			inline bool is_any_timer(handle_type handle){ return is_non_int_timer() || is_int_timer(); }
+			// is inefficient since one flag check would be enough, also get_index will be called twice <<<<<
+			// but improving should wait until we have accessor classes that cover this feature method.
 			
 			/* invalidate all table entries */
 			void clear_table(){	macro_interrupt_critical(for(uint8_t i = 0; i < TABLE_SIZE; ++i) table[i].flags.set_false(ENTRY_VALID);); }
@@ -826,13 +938,8 @@ namespace fsl {
 			/* invalidate all int-timer entries */
 			inline void clear_int_timers(){
 				macro_interrupt_critical(
-				uint8_t count_int_timer{ 0 };
-				uint8_t count_timer{ 0 };
-				for(uint8_t i = 0; i < TABLE_SIZE; ++i){
-					if (table[i].flags.get(ENTRY_TIMER)){
-						if (table[i].flags.get(ENTRY_INTERRUPTING)) ++count_int_timer; else ++count_timer;
-					}
-				}
+				uint8_t count_int_timer{ count_int_timers() };
+				uint8_t count_timer{ count_non_int_timers() };
 				// reorder table and overwrite / delete int_timers :
 				const uint8_t move_size{ fsl::lg::min(count_int_timer, count_timer) };
 				const uint8_t move_src_begin{ count_int_timer + count_timer - move_size };
@@ -872,36 +979,34 @@ namespace fsl {
 					if ((software_watchdog.get_reset_value() == 0) /*software watchdog disabled*/ || (software_watchdog.value() > 0) /*software watchdog not exceeded*/)
 					{
 						--software_watchdog;
+						wdt_reset();
 					}
-					wdt_reset();
 					if (flags.get(SOFTWARE_INTERRUPTS_ENABLE) && (flags.get(STOP_CALLED) == false)) execute_interrupting_timers();
 				}
-				// ### here would be the right position to check whether interrupt handling needs more time than the system_time precision!!!!
 			}
 			
-			/* returns size in bytes of one SchedulerMemoryLine */
-			static constexpr uint8_t table_line_size_of(){ return sizeof(entry); }
-			
-			/* returns size in bytes of the whole scheduler table */
-			static constexpr uint16_t table_size_of(){ return sizeof(entry)*TABLE_SIZE; }
-			
-			/* set value of timeout of hardware, use predefined macros WDTO_15MS, WDTO_30MS ... */
+			/* set value of timeout of hardware, use predefined macros WDTO_15MS, WDTO_30MS ... 
+				stops and starts hardware watchdog to apply change */
 			inline void set_hardware_watchdog_timeout(uint8_t value){
-				hardware_watchdog_timeout = value; //###### do this
+				hardware_watchdog_timeout = value;
+				if (flags.get(RUNNING)){
+					deactivate_hardware_watchdog(); // <<<< inefficient because twice open and close atomic section, and please check, if it is valid just to do an enable of hw wd (even if it is already enabled) and whether an atomic section is necessary around all of the calls to activate deactivate or reset the watchdog.
+					activate_hardware_watchdog();
+				}
 			}
 			
 			/* deactivates software watchdog
 			note that hardware watchdog is still in use and reboots controller if
 			* you use too long interrupt timer handlers or
 			* you use atomic sections that are far too long
-			* if the Scheduler itself is corrupt and deactivates interrupts for too long
-			*/ // <<<<< these arealso general hint that should appear at user manual for this header on top of file!!!!
+			* if the Scheduler itself would be corrupt and deactivates interrupts for too long
+			*/
 			inline void deactivate_software_watchdog(){		macro_interrupt_critical(software_watchdog.set_reset_value(0););	}
 			
 			/* activate the software watchdog for running scheduler.
 			software watchdog will be startet when you call run() and stopped before run() returns,
 			but may be enabled before you call run() and really should be if you want to have such a software watchdog.
-			Set the template parameters this way you want the time to be rounded.
+			Set the template parameters this way you want the time to be rounded or use their defaults.
 			If any time <= 0 is given the software watchdog will be disabled.
 			*/
 			template <bool round_to_ceiling = false, bool truncate = false, bool truncate_and_add_one = true>
@@ -914,7 +1019,7 @@ namespace fsl {
 						static_cast<software_watchdog_base_type>(// <<<< use type as param
 							ceil(
 								watchdog.get_in_seconds() * (fsl::os::system_time::get_instance().precision())
-							)
+							) // <<<<<< what about overflows here ????
 						)
 					);
 				}
@@ -935,6 +1040,7 @@ namespace fsl {
 				}
 				software_watchdog.reset();
 				); // macro_interrupt_critical
+				// <<<<< this function could be written in a different way where we just declare a template function and implement 3 variants with specific set template parameters
 			}
 			
 			/* central control loop / scheduling loop to call after construction  of scheduler, executes all tasks and timers.
@@ -998,6 +1104,39 @@ namespace fsl {
 					
 					/*** look for a task that can be executed ***/
 					{
+						/*
+						different strategies for task selection:
+						
+						-> TIDY_UP_STRATEGY
+						1. go through all task until you find one with 0 racing, replace 0 racing by reset value and choose this task goto execute.
+						   remember always the index with lowest racing value.
+						2. [else] if no value == 0 found go through all entries again and subtract the min racing value that was detected.
+						   take the one entry with the minimum as choice, reset it to its reset value and execute it.
+						evaluation:
+						=> in up to the half of all cases we wont find 0, => we go twice through the list, the maybe-only 0 will be shifted away.
+						=> perhaps at next iteration we wont find a 0 again.
+
+						-> REBASE_WHEN_OVERFLOW_STRATEGY
+						1. alway search for the minimum, global minimum, if found zero we can break earlier.
+						   execute this minimum and try to add its distance to its racing value.
+						2. (only) if rancing value is overflowing that we need to go through all entries and make them all smaller.
+						evaluation:
+						=> in comparison to TIDY_UP we still need to do such "subtract x from all entries", but less often than with TIDY_UP
+
+						->	MOVING_ZERO_STRATEGY
+						1. define a static variable last_minimum.
+						2. determine x = argmin{x}{last_minimum + x mod YYY = race_coundown of any task T}
+						3. execute a task which is a witness for x to be argmin.
+						4. set last_minimum = x.
+						evaluation:
+						=> we never need to rebase coundowns
+						=> we always go just once through the whole task section.
+						=> we need one more byte to store last_minimum
+
+						//// ###think about volatile stuff in this class
+ßß
+						*/
+
 						uint8_t min_entry_index{ TABLE_SIZE }; // means no entry
 						uint16_t min_entry_race_countdown{ 0xFFFF }; // means no entry
 						
@@ -1068,7 +1207,7 @@ namespace fsl {
 					macro_interrupt_critical_end;
 					return NO_HANDLE;
 				}
-				table[free_index].flags.set_false(ENTRY_ENABLED);
+				// table[free_index].flags.set_false(ENTRY_ENABLED); this is already the default value coming from new_table_line
 				if (enable) table[free_index].flags.set_true(ENTRY_ENABLED);
 				// callback and callback flag:
 				if (callable == nullptr){
@@ -1101,7 +1240,7 @@ namespace fsl {
 					return NO_HANDLE;
 				}
 				// some flags:
-				table[free_index].flags.set(ENTRY_ENABLED,enable);
+				if (enable) table[free_index].flags.set_true(ENTRY_ENABLED);
 				
 				// callback and callback flag:
 				if (callable == nullptr){
@@ -1113,17 +1252,17 @@ namespace fsl {
 				}
 				// timer specific information: timer event time
 				table[free_index].specifics.timer().event_time = &time;
-				if (is_interrupting) earliest_interrupting_timer_release = earliest_interrupting_timer_release < time ? earliest_interrupting_timer_release : time;
+				if (is_interrupting) adjust_earliest_interrupting_timer_release (time);
 				handle_type free_handle = table[free_index].handle;
 				macro_interrupt_critical_end;
 				return free_handle;
 			}
 			
 			/* returns the handle of the first disabled valid entry in table (returns NO_HANDLE iff there is no such entry)
-			writes the first [count] handles with the outlined property into the [handle_array] (if there are enough of those).
-			[count] determines the array size provided by the calling instance.
-			After function return [count] is the number of entries in table with the outlined property.
-			Writes exactly max(count@before, count@after) handles into [handle_array]. */
+			writes the first [min(count@before, count@after)] handles with the outlined property (ENTRY_VALID and not ENTRY_ENABLE) into the [handle_array].
+			[count@before] determines the array size provided by the calling instance.
+			After function return [count@after] is the number of entries in table with the outlined property.
+			*/
 			handle_type get_disabled_entries(uint8_t& count, handle_type* handle_array = nullptr){
 				if (handle_array == nullptr) count = 0;
 				handle_type return_value = NO_HANDLE;
@@ -1153,7 +1292,7 @@ namespace fsl {
 			static_assert(sizeof(union_specifics) == 2, "UnionSpecifics has not the appropriate size.");
 			static_assert(sizeof(fsl::lg::single_flags) == 1, "fsl::lg::single_flags has not the appropriate size.");
 			static_assert(sizeof(entry) == 6, "SchedulerMemoryLine has not the appropriate size.");
-
+/*
 
 			class table_entry_accessor : private fsl::hw::simple_atomic {
 				inline table_entry_accessor(handle_type handle) : fsl::hw::simple_atomic() { }
@@ -1161,12 +1300,15 @@ namespace fsl {
 				uint8_t table_index;
 				public:
 				static fsl::str::exceptional<table_entry_accessor, void> get_table_entry(handle_type handle){}
+					// this is dangerous: if you use an union overlapping two classes. which of the destructors will be called?
+					// the one will deal with SREG the other one might overwrite the sreg-copy.
+					
 
 				void set_callback(){
 					
 				}
 			};
-/*
+
 			class Task_Entry : Table_Entry {
 				
 				public:
@@ -1195,85 +1337,62 @@ namespace fsl {
 
 -1. Add all reasons for including the include files.
 
-*/
 
+-0.5 there are different strategies for task selection in method run(). just implement the other ones and compare or make it possible to decide by conditioned compilation.
 
+-0. implement accessor classes to avoid the multiple duplications in functions like $598
 
-
-
-////////////////////////////////////////////////////////////////////////// conceptional:
-
-/*
-//static scheduler2<TABLE_SIZE>* instance; /// here is a big problem: our class is template. // someone (interrupt by now time update) cannot know which function to call
-// should be no problem if behaviour is like: each template instanciation has its own static instance pointer.
-// this is the case that every tempolate instanciation has its own static member, you have to extern define these members, otherwise linkage errors will come up.
-// user has to write an own function that is called by systime now update and only propergates i.e. calls MY_SCHEDULER::interrupt handler(); where
-// MY_SCHEDULER has to be defined with using ~ = scheduler2<20>; or similar
-
-// i think it is better to do not have this static member. user must provide one self-written function as callback handler which calls instance->time_update_interrupt_handler()
-// über den stack nachdenken der my_handle bereit hält:
-am besten sollte der stack nicht existieren, da man ja auch manuell callbacks aufrufen kann.
-stattdessen sollte der my_handle-stack in den function call stack integriert werden,
-d.h. wann immer wir ein callback nach handle ausführen, dann sollte my_handle auf das assozierte handle des callbacks gesetzt werden, der alte wert soll zwischengespeichert und nach dem return zurückgesetzt werden.
-das setzten und rücksetzen des callbacks muss evetuell atomar gemacht werden, falls während dieses vorgangs ein interrupt kommt.
-
-*/////
-/*
-ideas for further improvements
-
-always save a copy of earliest time a int timer has to be executed: This way it is no longer necessary to go through whole table on each timer interrupt
-
-
-// replace hd watchdog calls in run() by calls to software watchdog. ####
-hw watchdog timeout must be set in c-tor
-
-
-viel später::: nachdem diese lib fertig ist:
-Es besteht die Möglichkeit herauszufinden, ob ein Reset durch den Watchdog ausgelöst wurde (beim ATmega16 z. B. Bit WDRF in MCUCSR). Diese Information sollte auch genutzt werden, falls ein WD-Reset in der Anwendung nicht planmäßig implementiert wurde. Zum Beispiel kann man eine LED an einen freien Pin hängen, die nur bei einem Reset durch den WD aufleuchtet oder aber das "Ereignis WD-Reset" im internen EEPROM des AVR absichern, um die Information später z. B. über UART oder ein Display auszugeben (oder einfach den EEPROM-Inhalt über die ISP/JTAG-Schnittstelle auslesen).
-
-Bei neueren AVR-Typen bleibt der Watchdog auch nach einem Reset durch den Watchdog aktiviert. Wenn ein Programm nach dem Neustart bis zur erstmaligen Rückstellung des Watchdogs länger braucht, als die im Watchdog eingestellte Zeit, sollte man den Watchdog explizit möglichst früh deaktivieren. Ansonsten resetet der Watchdog den Controller immerfort von Neuem. Die frühe Deaktivierung sollte durch eine Funktion erfolgen, die noch vor allen anderen Operationen (insbesondere vor dem mglw. länger andauernden internen Initialisierungen vor dem Sprung zu main()) ausgeführt wird. Näheres zur Implementierung mit avr-gcc/avr-libc findet sich in der Dokumentation der avr-libc (Suchbegriffe: attribut, section, init).
-
--> to do: fsl::os soll den wert auslesen können.
--> os loader soll als erstes einen evtl ajktivierten watchdog deaktivieren.
-
-
-
-
-
-
-
-/// <<<< this is much work to find free handlers, think about allowing to put all entries unordered into the table.
-// <<<<<< then we can always use the indices as handlers, -> we need less memory for the table (1 byte per line)
-// <<<<<< furthermore finding free handlers will become much easier and faster
-// <<<<<< searching in method run() will last a little bit longer, I think,
-
+--100.  try unordered tyble layout:
+	// advantages:
+	// ->	much work to find free handles
+	//		use indices as handles, less memory consumption for table (1 byte per line)		<-
+	// disadvantages:
+	//	searching in method run() will take more time, I think								<-
 
 */
 
-/*
-task selection in run() {
-TIDY_UP_STRATEGY
-go through all task until you find one with 0 racing, replace 0 racing by reset value and choose this task goto execute.
-remember always the index with lowest racing value.
-if no value == 0 found go through all entries again and subtract the min racing value that was detected.
-take the one entry with the minimum as choice, reset it to its reset value and execute it.
-=> in most cases we wont find 0, => we go twice through the list, the maybe-only 0 will be shifted away.
-=> perhaps at next iteration we wont find a 0 again.
 
-better idea:
-REBASE_WHEN_OVERFLOW_STRATEGY
-alway search for the minimum, global minimum, if found zero we can break earlier.
-execute this minimum and try to add its distance to the racing value.
-if rancing value is overflowing that we need to go through all entries and make them all smaller.
+/************************************************************************/
+/* ideas for new features                                                 
+
+- int-timers may be executed with an int-call or with an non-int-call
+  we may add an entry-wise flag INT-CALL-ONLY to deny non-int calls on int-timers
+  (some programmers might use it if they want actions to be executed in certain time intervals
+  and don't want such a procedure to come earlier than the next system_time_update. 
+  
+- task entries may get an additional flag that determines whether the task need some kind of finalization,
+  if you want do shutdown the controller.
+  So it might be possible to define such a flag and offer besides the stop() method of the scheduler another
+  function shutdown() which first executes all tasks that have a positive fincalization flag once and stop scheduling right after.
 
 
-third idea:
-MOVING_ZERO_STRATEGY
-nstead of "re baseing" we could also use an extra variable as last minimum, new minimum will be lowest number >= last min.
+- There is the possibility to find out whether a controller reset was caused by exceeding watchdog or not.
+  (beim ATmega16 z. B. Bit WDRF in MCUCSR). Diese Information sollte auch genutzt werden, falls ein WD-Reset in der Anwendung nicht planmäßig implementiert wurde. Zum Beispiel kann man eine LED an einen freien Pin hängen, die nur bei einem Reset durch den WD aufleuchtet oder aber das "Ereignis WD-Reset" im internen EEPROM des AVR absichern, um die Information später z. B. über UART oder ein Display auszugeben (oder einfach den EEPROM-Inhalt über die ISP/JTAG-Schnittstelle auslesen).
+  Bei neueren AVR-Typen bleibt der Watchdog auch nach einem Reset durch den Watchdog aktiviert. Wenn ein Programm nach dem Neustart bis zur erstmaligen Rückstellung des Watchdogs länger braucht, als die im Watchdog eingestellte Zeit, sollte man den Watchdog explizit möglichst früh deaktivieren. Ansonsten resetet der Watchdog den Controller immerfort von Neuem. Die frühe Deaktivierung sollte durch eine Funktion erfolgen, die noch vor allen anderen Operationen (insbesondere vor dem mglw. länger andauernden internen Initialisierungen vor dem Sprung zu main()) ausgeführt wird. Näheres zur Implementierung mit avr-gcc/avr-libc findet sich in der Dokumentation der avr-libc (Suchbegriffe: attribut, section, init).
+  fsl::os sollte diesen wert auslesen, os loader sollte hw wd zuerst deaktivieren.
 
-// just implement one strategy and later implement the others and make it possible to choose by conditioned compiling.
-}
+  */
+/************************************************************************/
 
-//// ###think about volatile stuff in this class
 
-*/
+/************************************************************************/
+/* testing issues:
+
+check whether interrupt handling needs more time than the system_time precision!!!!
+at bottom of function time_update_interrupt_handler.
+
+
+
+
+
+                                                                     */
+/************************************************************************/
+
+
+/************************************************************************/
+/* checking issues:
+
+  there should be mo option to read a callback, and execute it
+  outside the context of the scheduler since [my_handle] would not be correct
+                                                                       */
+/************************************************************************/

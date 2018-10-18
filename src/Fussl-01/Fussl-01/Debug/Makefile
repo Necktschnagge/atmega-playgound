@@ -60,7 +60,8 @@ C_SRCS +=  \
 ../main.cpp \
 ../f_systime_old_alpha.cpp \
 ../f_scheduler.cpp \
-../old_or_deprecated/f_gui.cpp
+../old_or_deprecated/f_gui.cpp \
+../scheduler_test.cpp
 
 
 PREPROCESSING_SRCS += 
@@ -92,7 +93,8 @@ f_ui_concept.o \
 main.o \
 f_systime_old_alpha.o \
 f_scheduler.o \
-old_or_deprecated/f_gui.o
+old_or_deprecated/f_gui.o \
+scheduler_test.o
 
 OBJS_AS_ARGS +=  \
 display_server.o \
@@ -117,7 +119,8 @@ f_ui_concept.o \
 main.o \
 f_systime_old_alpha.o \
 f_scheduler.o \
-old_or_deprecated/f_gui.o
+old_or_deprecated/f_gui.o \
+scheduler_test.o
 
 C_DEPS +=  \
 display_server.d \
@@ -142,7 +145,8 @@ f_ui_concept.d \
 main.d \
 f_systime_old_alpha.d \
 f_scheduler.d \
-old_or_deprecated/f_gui.d
+old_or_deprecated/f_gui.d \
+scheduler_test.d
 
 C_DEPS_AS_ARGS +=  \
 display_server.d \
@@ -167,7 +171,8 @@ f_ui_concept.d \
 main.d \
 f_systime_old_alpha.d \
 f_scheduler.d \
-old_or_deprecated/f_gui.d
+old_or_deprecated/f_gui.d \
+scheduler_test.d
 
 OUTPUT_FILE_PATH +=Fussl-01.elf
 
@@ -279,6 +284,8 @@ LINKER_SCRIPT_DEP+=
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-g++.exe$(QUOTE) -funsigned-char -funsigned-bitfields -DDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\include"  -O1 -std=c++17 -fexceptions -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -mrelax -g2 -Wall -mmcu=atmega128 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128" -c -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"  -std=c++11 -o "$@" "$<" 
 	@echo Finished building: $<
 	
+
+
 
 
 

@@ -37,6 +37,7 @@ namespace fsl {
 			inline void set_value(integer_type value) volatile { _value = fsl::lg::min(value,_reset); }
 			inline void set_reset_value(integer_type reset_value) volatile { _reset = reset_value; _value = fsl::lg::min(_value,_reset); }
 			
+			inline operator integer_type(){ return _value; }
 		};
 		
 	}

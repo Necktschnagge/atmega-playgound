@@ -362,6 +362,7 @@ inline bool operator == (const time::ExtendedMetricTime&, const time::ExtendedMe
 inline bool operator <  (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
 inline bool operator <  (const volatile time::ExtendedMetricTime&, const volatile time::ExtendedMetricTime&); // <<<< this was added because it was needed unexpectedly
 inline bool operator >  (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
+inline bool operator >  (const volatile time::ExtendedMetricTime&, const volatile time::ExtendedMetricTime&); // <<<< this was added because it was needed unexpectedly
 inline bool operator <= (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
 inline bool operator >= (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
 
@@ -442,6 +443,7 @@ inline bool operator == (const time::ExtendedMetricTime& lop, const time::Extend
 inline bool operator <  (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() <  rop.inner_value(); }
 inline bool operator <  (const volatile time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop)	{ return lop.inner_value() <  rop.inner_value(); }
 inline bool operator >  (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() >  rop.inner_value(); }
+inline bool operator >  (const volatile time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop)	{ return lop.inner_value() >  rop.inner_value(); }
 inline bool operator <= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() <= rop.inner_value(); }
 inline bool operator >= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() >= rop.inner_value(); }
 

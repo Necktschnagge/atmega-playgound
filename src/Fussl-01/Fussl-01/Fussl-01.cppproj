@@ -396,6 +396,12 @@
     <Compile Include="old_or_deprecated\f_gui.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="scheduler_test.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="scheduler_test.h">
+      <SubType>compile</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="old_or_deprecated" />

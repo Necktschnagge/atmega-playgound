@@ -33,7 +33,8 @@ next four line: description at definition in *cpp file:
 
 <<< description: it is only for my controller model. make stuff more exchangable.
 
-
+<<<< maybe rename the class from system_time into just time, if it is in namespace os or find something different ... ?
+	but think also about teh EMT class and its namespace time, that must be renamed (find something with 3 letters only?)
 
 
 <<<< conclusion of FPS:
