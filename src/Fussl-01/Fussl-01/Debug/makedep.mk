@@ -48,3 +48,5 @@ f_scheduler.cpp
 
 old_or_deprecated\f_gui.cpp
 
+scheduler_test.cpp
+
