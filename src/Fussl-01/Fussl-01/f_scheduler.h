@@ -61,6 +61,7 @@
 #include "f_system_time.h"	// 
 #include "f_time.h"			// ExtendedMetricTime
 #include "f_urgency.h"		// class urgency;
+#include "f_hacks.h" //###add this file to the concepts.md!!!
 
 namespace fsl {
 	namespace os {
@@ -129,11 +130,16 @@ namespace fsl {
 				union intern_union {
 					task_specifics task;
 					timer_specifics timer;
+					intern_union() : task() {}
 				};
 				intern_union _union;
 				public:
+				volatile task_specifics& task() volatile { return _union.task; }
+				volatile timer_specifics& timer() volatile { return _union.timer; }
 				task_specifics& task() { return _union.task; }
 				timer_specifics& timer() { return _union.timer; }
+					
+				volatile union_specifics& operator= (const volatile union_specifics& rhs) volatile { fsl::util::byte_copy(rhs,*this); return *this; }
 			};
 			
 			/* class for one scheduler line containing everything needed for one timer / task entry */
@@ -142,6 +148,21 @@ namespace fsl {
 				fsl::str::standard_union_callback callback;
 				union_specifics specifics;
 				fsl::lg::single_flags flags;
+				
+				volatile entry& operator=(const volatile entry& rhs) volatile {
+					fsl::util::ignore_returned_value(handle = rhs.handle);
+					
+					//callback = rhs.callback;
+					//specifics = rhs.specifics;
+					//flags = rhs.flags;
+					return *this;
+					} ///########## muss wieder einkommentiert werden
+				entry& operator=(const volatile entry& rhs) { handle = rhs.handle; callback = rhs.callback; specifics = rhs.specifics; flags = rhs.flags; }//####needed???
+					
+				entry(){}
+					
+				volatile handle_type& get_handle_ref() volatile { return handle; }
+
 			};
 			
 			
@@ -227,7 +248,7 @@ namespace fsl {
 			on construction of scheduler it must be set to EMT::MIN()
 			Whenever a new interrupt timers has been added or an existing one has been enabled, it must be updated to min(old, new_int_timer.event_time) */
 			//volatile fsl::str::resettable<time::ExtendedMetricTime, 0> earliest_interrupting_timer_release; // <<<< not possible 
-			volatile time::ExtendedMetricTime earliest_interrupting_timer_release;
+			volatile time::ExtendedMetricTime earliest_interrupting_timer_release{ time::EMT::MIN() };
 			
 			
 			private:	/*** private methods ***/
@@ -235,7 +256,7 @@ namespace fsl {
 			
 			/* sets earliest_interrupting_timer_release to the min of earliest_interrupting_timer_release and t
 			   to be called if you enable an interrupting timer or change it's execution time */
-			inline void adjust_earliest_interrupting_timer_release(const time::ExtendedMetricTime t){ if (t < earliest_interrupting_timer_release) earliest_interrupting_timer_release = t; }
+			inline void adjust_earliest_interrupting_timer_release(const time::ExtendedMetricTime t) { if (t < earliest_interrupting_timer_release) earliest_interrupting_timer_release = t; }
 			
 			/* returns index of table where given handle can be found
 			only call from inside an atomic section
@@ -255,10 +276,10 @@ namespace fsl {
 			uint8_t get_index(handle_type handle){
 				static index_cache cache[index_cache_size];
 				for(uint8_t i = 0; i < index_cache_size; ++i){
-					if ((cache[i].handle == handle) && (table[cache[i].index].handle == handle)){
+					if ((cache[i].handle == handle) && (table[cache[i].index].handle.to_base_type() == handle.to_base_type())){
 						const uint8_t index{ cache[i].index };
 						if (i != 0) { // push nearer to front
-							fsl::util::byte_swap(cache[i], cache[i-1]);
+							fsl::util::normal_swap(cache[i], cache[i-1]); //### change back to byte_swap!!!
 						}
 						return index; 
 					}
@@ -380,7 +401,10 @@ namespace fsl {
 				
 				// search for free handle
 				constexpr uint8_t c_candidates{ 3 };
-				handle_type candidates[c_candidates] = {index, table[index].handle, (index + 1) % TABLE_SIZE};
+				handle_type candidates[c_candidates];// = {index, table[index].handle, (index + 1) % TABLE_SIZE}; //####wh not possible????
+					candidates[0] = index;
+					candidates[1] = table[index].handle;
+					candidates[2] = (index + 1) % TABLE_SIZE;
 				/* strategies:
 				
 				1:	prefer handle == index in table:
@@ -414,7 +438,7 @@ namespace fsl {
 									candidates[i] = index;
 									} else { /* (i == 2) */
 									//idea: just go ++, opposite direction compared to case (i == 0)
-									candidates[i] = (candidates[i] + 1) % TABLE_SIZE;
+									candidates[i] = (static_cast<uint8_t>(candidates[i]) + 1) % TABLE_SIZE;
 								}
 								check_until_index[i] = minus_one_mod_table_size(index);
 							}
@@ -444,10 +468,10 @@ namespace fsl {
 					// move from index to free_index
 					
 					// if (free_index != index):
-					table[free_index] = table[index];
+					fsl::util::ignore_returned_value(table[free_index] = table[index]);
 					free_index = index;
 				}
-				table[free_index].handle = free_handle;
+				fsl::util::ignore_returned_value(table[free_index].handle = free_handle);
 				table[free_index].flags.set_true(ENTRY_VALID);
 				table[free_index].flags.set(ENTRY_TIMER, ! is_task);
 				table[free_index].flags.set(ENTRY_INTERRUPTING, is_interrupting);
@@ -477,8 +501,9 @@ namespace fsl {
 			
 			/* for hardware_watchdog_timeout use the predefined macros from avr/wdt.h like WDTO_15MS, WDTO_30MS, ... or consult your MCUs data sheet. */
 			/* the value must be greater than the time between two now time updates. */
+			//### bad description
 			inline scheduler(bool software_interrupt_enable, uint8_t hardware_watchdog_timeout, const time::ExtendedMetricTime& watchdog) : 
-				flags(0), callback_handle(NO_HANDLE),  hardware_watchdog_timeout(hardware_watchdog_timeout), earliest_interrupting_timer_release(time::EMT::MIN()){
+				flags(0), callback_handle(NO_HANDLE),  hardware_watchdog_timeout(hardware_watchdog_timeout), earliest_interrupting_timer_release(time::ExtendedMetricTime::MIN()){
 				clear_table();
 				activate_software_watchdog(watchdog);
 				}
@@ -494,7 +519,7 @@ namespace fsl {
 			notice that these functions will also be executed, but only by non-interrupting calls */
 			void disable_software_interrupts(){ macro_interrupt_critical( flags.set_false(SOFTWARE_INTERRUPTS_ENABLE);); }
 			
-			inline const handle_type& my_handle(){ return callback_handle; }
+			inline handle_type my_handle(){ return callback_handle; }
 			
 			inline bool is_running(){ return flags.get(RUNNING); }
 			
@@ -885,7 +910,7 @@ namespace fsl {
 			   You can do this update by disabling and enabling entry again. Or call reset_int_timer_prefetcher(); .
 			*/
 			inline const volatile time::ExtendedMetricTime* get_event_time(handle_type handle){
-				time::ExtendedMetricTime* result{ nullptr };
+				volatile time::ExtendedMetricTime* result{ nullptr };
 				macro_interrupt_critical(
 				uint8_t index = get_index(handle);
 				if (index != TABLE_SIZE) if (table[index].flags.get(ENTRY_TIMER)) result = table[index].specifics.timer().event_time;
@@ -895,7 +920,7 @@ namespace fsl {
 			/* set event time referenced by the entry associated with handle to given time t */
 			/* return 0: successful
 			   return 1: no matching timer entry for given handle */
-			inline uint8_t set_event_time(handle_type handle, time::ExtendedMetricTime& t){
+			inline uint8_t set_event_time(handle_type handle, const time::ExtendedMetricTime& t){
 				volatile time::ExtendedMetricTime* event_time = const_cast<volatile time::ExtendedMetricTime*>(get_event_time(handle));
 				if (!event_time) return 1;
 				macro_interrupt_critical(
@@ -1081,8 +1106,11 @@ namespace fsl {
 						// at current index we see a valid timer (int or non-int)
 						if (table[choice].flags.get(ENTRY_ENABLED)){
 							// timer is enabled.
-							flags.set_false(EMPTY_TABLE_DETECTED);
-							if (now > *table[choice].specifics.timer().event_time) {
+							//flags.set_false(EMPTY_TABLE_DETECTED);
+							//volatile entry& mentry = table[choice];
+							//volatile timer_specifics& ts = mentry.specifics;
+							//time::EMT x = *table[choice].specifics.timer().event_time;
+							if (const_cast<const volatile time::ExtendedMetricTime&>(now) > const_cast<const volatile time::ExtendedMetricTime&>(*table[choice].specifics.timer().event_time)) {///#### undo stuff
 								// timer has expired.
 								table[choice].flags.set_false(ENTRY_ENABLED); // disable timer to avoid execution twice
 								goto execute;
@@ -1134,7 +1162,6 @@ namespace fsl {
 						=> we need one more byte to store last_minimum
 
 						//// ###think about volatile stuff in this class
-ßß
 						*/
 
 						uint8_t min_entry_index{ TABLE_SIZE }; // means no entry
@@ -1145,7 +1172,7 @@ namespace fsl {
 							// choice is an index where we see a valid task entry
 							if (table[choice].flags.get(ENTRY_ENABLED)){
 								// current task has to be considered as it is enabled
-								if (table[choice].specifics.task().task_race_countdown == 0){
+								if (table[choice].specifics.task().task_race_countdown  == 0){
 									goto task_execute;
 								}
 								if (static_cast<uint16_t>(table[choice].specifics.task().task_race_countdown) < min_entry_race_countdown){
@@ -1235,7 +1262,7 @@ namespace fsl {
 				macro_interrupt_critical_begin;
 				
 				uint8_t free_index = new_table_line(false,is_interrupting);
-				if (free_index = TABLE_SIZE){
+				if (free_index == TABLE_SIZE){
 					macro_interrupt_critical_end;
 					return NO_HANDLE;
 				}
@@ -1252,7 +1279,7 @@ namespace fsl {
 				}
 				// timer specific information: timer event time
 				table[free_index].specifics.timer().event_time = &time;
-				if (is_interrupting) adjust_earliest_interrupting_timer_release (time);
+				if (is_interrupting) adjust_earliest_interrupting_timer_release(time);
 				handle_type free_handle = table[free_index].handle;
 				macro_interrupt_critical_end;
 				return free_handle;

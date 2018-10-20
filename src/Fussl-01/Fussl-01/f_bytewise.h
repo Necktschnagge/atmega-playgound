@@ -32,6 +32,15 @@ namespace fsl {
 			a = b;
 			b = copy;
 		}
+		
+		template <typename T>
+		inline void byte_copy(const volatile T& source, volatile T& destination){
+			const volatile uint8_t* p_source { reinterpret_cast<const volatile uint8_t*>(&source) };
+			volatile uint8_t* p_destination { reinterpret_cast<volatile uint8_t*>(&destination) };
+			for (decltype(sizeof(T)) i = 0; i < sizeof(T); ++i){
+				*(p_destination + i) = *(p_source + i);
+			}
+		}
 	}
 }
 #endif //__F_BYTEWISE_H__

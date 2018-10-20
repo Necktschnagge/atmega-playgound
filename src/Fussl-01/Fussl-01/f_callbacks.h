@@ -36,10 +36,17 @@ namespace fsl {
 			intern_union _union;
 			
 			public:
+			
+			union_callback() {}
+			
+			union_callback(const volatile union_callback& rhs){ _union.function_ptr = rhs._union.function_ptr; }
+			
+			volatile union_callback<callable_type>& operator = (const volatile union_callback<callable_type>& rhs) volatile { _union.function_ptr = rhs._union.function_ptr; return *this; }
+			
 			/* set a function pointer, replaces the previously stored function pointer oder callable pointer */
-			inline void set_function_ptr(fsl::str::void_function ptr){ _union.function_ptr = ptr; }
+			inline void set_function_ptr(fsl::str::void_function ptr) volatile { _union.function_ptr = ptr; }
 			/* set a callable pointer, replaces the previously stored function pointer oder callable pointer */
-			inline void set_callable_ptr(callable_type* ptr) { _union.callable_ptr = ptr; }
+			inline void set_callable_ptr(callable_type* ptr) volatile { _union.callable_ptr = ptr; }
 			
 			/* treat intern stored callback as of type "void_function" and call if non-nullptr */
 			inline void call_function() const { if (_union.function_ptr != nullptr) _union.function_ptr(); }

@@ -23,6 +23,7 @@ namespace fsl {
 			public:
 			using base_type = integer_type;
 			
+			inline countdown() : _value(0), _reset(0) {}
 			inline countdown(integer_type reset_value) : _value(reset_value), _reset(reset_value) {} 
 			
 			inline const integer_type& operator--() volatile { _value = _value + (!_value) - 1; return _value; } 
@@ -37,7 +38,7 @@ namespace fsl {
 			inline void set_value(integer_type value) volatile { _value = fsl::lg::min(value,_reset); }
 			inline void set_reset_value(integer_type reset_value) volatile { _reset = reset_value; _value = fsl::lg::min(_value,_reset); }
 			
-			inline operator integer_type(){ return _value; }
+			inline operator integer_type() const volatile { return _value; }
 		};
 		
 	}
