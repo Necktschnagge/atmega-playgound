@@ -136,6 +136,10 @@ namespace fsl {
 			}
 			
 			inline explicit operator const memory_t&() volatile { return memory; }
+				
+			/* copy constructors */
+			inline flags<bytes>& operator= (const flags<bytes>& rhs){	for (uint8_t i = 0; i < bytes; ++i) memory[i]=rhs.memory[i]; return *this;	}
+			inline volatile flags<bytes>& operator= (const volatile flags<bytes>& rhs) volatile {	for (uint8_t i = 0; i < bytes; ++i) memory[i]=rhs.memory[i]; return *this;	}
 		};
 
 		

@@ -47,13 +47,17 @@ namespace fsl {
 			/* c-tors */
 			inline constexpr range_int(): value(0) {}
 			inline constexpr range_int(_base_type value): value(in_range(value)) {}
+			inline constexpr range_int(const volatile range_int& rhs) : value(rhs.value) {}
 			
 			/* conversion operator */
-			inline constexpr operator _base_type() const {	return value;	}
-			inline constexpr _base_type to_base_type() const {	return value;	}
+			inline constexpr operator _base_type() const volatile {	return value;	}
+			inline constexpr _base_type to_base_type() const volatile {	return value;	}
 			
 			/* copy = operator */
 			inline range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
+			inline volatile range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) volatile { value = another.value; return *this; }
+			inline range_int<_base_type,RANGE>& operator = (const volatile range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
+			inline volatile range_int<_base_type,RANGE>& operator = (const volatile range_int<_base_type,RANGE>& another) volatile { value = another.value; return *this; }
 			
 			/* modification operators */
 			inline constexpr range_int<_base_type,RANGE> operator + (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,rop,0); }

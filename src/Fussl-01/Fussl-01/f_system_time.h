@@ -68,7 +68,7 @@ Steps to do, in order to build a running SysTime clock:
 1	First create a SysTime object
 (! check ctor description and check error information returned )
 
-set min_compare_macth_value if necessary.
+set min_compare_match_value if necessary. // ## was ist das???
 
 2	use the (static) link(..) method to tell the timer engine about your SysTime object.
 it gets a persistent reference to your object.
@@ -182,6 +182,7 @@ namespace fsl {
 				return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision);
 			}
 			
+			public: //#### why was this private, now we turned it to public.
 			/* returns precision / Hz */
 			/* the precision is the frequency of now updates */
 			inline long double precision() const { uint8_t log_precision2 = log_precision;  return log_precision_to_precision(log_precision2); }

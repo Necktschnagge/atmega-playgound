@@ -285,6 +285,8 @@ namespace time {
 
 		/* c-tors */
 		inline constexpr ExtendedMetricTime() : value(0) {}
+		inline constexpr ExtendedMetricTime(const ExtendedMetricTime& emt) : value(emt.value) {}
+		inline ExtendedMetricTime(const volatile ExtendedMetricTime& emt) : value(emt.value) {}
 		inline constexpr ExtendedMetricTime(int64_t value) : value(value) {}	// implicit conversion int64 ->  EMT
 		inline ExtendedMetricTime(const HumanTime& time, const HumanTime& perspective = CHRIST_0);
 
