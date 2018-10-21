@@ -13,7 +13,7 @@ namespace fsl {
 	namespace util {
 		
 		template<typename T>
-		inline void ignore_returned_value(T t){}
+		inline void ignore_returned_value(T t){} ///#### still used????
 					
 	}
 }

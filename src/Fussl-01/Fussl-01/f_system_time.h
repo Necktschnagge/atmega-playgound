@@ -182,7 +182,7 @@ namespace fsl {
 				return static_cast<long double>(static_cast<uint32_t>(1)<<log_precision);
 			}
 			
-			public: //#### why was this private, now we turned it to public.
+			public: //#### why was this private, now we turned it to public
 			/* returns precision / Hz */
 			/* the precision is the frequency of now updates */
 			inline long double precision() const { uint8_t log_precision2 = log_precision;  return log_precision_to_precision(log_precision2); }
