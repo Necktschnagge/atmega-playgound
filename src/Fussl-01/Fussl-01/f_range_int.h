@@ -36,7 +36,7 @@ namespace fsl {
 			}
 			
 			/* private c-tor for addition and subtraction */
-			inline range_int(_base_type value, _base_type plus, _base_type minus) : value(value + plus - minus) { // maybe consgtexpr ???
+			inline range_int(_base_type value, _base_type plus, _base_type minus) : value(value + plus - minus) { // maybe constexpr ???<<<<<
 				if (OUT_OF_RANGE_IS_ABSORBING) if (value == OUT_OF_RANGE) this->value = OUT_OF_RANGE;
 				check_out_of_range();
 				if (OVERFLOW_RESULTS_IN_OUT_OF_RANGE) if (value + plus < value - minus) value = OUT_OF_RANGE;
@@ -46,7 +46,7 @@ namespace fsl {
 			
 			/* c-tors */
 			inline constexpr range_int(): value(0) {}
-			inline constexpr range_int(_base_type value): value(in_range(value)) {}
+			inline constexpr range_int(const _base_type& value): value(in_range(value)) {}
 			inline constexpr range_int(const volatile range_int& rhs) : value(rhs.value) {}
 			
 			/* conversion operator */
@@ -55,9 +55,9 @@ namespace fsl {
 			
 			/* copy = operator */
 			inline range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
-			inline volatile range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) volatile { value = another.value; return *this; }
+			inline void operator = (const range_int<_base_type,RANGE>& another) volatile { value = another.value; }
 			inline range_int<_base_type,RANGE>& operator = (const volatile range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
-			inline volatile range_int<_base_type,RANGE>& operator = (const volatile range_int<_base_type,RANGE>& another) volatile { value = another.value; return *this; }
+			inline void operator = (const volatile range_int<_base_type,RANGE>& another) volatile { value = another.value; }
 			
 			/* modification operators */
 			inline constexpr range_int<_base_type,RANGE> operator + (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,rop,0); }

@@ -67,9 +67,8 @@ void test(){
 	volatile time::EMT my_blink_led_time = time::EMT::MIN();
 
 	test_scheduler.new_timer(my_blink_led_time , &my_blink_led);
-	/*	
-	
+		
 	test_scheduler.run();
-	*/
+	
 }
 

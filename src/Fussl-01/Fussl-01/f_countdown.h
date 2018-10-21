@@ -32,7 +32,7 @@ namespace fsl {
 				
 			inline bool zero() const volatile { return !_value; }
 			inline const integer_type& value() const volatile { return _value; }
-			inline const integer_type& get_reset_value() volatile { return _reset; }
+			inline const integer_type& get_reset_value() const volatile { return _reset; }
 			inline void reset() volatile { _value = _reset; }
 				
 			inline void set_value(integer_type value) volatile { _value = fsl::lg::min(value,_reset); }

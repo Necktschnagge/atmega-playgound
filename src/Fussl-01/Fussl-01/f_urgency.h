@@ -105,7 +105,7 @@ namespace fsl {
 			
 				inline uint8_t inverse_value() const volatile { return urg_inv; }
 					
-				inline volatile urgency& operator=(urgency rhs) volatile { this->urg_inv = rhs.urg_inv; return *this;}
+				inline void operator=(urgency rhs) volatile { this->urg_inv = rhs.urg_inv; }
 				
 				inline urgency& operator=(urgency rhs) { this->urg_inv = rhs.urg_inv; return *this;}
 				
