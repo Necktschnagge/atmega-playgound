@@ -370,8 +370,13 @@ inline bool operator >= (const time::ExtendedMetricTime&, const time::ExtendedMe
 
 /* Extended Metric Time arithmetic operators */
 inline time::ExtendedMetricTime operator + (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
-//inline time::HumanTime operator + (const time::ExtendedMetricTime&, const time::HumanTime&);
+inline time::ExtendedMetricTime operator + (const volatile time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
+inline time::ExtendedMetricTime operator + (const time::ExtendedMetricTime&, const volatile time::ExtendedMetricTime&);
+inline time::ExtendedMetricTime operator + (const volatile time::ExtendedMetricTime&, const volatile time::ExtendedMetricTime&);
 inline time::ExtendedMetricTime operator - (const time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
+inline time::ExtendedMetricTime operator - (const volatile time::ExtendedMetricTime&, const time::ExtendedMetricTime&);
+inline time::ExtendedMetricTime operator - (const time::ExtendedMetricTime&, const volatile time::ExtendedMetricTime&);
+inline time::ExtendedMetricTime operator - (const volatile time::ExtendedMetricTime&, const volatile time::ExtendedMetricTime&);
 template <typename T>
 inline time::ExtendedMetricTime operator * (time::ExtendedMetricTime, T);
 template <typename T>
@@ -450,7 +455,13 @@ inline bool operator <= (const time::ExtendedMetricTime& lop, const time::Extend
 inline bool operator >= (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop)		{ return lop.inner_value() >= rop.inner_value(); }
 
 inline time::ExtendedMetricTime operator + (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop) { return lop.inner_value() + rop.inner_value(); }
+inline time::ExtendedMetricTime operator + (const volatile time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop) { return lop.inner_value() + rop.inner_value(); }
+inline time::ExtendedMetricTime operator + (const time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop) { return lop.inner_value() + rop.inner_value(); }
+inline time::ExtendedMetricTime operator + (const volatile time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop) { return lop.inner_value() + rop.inner_value(); }
 inline time::ExtendedMetricTime operator - (const time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop) { return lop.inner_value() - rop.inner_value(); }
+inline time::ExtendedMetricTime operator - (const volatile time::ExtendedMetricTime& lop, const time::ExtendedMetricTime& rop) { return lop.inner_value() - rop.inner_value(); }
+inline time::ExtendedMetricTime operator - (const time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop) { return lop.inner_value() - rop.inner_value(); }
+inline time::ExtendedMetricTime operator - (const volatile time::ExtendedMetricTime& lop, const volatile time::ExtendedMetricTime& rop) { return lop.inner_value() - rop.inner_value(); }
 template <typename T>
 inline time::ExtendedMetricTime operator * (time::ExtendedMetricTime emt, T factor) { return emt.inner_value() * static_cast<int64_t>(factor); }
 template <typename T>

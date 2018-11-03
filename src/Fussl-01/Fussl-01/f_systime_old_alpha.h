@@ -274,7 +274,7 @@ namespace scheduler {
 }
 
 #ifdef hack
-uint16_t test(){
+uint16_t test_scheduler_01_(){
 	uint16_t x[2];
 	return x[sizeof(HumanTime)];
 }

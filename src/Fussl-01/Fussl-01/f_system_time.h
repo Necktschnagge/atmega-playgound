@@ -105,17 +105,17 @@ namespace fsl {
 			/******************   STATIC STUFF   **********************/
 			private /*static*/:
 			
-			/* pointer to the one and only SysTime instance which is affected ISR */
+			/* pointer to the one and only SysTime instance which is affected by ISR */
 			/* ISR is accessing this. -> every access is critical. */
+			static system_time* volatile p_instance;
 			/* design: it is only a volatile pointer to a non-volatile object since
 			all SysTime properties care itself about their volatileness */
-			static system_time* volatile p_instance;
 			
 			public /*static*/:
 
 			/* the minimum allowed value for the compare match register of timer1 */
 			/* if you allow arbitrary small Compare Match Values, among other possible side effects
-			ISR may take too much time in comparison to the time between two Compare Matches */
+			   ISR may take too much time in comparison to the time between two Compare Matches */
 			/* must not be used by any interrupt routine since it is not volatile */
 			static uint8_t min_compare_match_value;
 			
