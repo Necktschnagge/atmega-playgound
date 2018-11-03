@@ -17,6 +17,7 @@
 
 #include "f_iopin.h"
 #include "f_scheduler.h"
+#include "scheduler_test.h"
 
 void guiBootScreen(){
 	hardware::delay(10);	
@@ -373,11 +374,15 @@ int main(void){
 	fsl::hw::gpio_pin iopin(fsl::hw::gpio_pin::Port::A,0);
 
 	
-	led::printString("D-SERVER");
-	hardware::delay(2000);
-	led::clear();
+	//led::printString("D-SERVER");
+	//hardware::delay(2000);
+	//led::clear();
 	
-	main_of_display_server();
+	//main_of_display_server();
+	led::printString("SCHED");
+	hardware::delay(4000);
+	
+	test_scheduler_blink_led();
 	
 	//testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
 	//test_cmr();

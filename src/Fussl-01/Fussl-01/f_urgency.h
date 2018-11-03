@@ -48,7 +48,7 @@ namespace fsl {
 			
 				public: /*** public static constexpr "values" in function style ***/
 			
-				inline static constexpr urgency lowest_urgency(){ return urgency(0xFF); }
+				inline static constexpr urgency lowest_urgency(){ return urgency(0xFF); } /// <<<< better to use linear_to_inv of 0? what is it?
 			
 				inline static constexpr urgency very_low_urgency(){ return linear_to_inverse<2>(); }
 			
@@ -95,19 +95,29 @@ namespace fsl {
 				public: /*** public methods ***/
 			
 				inline urgency& up(){ urg_inv = up(urg_inv); return *this; }
-			
+				
+				inline void up() volatile { urg_inv = up(urg_inv); }
+				
 				inline urgency& down(){ urg_inv = down(urg_inv); return *this; }
-			
-				//<<< warning: do not use.
+				
+				inline void down() volatile { urg_inv = down(urg_inv); }
+				
+#if 0
+				/* deprecated. use up and down */
 				inline urgency& operator++(){ urg_inv = urg_inv + !urg_inv - 1; return *this; }
-			
-				inline urgency& operator--(){ urg_inv = urg_inv - (urg_inv == 0xFF) + 1; return *this;}
-			
-				inline uint8_t inverse_value() const volatile { return urg_inv; }
-					
-				inline void operator=(urgency rhs) volatile { this->urg_inv = rhs.urg_inv; }
+				
+				inline void operator++() volatile { urg_inv = urg_inv + !urg_inv - 1; }
+				
+				inline urgency& operator--(){ urg_inv = urg_inv - (urg_inv == 0xFF) + 1; return *this; }
+				
+				inline void operator--() volatile { urg_inv = urg_inv - (urg_inv == 0xFF) + 1; }
+#endif
+							
+				inline uint8_t inverse_value() const volatile { return urg_inv; }	
 				
 				inline urgency& operator=(urgency rhs) { this->urg_inv = rhs.urg_inv; return *this;}
+
+				inline void operator=(urgency rhs) volatile { this->urg_inv = rhs.urg_inv; }
 				
 				inline bool operator<(urgency rhs) const volatile { return this->urg_inv > rhs.urg_inv; }
 			
