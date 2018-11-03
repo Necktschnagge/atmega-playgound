@@ -192,7 +192,7 @@ namespace fsl {
 			private:	/*** private data ***/
 			
 			/* the scheduler object's flags */
-			//volatile fsl::lg::single_flags flags;ßßß
+			volatile fsl::lg::single_flags flags;
 			
 			/* handle of currently running callback method's corresponding entry in scheduler table. */
 			volatile handle_type callback_handle;
@@ -340,8 +340,7 @@ namespace fsl {
 							callback_handle = table[index].handle;
 							execute_callback<false>(index);
 							callback_handle = local_stack;
-							//ßßßif (flags.get(ONE_INTERRUPT_TIMER_ONLY)){
-							if (true){
+							if (flags.get(ONE_INTERRUPT_TIMER_ONLY)){
 								// prevention against some infinite loop of executing int timers. Next timer should wait for next now_time_update.
 								// earliest_interrupting_timer_release is still in the past.
 								return true;
@@ -497,10 +496,10 @@ namespace fsl {
 			/* for hardware_watchdog_timeout use the predefined macros from avr/wdt.h like WDTO_15MS, WDTO_30MS, ... or consult your MCUs data sheet. */
 			/* the value must be greater than the time between two now time updates. */
 			//### bad description
-			inline scheduler(bool software_interrupt_enable, uint8_t hardware_watchdog_timeout, const time::ExtendedMetricTime& watchdog) /*: ßßß
-				flags(0), callback_handle(NO_HANDLE), hardware_watchdog_timeout(hardware_watchdog_timeout), earliest_interrupting_timer_release(time::ExtendedMetricTime::MIN())*/ {
-				//clear_table();ßßß
-				//activate_software_watchdog(watchdog);ßßß
+			inline scheduler(bool software_interrupt_enable, uint8_t hardware_watchdog_timeout, const time::ExtendedMetricTime& watchdog) : 
+				flags(0), callback_handle(NO_HANDLE), hardware_watchdog_timeout(hardware_watchdog_timeout), earliest_interrupting_timer_release(time::ExtendedMetricTime::MIN()) {
+				clear_table();
+				activate_software_watchdog(watchdog);
 				}
 			
 			
@@ -995,14 +994,13 @@ namespace fsl {
 			/* executes all stuff that should be done on now_time update, including hardware watchdog reset, int-timer execution e.a.
 			should be called once on every update of the now time and only called by interrupt, children function assume interrupt-freedom */
 			inline void time_update_interrupt_handler(){
-				//ßßßif (flags.get(RUNNING)){
-					if (true){
+				if (flags.get(RUNNING)){
 					if ((software_watchdog.get_reset_value() == 0) /*software watchdog disabled*/ || (software_watchdog.value() > 0) /*software watchdog not exceeded*/)
 					{
 						--software_watchdog;
 						wdt_reset();
 					}
-					//ßßßif (flags.get(SOFTWARE_INTERRUPTS_ENABLE) && (flags.get(STOP_CALLED) == false)) execute_interrupting_timers();
+					if (flags.get(SOFTWARE_INTERRUPTS_ENABLE) && (flags.get(STOP_CALLED) == false)) execute_interrupting_timers();
 				}
 			}
 			
@@ -1010,8 +1008,7 @@ namespace fsl {
 				stops and starts hardware watchdog to apply change */
 			inline void set_hardware_watchdog_timeout(uint8_t value){
 				hardware_watchdog_timeout = value;
-				//ßßßif (flags.get(RUNNING)){
-					if (true){
+				if (flags.get(RUNNING)){
 					deactivate_hardware_watchdog(); // <<<< inefficient because twice open and close atomic section, and please check, if it is valid just to do an enable of hw wd (even if it is already enabled) and whether an atomic section is necessary around all of the calls to activate deactivate or reset the watchdog.
 					activate_hardware_watchdog();
 				}
@@ -1075,10 +1072,9 @@ namespace fsl {
 			*/
 			uint8_t run(){
 				static_assert(TABLE_SIZE >= 1, "Table declared with size 0.");
-				/*flags.set_false(STOP_CALLED); // delete previous stop command
+				flags.set_false(STOP_CALLED); // delete previous stop command
 				flags.set_true(RUNNING); // set running flag
 				flags.set_false(EMPTY_TABLE_DETECTED); // check for empty table
-				ßßß*/
 				activate_hardware_watchdog();
 				software_watchdog.reset();// muss diese zeile in eine crit section???? <<<<<< wo wird der watchdog initialisiert?
 				
@@ -1089,11 +1085,10 @@ namespace fsl {
 					macro_interrupt_critical_begin;
 					software_watchdog.reset();
 					
-					//if (flags.get(STOP_CALLED)){
-						if (true){
+					if (flags.get(STOP_CALLED)){
 						// @when here: while loop must terminated because of a stop() call:
 						deactivate_hardware_watchdog();// wdt_disable(); // stop watchdog
-						//ßßßflags.set_false(RUNNING); // delete running flag
+						flags.set_false(RUNNING); // delete running flag
 						macro_interrupt_critical_end;
 						return 1;
 					}
@@ -1105,7 +1100,7 @@ namespace fsl {
 						// at current index we see a valid timer (int or non-int)
 						if (table[choice].flags.get(ENTRY_ENABLED)){
 							// timer is enabled.
-							//ßßßflags.set_false(EMPTY_TABLE_DETECTED);
+							flags.set_false(EMPTY_TABLE_DETECTED);
 							if (now > *table[choice].specifics.timer().event_time) {
 								// timer has expired.
 								table[choice].flags.set_false(ENTRY_ENABLED); // disable timer to avoid execution twice
@@ -1119,10 +1114,9 @@ namespace fsl {
 					// @when here: table may have or may not have timers or may consist only of timers inside, but no of the possibly present timers in table expired
 					// EMPTY_TABLE_DETECTED was set to false when looking through timers if there was at least one enabled timer
 					
-					//ßßßif (flags.get(EMPTY_TABLE_DETECTED)){ // table empty, nothing to schedule anymore
-						if (true){
+					if (flags.get(EMPTY_TABLE_DETECTED)){ // table empty, nothing to schedule anymore
 						deactivate_hardware_watchdog();
-						///ßßßflags.set_false(RUNNING);
+						flags.set_false(RUNNING);
 						macro_interrupt_critical_end;
 						return 0;
 					}
@@ -1184,7 +1178,7 @@ namespace fsl {
 						// @when here: reached end of (maybe empty, maybe max-sized, maybe between) task section, but no task_race_countdown was zero
 						
 						if (min_entry_index == TABLE_SIZE){ // <==> section has no enabled task <==> task section is called empty (but not 0-sized i.g. because of possibly disabled task entries)
-							//ßßßflags.set_true(EMPTY_TABLE_DETECTED);
+							flags.set_true(EMPTY_TABLE_DETECTED);
 							macro_interrupt_critical_end;
 							goto central_control_loop; // the task section is empty at the moment, run scheduler from begin.
 						}
@@ -1215,8 +1209,7 @@ namespace fsl {
 			}
 
 			/* make scheduler return after current executed task / timer */
-			//ßßßinline void stop(){		macro_interrupt_critical(flags.set_true(STOP_CALLED););		}
-				inline void stop(){}
+			inline void stop(){		macro_interrupt_critical(flags.set_true(STOP_CALLED););		}
 
 			/*
 			try to add a new task to the table.
