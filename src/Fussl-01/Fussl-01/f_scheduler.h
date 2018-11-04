@@ -266,11 +266,14 @@ namespace fsl {
 				return TABLE_SIZE; // there is no such entry
 			}
 			
+			private:
+			index_cache get_index_cache[index_cache_size];
+			public:
 			/* returns index of table where given handle can be found
 			only call from inside an atomic section
 			returns TABLE_SIZE iff there is no valid entry with given handle */
 			uint8_t get_index(handle_type handle){
-				static index_cache cache[index_cache_size];
+				index_cache* cache{ get_index_cache }; //### remove alias
 				for(uint8_t i = 0; i < index_cache_size; ++i){
 					if ((cache[i].handle == handle) && (table[cache[i].index].handle == handle)){
 						const uint8_t index{ cache[i].index };
@@ -905,10 +908,9 @@ namespace fsl {
 			*/
 			inline const volatile time::ExtendedMetricTime* get_event_time(handle_type handle){
 				volatile time::ExtendedMetricTime* result{ nullptr };
-				macro_interrupt_critical(
+				fsl::hw::simple_atomic atomic_section;
 				uint8_t index = get_index(handle);
 				if (index != TABLE_SIZE) if (table[index].flags.get(ENTRY_TIMER)) result = table[index].specifics.timer().event_time;
-				);
 				return result;
 			}
 			/* set event time referenced by the entry associated with handle to given time t */
