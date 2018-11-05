@@ -13,6 +13,8 @@
 #include "f_ledline.h"
 #include "f_iopin.h"
 #include "f_hardware.h"
+#include "f_time.h"
+#include "f_system_time.h"
 
 using scheduler_type = fsl::os::scheduler<7>;
 
@@ -43,6 +45,33 @@ class blink_led : public fsl::str::callable {
 	}
 	
 };
+
+class screen_watch : public fsl::str::callable {
+	time::ExtendedMetricTime last_screen_update;
+	public:
+	inline screen_watch() : last_screen_update(time::EMetricTime::MIN()) {}
+	
+	virtual void operator()() override {
+		time::ExtendedMetricTime now = fsl::os::system_time::get_instance().get_now_time();
+		if (last_screen_update + time::ExtendedMetricTime::seconds_to_EMT(1) < now){
+			last_screen_update = last_screen_update + time::ExtendedMetricTime::seconds_to_EMT(1);
+			long double all_seconds = now.get_in_seconds();
+			uint32_t all_seconds_int = ceil(all_seconds);
+			led::clear();
+			uint8_t length = led::printInt(all_seconds_int / 60);
+			if (length <= 5){
+				led::printSign('.');
+				led::printInt(all_seconds_int % 60);
+			} else if (length <= 8 ){
+				// just display the minutes
+			} else {
+				led::LFPrintString("OVERFLOW");
+			}
+			// display now
+		}
+	}
+	
+	};
 
 void test_scheduler_blink_led();
 
