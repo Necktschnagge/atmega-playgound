@@ -382,7 +382,7 @@ int main(void){
 	led::printString("SCHED");
 	hardware::delay(4000);
 	
-	test_scheduler_blink_led();
+	test_system_time();
 	
 	//testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
 	//test_cmr();

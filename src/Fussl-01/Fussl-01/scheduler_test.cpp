@@ -7,7 +7,7 @@
 
 #include "scheduler_test.h"
 
-void test_scheduler_blink_led(){
+void test_system_time(){
 	
 	uint8_t log_precision{ 12 };
 	
@@ -30,16 +30,12 @@ void test_scheduler_blink_led(){
 		led::printString("ERR-time");
 		hardware::delay(5000);
 	}
-	
-	fsl::os::scheduler<7> test_scheduler(false, WDTO_1S, 0);
-	
-	blink_led my_blink_led(test_scheduler, fsl::hw::gpio_pin(fsl::hw::gpio_pin::Port::C, 2));
-	
-	volatile time::EMT my_blink_led_time = time::EMT::MIN();
-
-	test_scheduler.new_timer(my_blink_led_time , &my_blink_led);
-	
-	test_scheduler.run();
+	while(true){
+		time::EMT before = my_system_time();
+		led::printInt(before.get_in_seconds());
+		hardware::delay(500);
+		led::clear();	
+	}
 	
 }
 
