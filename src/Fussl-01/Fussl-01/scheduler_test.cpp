@@ -6,7 +6,13 @@
 */
 
 #include "scheduler_test.h"
+//scheduler_type* globalScheduler{ nullptr };
 
+/*
+void my_interrupt_handler(){
+	globalScheduler->time_update_interrupt_handler();
+}
+*/
 void test_scheduler_blink_led(){
 	led::LFPrintString("m-1");
 	hardware::delay(4000);
@@ -14,7 +20,7 @@ void test_scheduler_blink_led(){
 	
 	uint8_t error_code{ 0 };
 	
-	fsl::os::system_time my_system_time(1L<<15, log_precision, error_code);
+	fsl::os::system_time my_system_time(1L<<15, log_precision, error_code/*, my_interrupt_handler*/);
 	led::LFPrintString("m-2");
 	hardware::delay(4000);	
 	if (error_code){
@@ -39,6 +45,7 @@ void test_scheduler_blink_led(){
 	led::LFPrintString("m-5");
 	hardware::delay(4000);
 	fsl::os::scheduler<7> test_scheduler(false, WDTO_1S, 0);
+//	globalScheduler = &test_scheduler;
 	led::LFPrintString("m-6");
 	hardware::delay(4000);
 	blink_led my_blink_led(test_scheduler, fsl::hw::gpio_pin(fsl::hw::gpio_pin::Port::C, 2));

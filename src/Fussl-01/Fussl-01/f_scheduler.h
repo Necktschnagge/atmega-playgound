@@ -1077,7 +1077,7 @@ namespace fsl {
 				flags.set_false(STOP_CALLED); // delete previous stop command
 				flags.set_true(RUNNING); // set running flag
 				flags.set_false(EMPTY_TABLE_DETECTED); // check for empty table
-				activate_hardware_watchdog();
+			//	activate_hardware_watchdog();
 				software_watchdog.reset();// muss diese zeile in eine crit section???? <<<<<< wo wird der watchdog initialisiert?
 				
 				central_control_loop:
