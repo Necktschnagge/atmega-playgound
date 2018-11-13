@@ -30,6 +30,7 @@ void test_system_time(){
 		led::printString("ERR-time");
 		hardware::delay(5000);
 	}
+	TCCR1B &= ~0b00000111;
 	TCCR1B |= 0b00000101;
 	while(true){
 		//time::EMT before = my_system_time();
