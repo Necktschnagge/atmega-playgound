@@ -19,6 +19,7 @@ void test_scheduler_blink_led(){
 		led::clear();
 		led::printString("ER-tinit");
 		hardware::delay(5000);
+		while (true){}
 	}
 	
 	fsl::os::system_time::link(my_system_time);
@@ -29,6 +30,7 @@ void test_scheduler_blink_led(){
 		led::clear();
 		led::printString("ERR-time");
 		hardware::delay(5000);
+		while (true){}
 	}
 	
 	fsl::os::scheduler<7> test_scheduler(false, WDTO_1S, 0);
