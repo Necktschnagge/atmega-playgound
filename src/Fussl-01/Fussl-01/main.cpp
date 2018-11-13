@@ -367,8 +367,10 @@ void test_cmr(){
 int main(void){
 	//scheduler2<10> object;
 	//scheduler2<10>::interrupt_handler();
-	
+	uint8_t m = fsl::os::x0;
+	DDRF = m;
 	led::init(8);
+	led::printInt(m);
 	guiBootScreen();
 	led::clear();
 	fsl::hw::gpio_pin iopin(fsl::hw::gpio_pin::Port::A,0);

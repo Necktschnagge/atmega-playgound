@@ -44,6 +44,8 @@ f_systime_old_alpha.cpp
 
 f_scheduler.cpp
 
+my_template_test.cpp
+
 old_or_deprecated\f_gui.cpp
 
 scheduler_test.cpp

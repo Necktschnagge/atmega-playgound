@@ -267,7 +267,7 @@ namespace fsl {
 			}
 			
 			private:
-			index_cache get_index_cache[index_cache_size];
+			index_cache get_index_cache[index_cache_size]; // ### put it to the right position!
 			public:
 			/* returns index of table where given handle can be found
 			only call from inside an atomic section

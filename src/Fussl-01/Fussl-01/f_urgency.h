@@ -70,6 +70,13 @@ namespace fsl {
 				return down(linear_to_inverse<linear_urgency + 1>());
 				///### better use up?; here it is compile time, so not important#####
 			}
+
+			template <uint8_t linear_urgency>
+			static constexpr uint8_t linear_to_inverse_via_up(){
+				static_assert(linear_urgency < 20, "Linear urgency must be a value 0..20 (least important .. most important)");
+				return up(linear_to_inverse_via_up<linear_urgency - 1>());
+				///### better use up?; here it is compile time, so not important#####
+			}
 			
 			inline static constexpr uint8_t pull_0_to_1(uint8_t x){ return x + !x; }
 			
@@ -78,8 +85,11 @@ namespace fsl {
 		
 		template <>
 		constexpr uint8_t urgency_helper::linear_to_inverse<20>(){ return 1; }
+		template <>
+		constexpr uint8_t urgency_helper::linear_to_inverse_via_up<0>(){ return 232; }
 		
 		static_assert(urgency_helper::linear_to_inverse<0>() == 232, "Value not appropiate.");
+		///### check that all up and all down created values are the same!!!!s
 		
 		constexpr uint8_t x0 = urgency_helper::linear_to_inverse<0>();
 		
