@@ -32,7 +32,7 @@ void test_system_time(){
 	}
 	TCCR1B = 0b00000101;
 	while(true){
-		time::EMT before = my_system_time();
+		//time::EMT before = my_system_time();
 		//led::printInt(before.get_in_seconds());
 		led::printInt(TCNT1);
 		hardware::delay(500);
