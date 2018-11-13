@@ -387,6 +387,6 @@ int main(void){
 	//testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
 	//test_cmr();
 	
-	led::LFPrintString("MAIN-ERR");
+	led::LFPrintString("DEZ-25");
 	while (1) {}
 }

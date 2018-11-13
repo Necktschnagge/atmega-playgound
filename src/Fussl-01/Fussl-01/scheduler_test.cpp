@@ -8,7 +8,8 @@
 #include "scheduler_test.h"
 
 void test_scheduler_blink_led(){
-	
+	led::LFPrintString("m-1");
+	hardware
 	uint8_t log_precision{ 12 };
 	
 	uint8_t error_code{ 0 };
