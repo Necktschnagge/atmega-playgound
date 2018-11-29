@@ -1,0 +1,34 @@
+@startuml
+class system_time{
+	-frequency
+	-now : EMT
+	+system_time(frequency)
+	-get_now() : time::ExtendedMetricTime
+	+update()
+	+set_now(time : EMT)
+}
+
+class clock_watch_quartz{
+	{static}start()
+	{static}stop()
+
+}
+class clock_50hz_power_grid{
+
+}
+interface clock{
+	{static}{abstract}start()
+	{static}{abstract}stop()
+}
+
+class EMT{
+	time : uint64_t
+	convert_x_to_y()
+	time_in_seconds()
+}
+
+clock_50hz_power_grid .u.|> clock
+clock_watch_quartz .u.|> clock
+Takt --> system_time
+
+@enduml
