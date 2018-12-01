@@ -18,6 +18,7 @@
 #include "f_iopin.h"
 #include "f_scheduler.h"
 #include "scheduler_test.h"
+#include "arch_mock.h"
 
 void guiBootScreen(){
 	hardware::delay(10);	
@@ -365,27 +366,24 @@ void test_cmr(){
 }
 
 int main(void){
-	//scheduler2<10> object;
-	//scheduler2<10>::interrupt_handler();
-	
 	led::init(8);
 	guiBootScreen();
 	led::clear();
-	fsl::hw::gpio_pin iopin(fsl::hw::gpio_pin::Port::A,0);
-
 	
-	//led::printString("D-SERVER");
-	//hardware::delay(2000);
-	//led::clear();
+	led::printString("ARC-MOCK");
+	hardware::delay(5000);
 	
-	//main_of_display_server();
-	led::printString("SCHED");
-	hardware::delay(4000);
+	arch_mock mock;
+	while(true)
+	for (uint8_t x = 0; x < 9; ++x)
+	{
+		arch::pushLineVisible(1<<x);
+		led::clear();
+		led::printInt(x);
+		hardware::delay(1500);
+	}
 	
-	test_scheduler_blink_led();
-	
-	//testing_CMI_Interpreter_with_one_HCSR04_sensor(); //noreturn
-	//test_cmr();
+	mock();
 	
 	led::LFPrintString("MAIN-ERR");
 	while (1) {}

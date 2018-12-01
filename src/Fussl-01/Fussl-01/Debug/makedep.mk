@@ -2,6 +2,8 @@
 # Automatically-generated file. Do not edit or delete the file
 ################################################################################
 
+arch_mock.cpp
+
 display_server.cpp
 
 dummy_includer.cpp
