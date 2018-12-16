@@ -46,6 +46,7 @@ namespace fsl {
 			
 			TIMSK = (TIMSK & 0b11000011) | 0b00010000; // data sheet page 138: interrupt enable for Timer1 Compare Match A
 			OCR1A = fsl::os::system_time::get_instance().get_compare_match_value_only_call_by_ISR(); // register with compare value
+//y			OCR0 = 
 			
 			TCCR1B = 0b00001111; // CTC (Clear Timer on Compare Match) (bit 3)
 			// start timer running from ext source, triggered on rising edge (bit 2:0)

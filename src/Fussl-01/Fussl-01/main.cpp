@@ -367,17 +367,25 @@ void test_cmr(){
 int main(void){
 	//scheduler2<10> object;
 	//scheduler2<10>::interrupt_handler();
-	
+	/*
 	led::init(8);
 	guiBootScreen();
 	led::clear();
-	fsl::hw::gpio_pin iopin(fsl::hw::gpio_pin::Port::A,0);
+	*/
+	fsl::hw::gpio_pin iopin(fsl::hw::gpio_pin::Port::C,2);
+	iopin.set_as_output();
+	
+	while(true)
+	{	
+		iopin = !iopin;
+		hardware::delay(1000);
+	}
 
 	
 	//led::printString("D-SERVER");
 	//hardware::delay(2000);
 	//led::clear();
-	
+	/*
 	//main_of_display_server();
 	led::printString("SCHED");
 	hardware::delay(4000);
@@ -389,4 +397,8 @@ int main(void){
 	
 	led::LFPrintString("MAIN-ERR");
 	while (1) {}
+		*/
 }
+
+
+

@@ -25,20 +25,24 @@ void test_system_time(){
 	
 	//bool start_code = fsl::os::system_time::start();
 	
-	TCNT1 = 0;
+	//TCNT0 = 0;
 	//TCCR1B &= ~0b00000111;
-	TCCR1B = 0b00000111;
+	//TCCR1B = 0b00000111;
+	ASSR |= 0x08; // may cause corruption of other registers
+	TCCR0 = 0x07;
+	TCNT0 = 0;
+	
+	bool on{ 0 };
 	while(true){
-		//time::EMT before = my_system_time();
-		//led::printInt(before.get_in_seconds());
-		led::printInt(TCNT1);
-		hardware::delay(500);
-		led::clear();	
-		led::printInt(TCNT1);
-		led::printDotsOnly(0xFF);
-		hardware::delay(500);
+		uint8_t value = TCNT0;
 		led::clear();
-		
+		led::printInt(value / 32);
+		led::printSign('-');
+		if (value % 32 < 10) led::printSign('0');
+		led::printInt(value % 32);
+		led::printDotsOnly(0xFF * on);
+		on = !on;
+		hardware::delay(400);
 	}
 	
 }
