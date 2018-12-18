@@ -33,8 +33,8 @@ class blink_steps {
 
 template <uint8_t max_height>
 class parallel_blink_up : public blink_steps {
-	static constexpr uint8_t MAX_HEIGHT{ max_height };
-	static_assert(MAX_HEIGHT < 9, "driver is not ready for more than 15 bits plus one status led.");
+	static constexpr uint8_t MAX_HEIGHT{ 2*max_height - 1 };//####
+	static_assert(MAX_HEIGHT < 10, "driver is not ready for more than 15 bits plus one status led.");//###
 	
 	uint8_t height_on;
 	
@@ -62,13 +62,22 @@ class parallel_blink_up : public blink_steps {
 template <uint8_t max_height, bool reverse = false>
 class fill_bottle_blink : public blink_steps {
 	static constexpr uint8_t MAX_HEIGHT{ max_height };
+	static constexpr bool REVERSE{ reverse };
 	static_assert(MAX_HEIGHT < 9, "driver is not ready for more than 15 bits plus one status led.");
 	static_assert(MAX_HEIGHT > 0, "logic does not work with empty arch.");
 	static constexpr uint16_t FINISHED_STATE{ 0xFFFF };
 	
 	uint16_t current_state;
 	
-	inline void update_arch(){ arch::pushLineVisible(current_state); }
+	inline uint16_t inverse_state(){
+		uint16_t result{ 0 };
+		for (uint8_t c_pos = 0; c_pos < 2*MAX_HEIGHT - 1; ++c_pos){
+			result |= bool(current_state & (0x0001 << c_pos)) * (1 << ((2*MAX_HEIGHT - 2) -c_pos));
+		}
+		return result;
+	}
+	
+	inline void update_arch(){ if (REVERSE) arch::pushLineVisible(inverse_state()) else arch::pushLineVisible(current_state); }
 	
 	public:
 	fill_bottle_blink() : current_state(0) {}
@@ -88,7 +97,7 @@ class fill_bottle_blink : public blink_steps {
 				return;
 			}
 			--position;
-			}
+		}
 		// position is the first zero when starting at upper bit moving to lower bit.
 		// search for the first "1" to move upwards:
 		while ((~current_state) & (1<<position)){

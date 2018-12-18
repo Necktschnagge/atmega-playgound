@@ -373,7 +373,9 @@ int main(void){
 	led::printString("ARC-MOCK");
 	hardware::delay(5000);
 	
+	
 	arch_mock mock;
+	/*
 	while(true)
 	for (uint8_t x = 0; x < 9; ++x)
 	{
@@ -382,7 +384,7 @@ int main(void){
 		led::printInt(x);
 		hardware::delay(1500);
 	}
-	
+	*/
 	mock();
 	
 	led::LFPrintString("MAIN-ERR");
