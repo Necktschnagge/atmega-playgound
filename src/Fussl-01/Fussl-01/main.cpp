@@ -366,15 +366,16 @@ void test_cmr(){
 }
 
 int main(void){
+	arch_mock mock;
+
 	led::init(8);
-	guiBootScreen();
+	//guiBootScreen();
 	led::clear();
 	
 	led::printString("ARC-MOCK");
-	hardware::delay(5000);
+	//hardware::delay(5000);
 	
 	
-	arch_mock mock;
 	/*
 	while(true)
 	for (uint8_t x = 0; x < 9; ++x)

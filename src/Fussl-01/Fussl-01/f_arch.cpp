@@ -140,33 +140,40 @@ void arch::runProgram(uint8_t program){// for user
 	arch::programHeaderInterpreter();
 }
 
+using BUSY_WAIT_TYPE = uint8_t;
+static constexpr BUSY_WAIT_TYPE BUSY_WAIT_RANGE{ 16 };
+
 void arch::pushBit(bool bit){
-	//_delay_ms(0.1); // read the docu of delay again #####
 	PORTB = (PORTB & 0b11111110) | bit;
-	//_delay_ms(0.1);
+	hardware::busy_wait<BUSY_WAIT_TYPE>(BUSY_WAIT_RANGE);
 	PORTB ^= 0b00000010;
-	//_delay_ms(0.1);
+	hardware::busy_wait<BUSY_WAIT_TYPE>(BUSY_WAIT_RANGE);
 	PORTB ^= 0b00000010;
-	
+	hardware::busy_wait<BUSY_WAIT_TYPE>(BUSY_WAIT_RANGE);
 }
 
 void arch::latch(void){
-	//_delay_ms(0.1);
 	PORTB ^= 0b00000100;
-	//_delay_ms(0.1);
+	hardware::busy_wait<BUSY_WAIT_TYPE>(BUSY_WAIT_RANGE);
 	PORTB ^= 0b00000100;
+	hardware::busy_wait<BUSY_WAIT_TYPE>(BUSY_WAIT_RANGE);
 }
 
 void arch::pushLineVisible(uint16_t line){
+	//led::clear();
+	//led::printString("P-");
+	//led::printInt(line);
 	for(int8_t i = 15; i>=0; --i){
 		arch::pushBit(line & (1<<i));
 	}
+	//hardware::delay(1000);
 	arch::latch();
+	//hardware::delay(1000);
 }
 
 void arch::readBuffer(void){
 	if (state.light.read!=state.light.write){
-		if (state.light.buffer[state.light.read].light>>15 == 0){ // when shiftig to the right, zeros come filling the left???
+		if (state.light.buffer[state.light.read].light>>15 == 0){ // when shifting to the right, zeros come filling the left???
 			arch::pushLineVisible(state.light.buffer[state.light.read].light);
 		}
 		//### set timer = state.light.buffer[state.light.read].delay; after time execute arch::readBuffer

@@ -39,6 +39,11 @@ namespace hardware {
 	/* the real string length of destination will be count + 1 (if nullTerminated) */
 	/* but if source has an '\0' before copying will be stopped immediately */
 	void copyString(char* destination, const char* source, uint8_t count, bool nullTerminated);
+	
+	template <typename T>
+	inline void busy_wait(T range){
+		for (T i = 0; i < range; ++i){ /* do nothing */ }
+	}
 
 }
 
