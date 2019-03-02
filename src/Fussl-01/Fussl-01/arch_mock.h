@@ -199,27 +199,111 @@ class shooting_star_blink : public blink_steps {
 	}
 };
 
-template<uint8_t bulbs, int16_t pause, bool reverse>
+template<uint8_t bulbs, uint16_t pause, bool reverse>
 class toggle_run : public blink_steps{
 	static constexpr uint8_t BULBS{ bulbs };
-	static constexpr int16_t PAUSE{ pause };
+	static constexpr uint16_t PAUSE{ pause };
 	static constexpr bool REVERSE{ reverse };
 	
-	//## insert static_assert s
+	static_assert(BULBS <= 16, "Too many bulbs.");
+	static_assert(PAUSE + BULBS < 0x8000, "Too large pause + bulbs. Use smaller pause.");
+	static_assert(PAUSE < 0x8000, "Too large pause. Use smaller pause.");
 	
-	int16_t state;
+	/*
+		0: initial, 1: first bulb on, ... , 5: first 5 bulbs on, ... , (BULBS): all bulbs on, ... , (BULBS+PAUSE): all bulbs on, (BULBS+PAUSE+1): first bulb off, ... , (2*BULBS + PAUSE): all bulbs off, ... , (2*(BULBS + PAUSE)): last state,
+		
+		-1: first bulb off, -2: first 2 bulbs off, ...
+	*/
+	uint16_t state;
+	uint8_t repeatings;
+	uint8_t current_repeating;
 	
 	public:
-	toggle_run() : state(0){}
+	toggle_run(uint8_t repeatings) : state(0), repeatings(repeatings), current_repeating(1) {}
 	
 	void display() const override {
-		const uint8_t on{ state > BULBS ? BULBS : state };
-		
+		const uint8_t on{ state > BULBS ? BULBS : static_cast<uint8_t>(state) };
+		const uint8_t off{ state > PAUSE + 2* BULBS ? BULBS : (state > PAUSE + BULBS ? static_cast<uint8_t>(state - (PAUSE + BULBS)) : static_cast<uint8_t>(0)) };
+		uint16_t bulb_config{ 0 };
+		for (uint8_t i = 0; i < BULBS; ++i){
+			bulb_config |= (uint16_t(1) << i) * (on >= i) * (off <= i);
+		}
+		if (REVERSE) bulb_config = reverse_bits<uint16_t>(bulb_config, BULBS);
+		arch::pushLineVisible(bulb_config);
 	}
 	
-	void reset() override {
-		state = 0;
+	void reset() override {   state = 0; current_repeating = 1;   }
+	
+	void operator()() override {
+		display();
+		++state;
+		static_assert( 2*(BULBS + PAUSE) < 0xFFFF,"Too large pause.");
+		if (state > 2*(BULBS + PAUSE)) { // behind the last state
+			if (current_repeating == repeatings) current_repeating = 0; /* finished */ else ++current_repeating;
+			state = 0; // sub loop reset to beginning.
+		}
 	}
+	
+	inline void set_repeatings(uint8_t repeatings){   this->repeatings = repeatings;   }
+	
+	bool finished() const override {   return !current_repeating;   }
+	
+};
+
+//### refactor reverse should not be part of this classes, should be passed to the speed increaser.
+// and the display() funciton should only return the bulb config, 
+// then operator() should be final and only implemented in abstract class. calling first display() and then operator++ and then return the result of display.
+// the incremnention content of operator () should be moved into operator ++.
+
+template<uint8_t bulbs, uint16_t pause, bool reverse>
+class pendle : public blink_steps {
+	static constexpr uint8_t BULBS{ bulbs };
+	static constexpr uint16_t PAUSE{ pause };
+	static constexpr bool REVERSE{ reverse };
+	static constexpr uint16_t BAP{ PAUSE + BULBS };
+	
+	static constexpr uint16_t LAST_STATE{ 4*BAP };
+	
+	static_assert(BULBS <= 16, "Too many bulbs.");
+	static_assert(2*BAP < 0x8000, "Too large pause + bulbs. Use smaller pause.");
+	static_assert(2*PAUSE < 0x8000, "Too large pause. Use smaller pause.");
+	
+	uint16_t state;
+	uint8_t repeatings;
+	uint8_t current_repeating;
+	
+	public:
+	pendle(uint8_t repeatings) : state(0), repeatings(repeatings), current_repeating(1) {}
+	
+	void display() const override {
+		const uint8_t pos_on{ state > BULBS ? BULBS : static_cast<uint8_t>(state) };
+		const uint8_t pos_off{ state > BAP + BULBS ? BULBS : (state > BAP ? static_cast<uint8_t>(state - BAP) : static_cast<uint8_t>(0)) };
+		const uint8_t neg_on{ state > BAP*2 + BULBS ? BULBS : (state > BAP*2 ? static_cast<uint8_t>(state - BAP*2) : static_cast<uint8_t>(0)) };
+		const uint8_t neg_off{ state > BAP*3 + BULBS ? BULBS : (state > BAP*3 ? static_cast<uint8_t>(state - BAP*3) : static_cast<uint8_t>(0)) };
+		uint16_t bulb_config{ 0 };
+		for (uint8_t i = 0; i < BULBS; ++i){
+			bulb_config |= (uint16_t(1) << i) * (((pos_on >= i) && (pos_off <= i)) || ((neg_on >= i) && (neg_off <= i)));
+		}
+		if (REVERSE) bulb_config = reverse_bits<uint16_t>(bulb_config, BULBS);
+		arch::pushLineVisible(bulb_config);
+	}
+	
+	void reset() override {   state = 0; current_repeating = 1;   }
+	
+	void operator()() override {
+		display();
+		++state;
+		static_assert( BAP*4 < 0xFFFF,"Too large pause.");
+		if (state > LAST_STATE) {
+			if (current_repeating == repeatings) current_repeating = 0; /* finished */ else ++current_repeating;
+			state = 0; // sub loop reset to beginning.
+		}
+	}
+	
+	inline void set_repeatings(uint8_t repeatings){   this->repeatings = repeatings;   }
+	
+	bool finished() const override {   return !current_repeating;   }
+	
 };
 
 class linear_speed_increaser{
@@ -294,7 +378,10 @@ public:
 	
 	static constexpr uint8_t HEIGHT{ 5 };
 	
-	void display_number(uint8_t number) const {
+	void display_number(uint32_t number) const {
+		led::clear();
+		led::printInt(number);
+		#if false
 		arch::pushLineVisible(0);
 		hardware::delay(1000);
 		for (uint8_t i = 0; i < number; ++i){
@@ -304,6 +391,7 @@ public:
 			arch::pushLineVisible(0);
 		}
 		hardware::delay(1000);
+		#endif
 	}
 	
 	inline void hold(const blink_steps& steps){
@@ -318,17 +406,21 @@ public:
 		fill_bottle_blink<HEIGHT, true> negative_bottle{};
 		shooting_star_blink<9,9,false> positive_shot{};
 		shooting_star_blink<9,9,true> negative_shot{};
+		toggle_run<9,50,false> positive_toggler{ toggle_run<9,50,false>(3) };
+		toggle_run<9,50,true> negative_toggler{ toggle_run<9,50,true>(3) };
+		pendle<9,30,false> pendler(3);
 		
 		exponential_speed_increaser slow_exp_speed{ exponential_speed_increaser(1500,200, 0x100 * 7/10) };
 		exponential_speed_increaser fast_exp_speed{ exponential_speed_increaser(333,80, 0x100 *4/5) };
 		while(true){
 			/*begin of loop marker */
-			for (uint8_t i = 0; i < 10; ++i){
+			for (uint8_t i = 0; i < 5; ++i){
 			arch::pushLineVisible(0b101010101);
 			hardware::delay(500);
 			arch::pushLineVisible(0b010101010);
 			hardware::delay(500);
 			}
+			
 			display_number(1);
 			slow_exp_speed(parallel);
 			display_number(2);
@@ -340,12 +432,18 @@ public:
 			display_number(5);
 			slow_exp_speed(parallel);
 			display_number(6);
+			fast_exp_speed(pendler);
+			display_number(6001);
 			fast_exp_speed(positive_shot);
 			display_number(7);
 			slow_exp_speed(parallel);
 			display_number(8);
 			fast_exp_speed(negative_shot);
 			display_number(9);
+			fast_exp_speed(positive_toggler);
+			display_number(10);
+			fast_exp_speed(negative_toggler);
+			display_number(11);
 			
 			/* end of loop marker */
 			arch::pushLineVisible(0);
