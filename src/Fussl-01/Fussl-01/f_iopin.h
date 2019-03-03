@@ -21,8 +21,8 @@ doc strings seem to be complete
 namespace fsl {
 	namespace hw {
 		
-		/* an IOPin object is something like an iterator to a GPIO pin */
-		/* it only contains an index value referring to one of the controller's GPIO pins */
+		/* A gpio_pin object behaves like an iterator to a GPIO pin.
+		It only contains an index value referring to one of the controller's GPIO pins */
 		class gpio_pin {
 			public:
 			
@@ -56,7 +56,7 @@ namespace fsl {
 			static constexpr id NO_IOPIN_ID{ id::OUT_OF_RANGE };
 			
 			/* return the no-IOPin object */
-			static constexpr gpio_pin NO_IOPIN(){ return gpio_pin(gpio_pin::NO_IOPIN_ID); }
+			inline static constexpr gpio_pin NO_IOPIN(){ return gpio_pin(gpio_pin::NO_IOPIN_ID); }
 			
 			/* calculates pin_id of given port and bit inside port */
 			inline static constexpr id pin_id(Port port, uint8_t bit){
