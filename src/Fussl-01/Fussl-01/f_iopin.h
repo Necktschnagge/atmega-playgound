@@ -23,24 +23,17 @@ namespace fsl {
 		
 		/* A gpio_pin object behaves like an iterator to a GPIO pin.
 		It only contains an index value referring to one of the controller's GPIO pins */
+		template <class int_type, int_type pin_count>
 		class gpio_pin {
 			public:
 			
 			/*** public constants, types and constexpr functions ***/
 			
-			/* aviablable pins are {0, .., MAX-1} */
-			/* this value should be adapted to the constraints of the controller */
-			static constexpr uint8_t MAX {8*6 + 5 - 2};
-			/*
-			// <<< this should be converted into a template argument,
-			// <<< one could define synonyms for each controller
-			<<<<< there are 53 programmable I/O-Lines (also see summary of ATMEGA128's data sheet)
-			for our project we subtract 2, because PG3, PG4 are used as TOSC1/2 for ext RTC-OSC source (32kHz OSC).
-			*/
+			/* Aviablable pin IDs are {0, .., PIN_COUNT - 1} */
+			static constexpr int_type PIN_COUNT{ pin_count };
 			
-			/* Pin ID type.
-			The id is the number interpreted as index over all GPIOPins */
-			using id = fsl::lg::range_int<uint8_t,MAX,true,true>;
+			/* Pin ID type. Every controller pin has its own unique id. */
+			using id = fsl::lg::range_int<int_type,PIN_COUNT,true,true>;
 			
 			/* the controller's ports */
 			enum class Port : uint8_t {
