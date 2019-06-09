@@ -15,6 +15,9 @@
 #include "f_ledline.h"
 
 
+//## todos here: the base class blink_steps got a changed design, all inheriting classes and using components need to be adopted.
+// then, put classes into the arches directory snd split it where suitable.
+
 /**
  * \brief Changes the order of the first count_bit bits of given integer value. Returned value will start with the last bit of the original and end with the first bit of the original value. E.g. 001101 will be converted to 101100
  * 
@@ -38,6 +41,10 @@ template <typename bit_sequence, bit_sequence count_bulbs>
 class blink_steps {
 	public:
 	
+	static constexpr bit_sequence COUNT_BULBS{ count_bulbs };
+	
+	static constexpr bit_sequence HEIGHT{ (COUNT_BULBS+1)/2 }; // actually works for even AND odd numbers of bulbs!!!
+	
 	/** push current state again to the bulbs */
 	virtual bit_sequence display() const = 0; //## return the bit-sequence instead of already pushing it.
 	
@@ -52,6 +59,9 @@ class blink_steps {
 	
 	/** reset state to the initial state */
 	virtual void reset() = 0;
+	
+	static_assert(COUNT_BULBS > 0, "An arch must have at least one bulb.");
+	static_assert(COUNT_BULBS + 1 > 0, "Due to arithmetic reasons (definition of HEIGHT) cound_bulbs must have an ordinary successor.");
 	
 	/** perform one arch push update and immediately switch state, return true if and only if final state was reached */
 	inline bool next_operator_bracket(){ //## diese funktion auslagern und dann das display ergebnis an pushLineVisible weitergeben.
@@ -68,6 +78,7 @@ class mirrored_decorator : public blink_steps<bit_sequence> {
 	blink_steps<bit_sequence>& component;
 	
 	public:
+	
 	mirrored_steps(blink_steps<bit_sequence>& component) : component(component){}
 	
 	bit_sequence display() const override { return mirrored_bits(component.display(), count_bulbs); }
@@ -80,28 +91,24 @@ class mirrored_decorator : public blink_steps<bit_sequence> {
 };
 
 // mirror via inheritance: ## check if this is working
-/*
 template <class blink_steps_component>
 class mirrored : public blink_steps_component {
 	public:
-	mirrored(blink_steps_component&& component) : blink_steps_component(component) {}
+	using blink_steps_component::blink_steps_component;
 	
 	bit_sequence display() const override { return mirrored_bits(component.display(), count_bulbs); }
 };
-*/
 
 template <uint8_t count_bulbs>
 class parallel_blink_up : public blink_steps<uint16_t, count_bulbs> { // is compliant with the new design
-	static constexpr uint8_t COUNT_BULBS{ count_bulbs };
-	static constexpr uint8_t HEIGHT{ COUNT_BULBS/2 + 1 };
-	static_assert(COUNT_BULBS > 0, "parallel blink up must have at least one bulb.");
 	static_assert(COUNT_BULBS <= 16, "parallel blink up is not ready for more than 16 bits.");
+	static constexpr uint8_t INITIAL_STATE{ 0 };
 	
 	/** height up to which the bulbs are on */
 	uint8_t height_on;
 	
 	public:
-	parallel_blink_up() : height_on(0) {}
+	parallel_blink_up() : height_on(INITIAL_STATE) {}
 	
 	uint16_t display() const override {
 		constexpr uint16_t ALL_ON{ (1<<(COUNT_BULBS)) - 1 };
@@ -116,81 +123,67 @@ class parallel_blink_up : public blink_steps<uint16_t, count_bulbs> { // is comp
 	
 	virtual void operator++() override{ if(!finished()) ++height_on; }
 	
-	void reset() override { height_on = 0; }
-	
-	};
+	void reset() override { height_on = INITIAL_STATE; }
+};
 
-template <uint8_t height, bool reverse = false>
-class fill_bottle_blink : public blink_steps<uint16_t> {
-	static constexpr uint8_t HEIGHT{ height };
-	static constexpr bool REVERSE{ reverse }; // should not be placed here. should be implemented as decorator pattern.
-	static constexpr uint8_t BULBS{ HEIGHT*2 - 1 };
-	static_assert(HEIGHT <= 8, "driver is not ready for more than 15 bits plus one status led.");
-	static_assert(HEIGHT > 0, "logic does not work with empty arch.");
+template <uint8_t COUNT_BULBS>
+class fill_bottle_blink : public blink_steps<uint16_t, COUNT_BULBS> { // is compliant with new design
 	static constexpr uint16_t FINISHED_STATE{ 0xFFFF };
+	static constexpr uint16_t INITIAL_STATE{ 0 };
+	static_assert(COUNT_BULBS <= 16, "fill bottle is not ready for more than 16 bits.");
 	
 	uint16_t current_state;
 	
-	inline uint16_t inverse_state() const {
-		return mirrored_bits<uint16_t>(current_state,BULBS);
-	}
-	
 	public:
-	fill_bottle_blink() : current_state(0) {}
+	fill_bottle_blink() : current_state(INITIAL_STATE) {}
 	
-	void display() const override {
-		if (REVERSE) arch::pushLineVisible(inverse_state()); else arch::pushLineVisible(current_state);
-	}
+	bit_sequence display() const override { return current_state & /* only bits of interest */ ((1<<COUNT_BULBS) - 1); }
 	
-	void reset() override {current_state = 0; }
+	bool finished() const override { return current_state == FINISHED_STATE; }
 	
-	bool finished() const override { return current_state & 0x8000; }
-	
-	void operator()() override {
-		if (finished()) return;
-		display();
-		uint8_t position = BULBS - 1; //start at highest bit.
+	void operator++() override {
+		uint8_t position = COUNT_BULBS - 1; //start at highest bit.
 		// search for first "0":
-		while (current_state & (1 << position)) /* at position is a 1 */ {
-			if (!position) {
+		for(; current_state & (1 << position); --position;) /* at position there is a 1 */ {
+			if (!position) { // There is no "0" at all.
 				current_state = FINISHED_STATE;
 				return;
 			}
-			--position;
 		}
 		// position is the first zero when starting at upper bit moving to lower bit.
 		// search for the first "1" to move upwards:
-		while ((~current_state) & (1<<position)){
+		for (; (~current_state) & (1<<position); --position){
 			if (!position) {
-				// we are at the lower limit / bit 0 and see a "0". insert a new drop into the bottle.
+				// we are at the lower limit / bit 0 and see a "0". insert a new water drop into the bottle.
 				current_state = current_state | 1;
 				return;
 			}
-			--position;
 		}
-		// position is at the first one coming from upper going to lower that is not part of the leading 11..1 - section.
+		// position is at the first "1" you see, if coming from upper going to lower bit, that is not part of the leading 11..1 - section.
 		// move the current 1 one bit upwards:
 		current_state = (current_state | (1<<(position+1))) /* add the higher bit*/ & /*remove the lower bit*/ ~(1 <<position);
 	}
+	void reset() override {current_state = INITIAL_STATE; }
 	
 	};
 
 
-template <uint8_t number_of_lights, uint8_t number_of_patches, bool reverse>
-class shooting_star_blink : public blink_steps {
-	static constexpr uint8_t COUNT_BULBS{ number_of_lights };
-	static constexpr uint8_t COUNT_PATCHES{ number_of_patches };
-	static constexpr bool REVERSE{ reverse };
+template <uint8_t count_bulbs, uint8_t count_patches>
+class shooting_star_blink : public blink_steps<uint16_t, count_bulbs> { // is compliant with new design
+	static constexpr uint8_t COUNT_PATCHES{ count_patches };
+	static_assert(COUNT_PATCHES >= 1, "There must be at least one patch bit.");
 	static constexpr uint8_t COUNT_USED_BITS{ COUNT_PATCHES + COUNT_BULBS };
-	static constexpr uint64_t SELECT_USED_BITS{ COUNT_USED_BITS == 64 ? 0xFFFFFFFFFFFFFFFF : (1ull<<COUNT_USED_BITS) - 1 };
-	static constexpr uint64_t SELECT_BULBS{ SELECT_USED_BITS - (1 << COUNT_PATCHES) + 1 };
-	static constexpr uint64_t ONE{ 1 };
+	static_assert(COUNT_USED_BITS <= 64, "Not enough RAM space allocated in this implementation.");
+	static constexpr uint64_t PATTERN_SELECT_USED_BITS{ (1ull<<COUNT_USED_BITS) - 1 };
+	static_assert((1ull << 64) - 1 == 0xFFFFFFFFFFFFFFFF, "Arithmetic error: PATTERN_SELECT_USED_BITS has bad behavior.");
+	// oder version: why was it 32 32 and not once 64?: static_assert( ((1ull<<32)<<32) - 1 == 0xFFFFFFFFFFFFFFFF, "ALL_USED_BITS_HIGH is not correct if this evaluates false.");
+	static constexpr uint64_t PATTERN_SELECT_PATCHES{ (1 << COUNT_PATCHES) + 1 };
+	static constexpr uint64_t PATTERN_SELECT_BULBS{ PATTERN_SELECT_USED_BITS - PATTERN_SELECT_PATCHES };
 	
-	static_assert( ((1ull<<32)<<32) - 1 == 0xFFFFFFFFFFFFFFFF, "ALL_USED_BITS_HIGH is not correct if this evaluates false.");
-	static_assert(COUNT_PATCHES >= 1, "There must be at least one patch field.");
-	static_assert(COUNT_USED_BITS <= 64, "Not enough RAM space in this implementation.");
-	static_assert(COUNT_BULBS <= 16, "Arch lib does not support more than 16 bulbs.");
-	
+	static constexpr uint64_t ONE{ 1ull };
+	static constexpr uint64_t PATTERN_INSERT_POSITION{ ONE << (COUNT_PATCHES - 1) };
+	static constexpr uint64_t INITIAL_STATE{ PATTERN_INSERT_POSITION };
+	static constexpr bool INITIAL_INSERT_ENABLED{ false };
 	/*
 		BIT		0		1		2		3		4		5		6		7		8
 				{patch_0, ... ,patch_n}  ...  { bulb_0, ... , bulb_m}  ...  unuseds
@@ -200,87 +193,117 @@ class shooting_star_blink : public blink_steps {
 	
 	public:
 	
-	shooting_star_blink(): state(1), insert_enabled(false) {}
+	shooting_star_blink(): state(INITIAL_STATE), insert_enabled(INITIAL_INSERT_ENABLED) {}
 	
-	void display() const override {
-		uint16_t config = static_cast<uint16_t>((SELECT_BULBS & state) >> COUNT_PATCHES);
-		if (!REVERSE) return arch::pushLineVisible(config);
-		return arch::pushLineVisible(mirrored_bits<uint16_t>(config,COUNT_BULBS));
-	}
+	void display() const override { return static_cast<uint16_t>((PATTERN_SELECT_BULBS & state) >> COUNT_PATCHES); }
 	
-	void reset() override { state = 1; insert_enabled = false; }
+	bool finished() const override { return (state & PATTERN_SELECT_USED_BITS) == PATTERN_SELECT_USED_BITS; }
 	
-	bool finished() const override { return (state & SELECT_USED_BITS) == SELECT_USED_BITS; }
-	
-	void operator()() override {
-		if (finished()) return;
-		display();
-		const bool old_lower_bit = state & ONE;
-		const bool old_upper_bit = (ONE << (COUNT_USED_BITS - 1)) & state;
-		const bool& new_lower_bit_without_insertion = old_upper_bit;
+	void operator++() override {
+		// circular shift:
+		const bool OLD_UPPER_BIT = state & (ONE << (COUNT_USED_BITS - 1));
+		const bool& NEW_LOWER_BIT = OLD_UPPER_BIT;
 		state <<= 1;
-		state &= SELECT_USED_BITS;
-		state |= new_lower_bit_without_insertion;
+		state &= PATTERN_SELECT_USED_BITS;
+		state |= NEW_LOWER_BIT;
 		
-		if (insert_enabled){
-			if (old_lower_bit && (!new_lower_bit_without_insertion)){
-				state |= 1;
-				insert_enabled = false;
-			}
-		} else {
+		// already done if insert is temporary disabled:
+		if (!insert_enabled){
+			// ignore insert for this time because there was an insert in the last step
 			insert_enabled = true;
+			return;
+		}
+		
+		// do insert on condition:
+		if ((!(state & PATTERN_INSERT_POSITION)) /* (insert position = last patch bit) has a "0". */
+			&& (state & (PATTERN_INSERT_POSITION << 1)) /* behind insert position = first bulb bit = insert position of last step has a "1". */
+		) /* if insert position has switched from "1" to "0" */ {
+			state |= PATTERN_INSERT_POSITION;
+			insert_enabled = false; // do not insert in the next step.
 		}
 	}
+	
+	void reset() override { state = INITIAL_STATE; insert_enabled = INITIAL_INSERT_ENABLED; }
+	
 };
 
-template<uint8_t bulbs, uint16_t pause, bool reverse>
-class toggle_run : public blink_steps{
-	static constexpr uint8_t BULBS{ bulbs };
+template<uint8_t count_bulbs, uint16_t pause, bool one_direction = false>
+class toggle_run : public blink_steps<uint16_t,count_bulbs>{
 	static constexpr uint16_t PAUSE{ pause };
-	static constexpr bool REVERSE{ reverse };
-	
-	static_assert(BULBS <= 16, "Too many bulbs.");
-	static_assert(PAUSE + BULBS < 0x8000, "Too large pause + bulbs. Use smaller pause.");
+	static_assert(COUNT_BULBS <= 16, "Too many bulbs for this implementation (bit_sequence type is uint16_t).");
+	static_assert(PAUSE + COUNT_BULBS< 0x8000, "Too large pause + bulbs. Use smaller pause.");
 	static_assert(PAUSE < 0x8000, "Too large pause. Use smaller pause.");
+	static_assert( 2*(COUNT_BULBS + PAUSE) < 0xFFFF,"Too large pause.");
+	
+	static constexpr uint16_t INITIAL_STATE{ 0 };
+	static constexpr uint8_t INITIAL_CURRENT_REPEATING{ 1 };
 	
 	/*
-		0: initial, 1: first bulb on, ... , 5: first 5 bulbs on, ... , (BULBS): all bulbs on, ... , (BULBS+PAUSE): all bulbs on, (BULBS+PAUSE+1): first bulb off, ... , (2*BULBS + PAUSE): all bulbs off, ... , (2*(BULBS + PAUSE)): last state,
+		0: initial, 1: first bulb on, ... , 5: first 5 bulbs on, ... , (BULBS): all bulbs on, ... , (BULBS+PAUSE): all bulbs on, (BULBS+PAUSE+1): first bulb off, ... , (2*BULBS + PAUSE): all bulbs off, ... , (2*(BULBS + PAUSE)): behind the last state,
 		
 		-1: first bulb off, -2: first 2 bulbs off, ...
+	
+	
+	all changes from left (LSB) to right (MSB):
+	
+	phase 1: bulbs switching on
+	phase 2: bulbs staying turned on
+	phase 3: bulbs switching off
+	phase 4: bulbs staying switched off
+	
 	*/
 	uint16_t state;
 	uint8_t repeatings;
 	uint8_t current_repeating;
 	
-	public:
-	toggle_run(uint8_t repeatings) : state(0), repeatings(repeatings), current_repeating(1) {}
-	
-	void display() const override {
-		const uint8_t on{ state > BULBS ? BULBS : static_cast<uint8_t>(state) };
-		const uint8_t off{ state > PAUSE + 2* BULBS ? BULBS : (state > PAUSE + BULBS ? static_cast<uint8_t>(state - (PAUSE + BULBS)) : static_cast<uint8_t>(0)) };
-		uint16_t bulb_config{ 0 };
-		for (uint8_t i = 0; i < BULBS; ++i){
-			bulb_config |= (uint16_t(1) << i) * (on >= i) * (off <= i);
-		}
-		if (REVERSE) bulb_config = mirrored_bits<uint16_t>(bulb_config, BULBS);
-		arch::pushLineVisible(bulb_config);
+	void check_and_correct_repeatings(){
+		if (!repeatings) repeatings = 1;
 	}
 	
-	void reset() override {   state = 0; current_repeating = 1;   }
+	public:
+	toggle_run(uint8_t repeatings) : state(0), repeatings(repeatings), current_repeating(1) {
+		check_and_correct_repeatings();
+	}
 	
-	void operator()() override {
-		display();
+	
+	bit_sequence display() const override {
+		const bool IN_PHASE_1{ state < COUNT_BULBS };
+		const bool IN_PHASE_2{ (COUNT_BULBS <= state) && (state < COUNT_BULBS + PAUSE) };
+		const bool IN_PHASE_3{ (COUNT_BULBS + PAUSE <= state) && (state < 2*COUNT_BULBS + PAUSE) };
+		const bool IN_PHASE_4{ (2*COUNT_BULBS + PAUSE < state) && (state < 2*(COUNT_BULBS + PAUSE)) };
+		
+		// how many already got switched on (counted, even if they got switch off again afterwards):
+		const uint8_t on{
+			IN_PHASE_1 ? static_cast<uint8_t>(state) // in phase 1: as many as already turned on in this phase
+			: COUNT_BULBS // after phase 1 all were switched on
+		};
+		// how many already got switched off (of course, some time after they got switched on):
+		const uint8_t off{
+			IN_PHASE_4 ? COUNT_BULBS // in phase 4 all were already switched off
+			: IN_PHASE_3 ? static_cast<uint8_t>(state - (PAUSE + COUNT_BULBS)) // in phase 3: as many as already turned off in this phase
+			: 0 // otherwise, i.e. in phase 1 or 2 no bulb has ever been switched off.
+		};
+		
+		uint16_t bulb_config{ 0 };
+		for (uint8_t i = 0; i < COUNT_BULBS; ++i){
+			bulb_config |= (uint16_t(1) << i) * (i < on) * (i >= off); // set a bit "1" if enough bulbs were turned on, and not enough were turned off
+		}
+		return bulb_config;
+	}
+	
+	bool finished() const override { return !current_repeating; }
+	
+	void operator++() override {
 		++state;
-		static_assert( 2*(BULBS + PAUSE) < 0xFFFF,"Too large pause.");
-		if (state > 2*(BULBS + PAUSE)) { // behind the last state
+		if (state >= 2*(COUNT_BULBS + PAUSE)) { // behind the last state
 			if (current_repeating == repeatings) current_repeating = 0; /* finished */ else ++current_repeating;
 			state = 0; // sub loop reset to beginning.
 		}
 	}
 	
-	inline void set_repeatings(uint8_t repeatings){   this->repeatings = repeatings;   }
+	void reset() override {   state = 0; current_repeating = 1;   }
 	
-	bool finished() const override {   return !current_repeating;   }
+	inline void set_repeatings(uint8_t repeatings){ this->repeatings = repeatings; }
 	
 };
 
