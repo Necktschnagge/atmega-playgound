@@ -408,6 +408,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="arches" />
     <Folder Include="old_or_deprecated" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />

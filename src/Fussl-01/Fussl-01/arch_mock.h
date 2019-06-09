@@ -2,7 +2,7 @@
 * arch_mock.h
 *
 * Created: 30.11.2018 22:03:42
-* Author: F-NET-ADMIN
+* Author: Maximilian Starke
 */
 
 
@@ -13,83 +13,117 @@
 
 #include "f_arch.h"
 #include "f_ledline.h"
+
+
+/**
+ * \brief Changes the order of the first count_bit bits of given integer value. Returned value will start with the last bit of the original and end with the first bit of the original value. E.g. 001101 will be converted to 101100
+ * 
+ * \param value
+ * \param count_bits
+ * 
+ * \return T
+ */
 template<typename T>
-T reverse_bits(T value, uint8_t count_bits){
+T mirrored_bits(T value, uint8_t count_bits){
 	T result{ 0 };
 	constexpr T ONE{ 1 };
-	for (uint8_t pos = 0; pos < count_bits; ++pos){
+	for (uint8_t pos = 0; pos < count_bits; ++pos)
 		result |= static_cast<bool>(value & (ONE << pos)) * (ONE << (count_bits - 1 - pos));
-	}
 	return result;
 }
 
+
+// the first / initial step should always be the one where all lights are off, if such state exists.
+template <typename bit_sequence, bit_sequence count_bulbs>
 class blink_steps {
 	public:
 	
 	/** push current state again to the bulbs */
-	virtual void display() const = 0;
-	
-	/** push the current state to arch and change state to successor state afterwars */
-	virtual void operator()() = 0;
-	
-	/** reset state to the initial state */
-	virtual void reset() = 0;
+	virtual bit_sequence display() const = 0; //## return the bit-sequence instead of already pushing it.
 	
 	/** return true if and only if the final state, i.e. the successor of the last state which is pushed to arch is reached */
 	virtual bool finished() const = 0;
 	
-	/** perform one arch push update and immediately switch state, return true if and if final state was reached */
-	inline bool next(){
-		operator()();
+	/** push the current state to arch and change state to successor state afterwards */
+	// virtual void operator()() = 0; // should not be used anymore , deprecated
+	
+	/** Changes the state to the successor state */
+	virtual void operator++() = 0;
+	
+	/** reset state to the initial state */
+	virtual void reset() = 0;
+	
+	/** perform one arch push update and immediately switch state, return true if and only if final state was reached */
+	inline bool next_operator_bracket(){ //## diese funktion auslagern und dann das display ergebnis an pushLineVisible weitergeben.
+		if (finished()) return true;
+		display(); // display current state
+		operator++(); // calculate next state
 		return finished();
 		}
 	};
 
-
-template <uint8_t height>
-class parallel_blink_up : public blink_steps {
-	static constexpr uint8_t HEIGHT{ height };
-	static constexpr uint8_t NUMBER_OF_BULBS{ 2*height - 1 };
-	static_assert(NUMBER_OF_BULBS < 16, "driver is not ready for more than 15 bits plus one status led.");
+template <typename bit_sequence, bit_sequence count_bulbs>
+class mirrored_decorator : public blink_steps<bit_sequence> {
 	
-	// height up to which the bulbs are on.
+	blink_steps<bit_sequence>& component;
+	
+	public:
+	mirrored_steps(blink_steps<bit_sequence>& component) : component(component){}
+	
+	bit_sequence display() const override { return mirrored_bits(component.display(), count_bulbs); }
+	
+	bool finished() const override { return component.finished(); }
+	
+	void operator++() override { return ++component; }
+	
+	void reset() override { return component.reset(); }
+};
+
+// mirror via inheritance: ## check if this is working
+/*
+template <class blink_steps_component>
+class mirrored : public blink_steps_component {
+	public:
+	mirrored(blink_steps_component&& component) : blink_steps_component(component) {}
+	
+	bit_sequence display() const override { return mirrored_bits(component.display(), count_bulbs); }
+};
+*/
+
+template <uint8_t count_bulbs>
+class parallel_blink_up : public blink_steps<uint16_t, count_bulbs> { // is compliant with the new design
+	static constexpr uint8_t COUNT_BULBS{ count_bulbs };
+	static constexpr uint8_t HEIGHT{ COUNT_BULBS/2 + 1 };
+	static_assert(COUNT_BULBS > 0, "parallel blink up must have at least one bulb.");
+	static_assert(COUNT_BULBS <= 16, "parallel blink up is not ready for more than 16 bits.");
+	
+	/** height up to which the bulbs are on */
 	uint8_t height_on;
 	
 	public:
 	parallel_blink_up() : height_on(0) {}
 	
-	void display() const override {
-		constexpr uint16_t ALL_ON{ (1<<(NUMBER_OF_BULBS)) - 1 };
-		const uint16_t diff_off{ (1u<<(NUMBER_OF_BULBS - height_on)) - 1 };
+	uint16_t display() const override {
+		constexpr uint16_t ALL_ON{ (1<<(COUNT_BULBS)) - 1 };
+		const uint16_t diff_off{ (1u<<(COUNT_BULBS - height_on)) - 1 };
 		const uint16_t upper_side_on{ (ALL_ON & ~diff_off) };
 		const uint16_t lower_side_on{ (1u<<height_on) - 1 };
 		const uint16_t bulbs{ upper_side_on | lower_side_on };
-		arch::pushLineVisible( bulbs );
-		//led::clear();
-		//led::printInt(height_on);
-		//led::printSign('-');
-		//led::printInt(bulbs);
-		//hardware::delay(2000);
+		return bulbs;
 	}
+	
+	inline bool finished() const override { return height_on > HEIGHT; }
+	
+	virtual void operator++() override{ if(!finished()) ++height_on; }
 	
 	void reset() override { height_on = 0; }
-	
-	void operator()() override {
-		if (finished()) return;
-		display();
-		++height_on;
-	}
-	
-	inline bool finished() const override {
-		return height_on > HEIGHT;
-	}
 	
 	};
 
 template <uint8_t height, bool reverse = false>
-class fill_bottle_blink : public blink_steps {
+class fill_bottle_blink : public blink_steps<uint16_t> {
 	static constexpr uint8_t HEIGHT{ height };
-	static constexpr bool REVERSE{ reverse };
+	static constexpr bool REVERSE{ reverse }; // should not be placed here. should be implemented as decorator pattern.
 	static constexpr uint8_t BULBS{ HEIGHT*2 - 1 };
 	static_assert(HEIGHT <= 8, "driver is not ready for more than 15 bits plus one status led.");
 	static_assert(HEIGHT > 0, "logic does not work with empty arch.");
@@ -98,7 +132,7 @@ class fill_bottle_blink : public blink_steps {
 	uint16_t current_state;
 	
 	inline uint16_t inverse_state() const {
-		return reverse_bits<uint16_t>(current_state,BULBS);
+		return mirrored_bits<uint16_t>(current_state,BULBS);
 	}
 	
 	public:
@@ -171,7 +205,7 @@ class shooting_star_blink : public blink_steps {
 	void display() const override {
 		uint16_t config = static_cast<uint16_t>((SELECT_BULBS & state) >> COUNT_PATCHES);
 		if (!REVERSE) return arch::pushLineVisible(config);
-		return arch::pushLineVisible(reverse_bits<uint16_t>(config,COUNT_BULBS));
+		return arch::pushLineVisible(mirrored_bits<uint16_t>(config,COUNT_BULBS));
 	}
 	
 	void reset() override { state = 1; insert_enabled = false; }
@@ -228,7 +262,7 @@ class toggle_run : public blink_steps{
 		for (uint8_t i = 0; i < BULBS; ++i){
 			bulb_config |= (uint16_t(1) << i) * (on >= i) * (off <= i);
 		}
-		if (REVERSE) bulb_config = reverse_bits<uint16_t>(bulb_config, BULBS);
+		if (REVERSE) bulb_config = mirrored_bits<uint16_t>(bulb_config, BULBS);
 		arch::pushLineVisible(bulb_config);
 	}
 	
@@ -284,7 +318,7 @@ class pendle : public blink_steps {
 		for (uint8_t i = 0; i < BULBS; ++i){
 			bulb_config |= (uint16_t(1) << i) * (((pos_on >= i) && (pos_off <= i)) || ((neg_on >= i) && (neg_off <= i)));
 		}
-		if (REVERSE) bulb_config = reverse_bits<uint16_t>(bulb_config, BULBS);
+		if (REVERSE) bulb_config = mirrored_bits<uint16_t>(bulb_config, BULBS);
 		arch::pushLineVisible(bulb_config);
 	}
 	
@@ -329,7 +363,7 @@ class linear_speed_increaser{
 			((current_speed > speed_limit) && (delta < 0))
 		){
 			steps.reset();
-			while(! steps.next()){
+			while(! steps.next_operator_bracket()){
 				hardware::delay(current_speed);
 			}
 			current_speed = current_speed + delta;
@@ -360,7 +394,7 @@ class exponential_speed_increaser{
 			((current_speed > speed_limit) && (factor_fixed_comma_at_8 < 0x100))
 		){
 			steps.reset();
-			while(!steps.next()){
+			while(!steps.next_operator_bracket()){
 				hardware::delay(current_speed);
 			}
 			hardware::delay(current_speed);
