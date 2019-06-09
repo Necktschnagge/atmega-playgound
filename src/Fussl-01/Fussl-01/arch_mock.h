@@ -228,12 +228,11 @@ class shooting_star_blink : public blink_steps<uint16_t, count_bulbs> { // is co
 };
 
 template<uint8_t count_bulbs, uint16_t pause, bool one_direction = false>
-class toggle_run : public blink_steps<uint16_t,count_bulbs>{
+class toggle_run : public blink_steps<uint16_t,count_bulbs>{ // is compliant with new design
 	static constexpr uint16_t PAUSE{ pause };
 	static_assert(COUNT_BULBS <= 16, "Too many bulbs for this implementation (bit_sequence type is uint16_t).");
 	static_assert(PAUSE + COUNT_BULBS< 0x8000, "Too large pause + bulbs. Use smaller pause.");
-	static_assert(PAUSE < 0x8000, "Too large pause. Use smaller pause.");
-	static_assert( 2*(COUNT_BULBS + PAUSE) < 0xFFFF,"Too large pause.");
+	static_assert(one_direction || (2*(PAUSE + COUNT_BULBS) < 0x8000), "For using both directions, pause must be smaller.")
 	
 	static constexpr uint16_t INITIAL_STATE{ 0 };
 	static constexpr uint8_t INITIAL_CURRENT_REPEATING{ 1 };
@@ -256,19 +255,16 @@ class toggle_run : public blink_steps<uint16_t,count_bulbs>{
 	uint8_t repeatings;
 	uint8_t current_repeating;
 	
-	void check_and_correct_repeatings(){
-		if (!repeatings) repeatings = 1;
-	}
+	inline void check_and_correct_repeatings(){ if ((repeatings == 0) || (repeatings & 0x80)) repeatings = 1;}
+	
+	inline bool going_backwards(){ return !one_direction && !(repeatings % 2); }
 	
 	public:
-	toggle_run(uint8_t repeatings) : state(0), repeatings(repeatings), current_repeating(1) {
-		check_and_correct_repeatings();
-	}
-	
+	toggle_run(int8_t repeatings) : state(0), repeatings(repeatings), current_repeating(1) { check_and_correct_repeatings(); }
 	
 	bit_sequence display() const override {
 		const bool IN_PHASE_1{ state < COUNT_BULBS };
-		const bool IN_PHASE_2{ (COUNT_BULBS <= state) && (state < COUNT_BULBS + PAUSE) };
+		// const bool IN_PHASE_2{ (COUNT_BULBS <= state) && (state < COUNT_BULBS + PAUSE) }; // unused
 		const bool IN_PHASE_3{ (COUNT_BULBS + PAUSE <= state) && (state < 2*COUNT_BULBS + PAUSE) };
 		const bool IN_PHASE_4{ (2*COUNT_BULBS + PAUSE < state) && (state < 2*(COUNT_BULBS + PAUSE)) };
 		
@@ -294,16 +290,27 @@ class toggle_run : public blink_steps<uint16_t,count_bulbs>{
 	bool finished() const override { return !current_repeating; }
 	
 	void operator++() override {
-		++state;
-		if (state >= 2*(COUNT_BULBS + PAUSE)) { // behind the last state
-			if (current_repeating == repeatings) current_repeating = 0; /* finished */ else ++current_repeating;
-			state = 0; // sub loop reset to beginning.
+/*		if (one_direction){
+			++state;
+			if (state >= 2*(COUNT_BULBS + PAUSE)) { // behind the last state
+				if (current_repeating == repeatings) current_repeating = 0; /* finished  else ++current_repeating;
+				state = INITIAL_STATE; // sub loop reset to beginning.
+			}
+			return;
 		}
+		*/ //can be deleted, it is just to keep this, if the implementation is not fine, we can look at this older implementation
+			
+		if (going_backwards()) --state; else ++state;
+		if (!(state % (2*(COUNT_BULBS + PAUSE)))){ // behind the last state or reached the first state
+			if (current_repeating == repeatings * (one_direction ? 1 : 2)) current_repeating = 0; /* finished */ else ++current_repeating;
+			if (!going_backwards()) state = INITIAL_STATE; // sub loop -> reset to beginning.
+		}
+		
 	}
 	
-	void reset() override {   state = 0; current_repeating = 1;   }
+	void reset() override { state = INITIAL_STATE; current_repeating = INITIAL_CURRENT_REPEATING; }
 	
-	inline void set_repeatings(uint8_t repeatings){ this->repeatings = repeatings; }
+	inline void set_repeatings(uint8_t repeatings){ this->repeatings = repeatings; check_and_correct_repeatings(); }
 	
 };
 
