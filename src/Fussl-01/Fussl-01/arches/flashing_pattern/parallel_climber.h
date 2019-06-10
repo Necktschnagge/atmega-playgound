@@ -5,10 +5,10 @@
  *  Author: Maximilian Starke
  */ 
 
-#include "flashing_pattern.h"
-
 #ifndef PARALLEL_CLIMBER_H_
 #define PARALLEL_CLIMBER_H_
+
+#include "flashing_pattern.h"
 
 namespace fsl {
 	namespace arc {
@@ -43,7 +43,6 @@ namespace fsl {
 			
 			void reset() override { height_on = INITIAL_STATE; }
 		};
-
 	}
 }
 

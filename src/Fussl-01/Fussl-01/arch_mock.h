@@ -15,52 +15,10 @@
 #include "f_ledline.h"
 #include "arches/flashing_pattern/flashing_pattern.h"
 #include "arches/flashing_pattern/parallel_climber.h"
+#include "arches/flashing_pattern/mirror.h"
+
 using namespace fsl::arc;
 
-/**
- * \brief Changes the order of the first count_bit bits of given integer value. Returned value will start with the last bit of the original and end with the first bit of the original value. E.g. 001101 will be converted to 101100
- * 
- * \param value
- * \param count_bits
- * 
- * \return T
- */
-template<typename T>
-T mirrored_bits(T value, uint8_t count_bits){
-	T result{ 0 };
-	constexpr T ONE{ 1 };
-	for (uint8_t pos = 0; pos < count_bits; ++pos)
-		result |= static_cast<bool>(value & (ONE << pos)) * (ONE << (count_bits - 1 - pos));
-	return result;
-}
-
-
-template <typename bit_sequence, bit_sequence count_bulbs>
-class mirrored_decorator : public flashing_pattern<bit_sequence, count_bulbs> {
-	
-	flashing_pattern<bit_sequence, count_bulbs>& component;
-	
-	public:
-	
-	mirrored_decorator(flashing_pattern<bit_sequence, count_bulbs>& component) : component(component){}
-	
-	bit_sequence display() const override { return mirrored_bits(component.display(), count_bulbs); }
-	
-	bool finished() const override { return component.finished(); }
-	
-	void operator++() override { return ++component; }
-	
-	void reset() override { return component.reset(); }
-};
-
-// mirror via inheritance: ## check if this is working
-template <class blink_steps_component>
-class mirrored : public blink_steps_component {
-	public:
-	using blink_steps_component::blink_steps_component;
-	
-	typename blink_steps_component::BitSequence display() const override { return mirrored_bits(blink_steps_component::display(), blink_steps_component::COUNT_BULBS); }
-};
 
 
 template <uint8_t count_bulbs>
