@@ -14,7 +14,7 @@
 #include "f_arch.h"
 #include "f_ledline.h"
 #include "arches/flashing_pattern/flashing_pattern.h"
-
+#include "arches/flashing_pattern/parallel_climber.h"
 using namespace fsl::arc;
 
 /**
