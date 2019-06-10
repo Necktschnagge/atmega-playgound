@@ -205,6 +205,9 @@
     <Compile Include="arches\flashing_pattern\flashing_pattern.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="arches\flashing_pattern\mirror.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="arches\flashing_pattern\parallel_climber.h">
       <SubType>compile</SubType>
     </Compile>
