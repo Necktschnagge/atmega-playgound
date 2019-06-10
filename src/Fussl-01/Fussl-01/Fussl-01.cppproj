@@ -202,6 +202,12 @@
     </PreBuildEvent>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="arches\flashing_pattern\flashing_pattern.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="arches\flashing_pattern\parallel_climber.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="arch_mock.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -409,6 +415,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="arches" />
+    <Folder Include="arches\flashing_pattern" />
     <Folder Include="old_or_deprecated" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
