@@ -14,8 +14,11 @@ namespace fsl {
 	namespace arc {
 		
 		/** Describes a flashing pattern where at time t all bulbs up to height t are one. */
+		template <typename bit_sequence, uint8_t count_bulbs>
+		class parallel_climber;
+		
 		template <uint8_t count_bulbs>
-		class parallel_climber : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with the new design
+		class parallel_climber<uint16_t,count_bulbs> : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with the new design
 			static_assert(parallel_climber::COUNT_BULBS <= 16, "parallel blink up is not ready for more than 16 bits.");
 			static constexpr uint8_t INITIAL_STATE{ 0 };
 			
