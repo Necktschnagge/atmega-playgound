@@ -15,9 +15,6 @@
 #include "f_ledline.h"
 
 
-//## todos here: the base class blink_steps got a changed design, all inheriting classes and using components need to be adopted.
-// then, put classes into the arches directory snd split it where suitable.
-
 /**
  * \brief Changes the order of the first count_bit bits of given integer value. Returned value will start with the last bit of the original and end with the first bit of the original value. E.g. 001101 will be converted to 101100
  * 
@@ -36,50 +33,14 @@ T mirrored_bits(T value, uint8_t count_bits){
 }
 
 
-// the first / initial step should always be the one where all lights are off, if such state exists.
 template <typename bit_sequence, bit_sequence count_bulbs>
-class blink_steps {
-	public:
+class mirrored_decorator : public flashing_pattern<bit_sequence> {
 	
-	static constexpr bit_sequence COUNT_BULBS{ count_bulbs };
-	
-	static constexpr bit_sequence HEIGHT{ (COUNT_BULBS+1)/2 }; // actually works for even AND odd numbers of bulbs!!!
-	
-	/** push current state again to the bulbs */
-	virtual bit_sequence display() const = 0; //## return the bit-sequence instead of already pushing it.
-	
-	/** return true if and only if the final state, i.e. the successor of the last state which is pushed to arch is reached */
-	virtual bool finished() const = 0;
-	
-	/** push the current state to arch and change state to successor state afterwards */
-	// virtual void operator()() = 0; // should not be used anymore , deprecated
-	
-	/** Changes the state to the successor state */
-	virtual void operator++() = 0;
-	
-	/** reset state to the initial state */
-	virtual void reset() = 0;
-	
-	static_assert(COUNT_BULBS > 0, "An arch must have at least one bulb.");
-	static_assert(COUNT_BULBS + 1 > 0, "Due to arithmetic reasons (definition of HEIGHT) cound_bulbs must have an ordinary successor.");
-	
-	/** perform one arch push update and immediately switch state, return true if and only if final state was reached */
-	inline bool next_operator_bracket(){ //## diese funktion auslagern und dann das display ergebnis an pushLineVisible weitergeben.
-		if (finished()) return true;
-		display(); // display current state
-		operator++(); // calculate next state
-		return finished();
-		}
-	};
-
-template <typename bit_sequence, bit_sequence count_bulbs>
-class mirrored_decorator : public blink_steps<bit_sequence> {
-	
-	blink_steps<bit_sequence>& component;
+	flashing_pattern<bit_sequence>& component;
 	
 	public:
 	
-	mirrored_steps(blink_steps<bit_sequence>& component) : component(component){}
+	mirrored_steps(flashing_pattern<bit_sequence>& component) : component(component){}
 	
 	bit_sequence display() const override { return mirrored_bits(component.display(), count_bulbs); }
 	
@@ -100,7 +61,7 @@ class mirrored : public blink_steps_component {
 };
 
 template <uint8_t count_bulbs>
-class parallel_blink_up : public blink_steps<uint16_t, count_bulbs> { // is compliant with the new design
+class parallel_blink_up : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with the new design
 	static_assert(COUNT_BULBS <= 16, "parallel blink up is not ready for more than 16 bits.");
 	static constexpr uint8_t INITIAL_STATE{ 0 };
 	
@@ -127,7 +88,7 @@ class parallel_blink_up : public blink_steps<uint16_t, count_bulbs> { // is comp
 };
 
 template <uint8_t COUNT_BULBS>
-class fill_bottle_blink : public blink_steps<uint16_t, COUNT_BULBS> { // is compliant with new design
+class fill_bottle_blink : public flashing_pattern<uint16_t, COUNT_BULBS> { // is compliant with new design
 	static constexpr uint16_t FINISHED_STATE{ 0xFFFF };
 	static constexpr uint16_t INITIAL_STATE{ 0 };
 	static_assert(COUNT_BULBS <= 16, "fill bottle is not ready for more than 16 bits.");
@@ -163,13 +124,13 @@ class fill_bottle_blink : public blink_steps<uint16_t, COUNT_BULBS> { // is comp
 		// move the current 1 one bit upwards:
 		current_state = (current_state | (1<<(position+1))) /* add the higher bit*/ & /*remove the lower bit*/ ~(1 <<position);
 	}
-	void reset() override {current_state = INITIAL_STATE; }
 	
-	};
+	void reset() override {current_state = INITIAL_STATE; }
+};
 
 
 template <uint8_t count_bulbs, uint8_t count_patches>
-class shooting_star_blink : public blink_steps<uint16_t, count_bulbs> { // is compliant with new design
+class shooting_star_blink : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with new design
 	static constexpr uint8_t COUNT_PATCHES{ count_patches };
 	static_assert(COUNT_PATCHES >= 1, "There must be at least one patch bit.");
 	static constexpr uint8_t COUNT_USED_BITS{ COUNT_PATCHES + COUNT_BULBS };
@@ -228,7 +189,7 @@ class shooting_star_blink : public blink_steps<uint16_t, count_bulbs> { // is co
 };
 
 template<uint8_t count_bulbs, uint16_t pause, bool one_direction = false>
-class toggle_run : public blink_steps<uint16_t,count_bulbs>{ // is compliant with new design
+class toggle_run : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with new design
 	static constexpr uint16_t PAUSE{ pause };
 	static_assert(COUNT_BULBS <= 16, "Too many bulbs for this implementation (bit_sequence type is uint16_t).");
 	static_assert(PAUSE + COUNT_BULBS< 0x8000, "Too large pause + bulbs. Use smaller pause.");
@@ -257,6 +218,7 @@ class toggle_run : public blink_steps<uint16_t,count_bulbs>{ // is compliant wit
 	
 	inline void check_and_correct_repeatings(){ if ((repeatings == 0) || (repeatings & 0x80)) repeatings = 1;}
 	
+	/** if not one_direction, we run for 2*repeatings and every even repeating runs "mirrored", which is implemented as running the steps backwards. */
 	inline bool going_backwards(){ return !one_direction && !(repeatings % 2); }
 	
 	public:
@@ -305,70 +267,16 @@ class toggle_run : public blink_steps<uint16_t,count_bulbs>{ // is compliant wit
 			if (current_repeating == repeatings * (one_direction ? 1 : 2)) current_repeating = 0; /* finished */ else ++current_repeating;
 			if (!going_backwards()) state = INITIAL_STATE; // sub loop -> reset to beginning.
 		}
-		
 	}
 	
 	void reset() override { state = INITIAL_STATE; current_repeating = INITIAL_CURRENT_REPEATING; }
 	
 	inline void set_repeatings(uint8_t repeatings){ this->repeatings = repeatings; check_and_correct_repeatings(); }
 	
-};
-
-//### refactor reverse should not be part of this classes, should be passed to the speed increaser.
-// and the display() funciton should only return the bulb config, 
-// then operator() should be final and only implemented in abstract class. calling first display() and then operator++ and then return the result of display.
-// the incremnention content of operator () should be moved into operator ++.
-
-template<uint8_t bulbs, uint16_t pause, bool reverse>
-class pendle : public blink_steps {
-	static constexpr uint8_t BULBS{ bulbs };
-	static constexpr uint16_t PAUSE{ pause };
-	static constexpr bool REVERSE{ reverse };
-	static constexpr uint16_t BAP{ PAUSE + BULBS };
-	
-	static constexpr uint16_t LAST_STATE{ 4*BAP };
-	
-	static_assert(BULBS <= 16, "Too many bulbs.");
-	static_assert(2*BAP < 0x8000, "Too large pause + bulbs. Use smaller pause.");
-	static_assert(2*PAUSE < 0x8000, "Too large pause. Use smaller pause.");
-	
-	uint16_t state;
-	uint8_t repeatings;
-	uint8_t current_repeating;
-	
-	public:
-	pendle(uint8_t repeatings) : state(0), repeatings(repeatings), current_repeating(1) {}
-	
-	void display() const override {
-		const uint8_t pos_on{ state > BULBS ? BULBS : static_cast<uint8_t>(state) };
-		const uint8_t pos_off{ state > BAP + BULBS ? BULBS : (state > BAP ? static_cast<uint8_t>(state - BAP) : static_cast<uint8_t>(0)) };
-		const uint8_t neg_on{ state > BAP*2 + BULBS ? BULBS : (state > BAP*2 ? static_cast<uint8_t>(state - BAP*2) : static_cast<uint8_t>(0)) };
-		const uint8_t neg_off{ state > BAP*3 + BULBS ? BULBS : (state > BAP*3 ? static_cast<uint8_t>(state - BAP*3) : static_cast<uint8_t>(0)) };
-		uint16_t bulb_config{ 0 };
-		for (uint8_t i = 0; i < BULBS; ++i){
-			bulb_config |= (uint16_t(1) << i) * (((pos_on >= i) && (pos_off <= i)) || ((neg_on >= i) && (neg_off <= i)));
-		}
-		if (REVERSE) bulb_config = mirrored_bits<uint16_t>(bulb_config, BULBS);
-		arch::pushLineVisible(bulb_config);
-	}
-	
-	void reset() override {   state = 0; current_repeating = 1;   }
-	
-	void operator()() override {
-		display();
-		++state;
-		static_assert( BAP*4 < 0xFFFF,"Too large pause.");
-		if (state > LAST_STATE) {
-			if (current_repeating == repeatings) current_repeating = 0; /* finished */ else ++current_repeating;
-			state = 0; // sub loop reset to beginning.
-		}
-	}
-	
-	inline void set_repeatings(uint8_t repeatings){   this->repeatings = repeatings;   }
-	
-	bool finished() const override {   return !current_repeating;   }
+	inline uint8_t get_repeatings() const { return repeatings; }
 	
 };
+
 
 class linear_speed_increaser{
 	int16_t start_speed;
@@ -385,7 +293,7 @@ class linear_speed_increaser{
 		this->delta = delta;
 	}
 	
-	void operator()(blink_steps& steps){
+	void operator()(flashing_pattern& steps){
 		int16_t current_speed{ start_speed };
 		while(
 			((current_speed < speed_limit) && (delta > 0))
@@ -416,7 +324,7 @@ class exponential_speed_increaser{
 		this->factor_fixed_comma_at_8 = factor_times_2_up_8;
 	}
 	
-	void operator()(blink_steps& steps){
+	void operator()(flashing_pattern& steps){
 		int16_t current_speed{ start_speed };
 		while (
 			((current_speed < speed_limit) && (factor_fixed_comma_at_8 > 0x100))
@@ -458,7 +366,7 @@ public:
 		#endif
 	}
 	
-	inline void hold(const blink_steps& steps){
+	inline void hold(const flashing_pattern& steps){
 		steps.display();
 		hardware::delay(1000);
 	}
