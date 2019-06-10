@@ -35,6 +35,7 @@ LINKER_SCRIPT_DEP:=
 SUBDIRS :=  \
 ../arches \
 ../arches/flashing_pattern \
+../arches/speed_manager \
 ../old_or_deprecated
 
 
