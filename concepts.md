@@ -31,3 +31,5 @@
       * matrix_keyboard
    * util (utilities)
       * byte_swap
+   * arc (arches)
+      * flashing_pattern, etc.
