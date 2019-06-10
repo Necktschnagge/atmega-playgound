@@ -23,6 +23,8 @@ namespace fsl {
 		class flashing_pattern {
 			public:
 			
+			using BitSequence = bit_sequence;
+			
 			/** the number of bulbs in the arc */
 			static constexpr bit_sequence COUNT_BULBS{ count_bulbs };
 			

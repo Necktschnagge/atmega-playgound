@@ -366,7 +366,7 @@ void test_cmr(){
 }
 
 int main(void){
-	arch_mock mock;
+	//arch_mock mock;
 
 	led::init(8);
 	//guiBootScreen();
@@ -386,7 +386,7 @@ int main(void){
 		hardware::delay(1500);
 	}
 	*/
-	mock();
+	//mock();
 	
 	led::LFPrintString("MAIN-ERR");
 	while (1) {}

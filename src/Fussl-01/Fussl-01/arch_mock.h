@@ -13,7 +13,9 @@
 
 #include "f_arch.h"
 #include "f_ledline.h"
+#include "arches/flashing_pattern/flashing_pattern.h"
 
+using namespace fsl::arc;
 
 /**
  * \brief Changes the order of the first count_bit bits of given integer value. Returned value will start with the last bit of the original and end with the first bit of the original value. E.g. 001101 will be converted to 101100
@@ -34,13 +36,13 @@ T mirrored_bits(T value, uint8_t count_bits){
 
 
 template <typename bit_sequence, bit_sequence count_bulbs>
-class mirrored_decorator : public flashing_pattern<bit_sequence> {
+class mirrored_decorator : public flashing_pattern<bit_sequence, count_bulbs> {
 	
-	flashing_pattern<bit_sequence>& component;
+	flashing_pattern<bit_sequence, count_bulbs>& component;
 	
 	public:
 	
-	mirrored_steps(flashing_pattern<bit_sequence>& component) : component(component){}
+	mirrored_decorator(flashing_pattern<bit_sequence, count_bulbs>& component) : component(component){}
 	
 	bit_sequence display() const override { return mirrored_bits(component.display(), count_bulbs); }
 	
@@ -57,55 +59,30 @@ class mirrored : public blink_steps_component {
 	public:
 	using blink_steps_component::blink_steps_component;
 	
-	bit_sequence display() const override { return mirrored_bits(component.display(), count_bulbs); }
+	typename blink_steps_component::BitSequence display() const override { return mirrored_bits(blink_steps_component::display(), blink_steps_component::COUNT_BULBS); }
 };
+
 
 template <uint8_t count_bulbs>
-class parallel_blink_up : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with the new design
-	static_assert(COUNT_BULBS <= 16, "parallel blink up is not ready for more than 16 bits.");
-	static constexpr uint8_t INITIAL_STATE{ 0 };
-	
-	/** height up to which the bulbs are on */
-	uint8_t height_on;
-	
-	public:
-	parallel_blink_up() : height_on(INITIAL_STATE) {}
-	
-	uint16_t display() const override {
-		constexpr uint16_t ALL_ON{ (1<<(COUNT_BULBS)) - 1 };
-		const uint16_t diff_off{ (1u<<(COUNT_BULBS - height_on)) - 1 };
-		const uint16_t upper_side_on{ (ALL_ON & ~diff_off) };
-		const uint16_t lower_side_on{ (1u<<height_on) - 1 };
-		const uint16_t bulbs{ upper_side_on | lower_side_on };
-		return bulbs;
-	}
-	
-	inline bool finished() const override { return height_on > HEIGHT; }
-	
-	virtual void operator++() override{ if(!finished()) ++height_on; }
-	
-	void reset() override { height_on = INITIAL_STATE; }
-};
-
-template <uint8_t COUNT_BULBS>
-class fill_bottle_blink : public flashing_pattern<uint16_t, COUNT_BULBS> { // is compliant with new design
+class fill_bottle_blink : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with new design
 	static constexpr uint16_t FINISHED_STATE{ 0xFFFF };
 	static constexpr uint16_t INITIAL_STATE{ 0 };
-	static_assert(COUNT_BULBS <= 16, "fill bottle is not ready for more than 16 bits.");
+	static_assert(fill_bottle_blink::COUNT_BULBS <= 16, "fill bottle is not ready for more than 16 bits.");
+	using super = flashing_pattern<uint16_t, count_bulbs>;
 	
 	uint16_t current_state;
 	
 	public:
 	fill_bottle_blink() : current_state(INITIAL_STATE) {}
 	
-	bit_sequence display() const override { return current_state & /* only bits of interest */ ((1<<COUNT_BULBS) - 1); }
+	typename super::BitSequence display() const override { return current_state & /* only bits of interest */ ((1<<fill_bottle_blink::COUNT_BULBS) - 1); }
 	
 	bool finished() const override { return current_state == FINISHED_STATE; }
 	
 	void operator++() override {
-		uint8_t position = COUNT_BULBS - 1; //start at highest bit.
+		uint8_t position = fill_bottle_blink::COUNT_BULBS - 1; //start at highest bit.
 		// search for first "0":
-		for(; current_state & (1 << position); --position;) /* at position there is a 1 */ {
+		for(; current_state & (1 << position); --position) /* at position there is a 1 */ {
 			if (!position) { // There is no "0" at all.
 				current_state = FINISHED_STATE;
 				return;
@@ -133,10 +110,10 @@ template <uint8_t count_bulbs, uint8_t count_patches>
 class shooting_star_blink : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with new design
 	static constexpr uint8_t COUNT_PATCHES{ count_patches };
 	static_assert(COUNT_PATCHES >= 1, "There must be at least one patch bit.");
-	static constexpr uint8_t COUNT_USED_BITS{ COUNT_PATCHES + COUNT_BULBS };
+	static constexpr uint8_t COUNT_USED_BITS{ COUNT_PATCHES + shooting_star_blink::COUNT_BULBS };
 	static_assert(COUNT_USED_BITS <= 64, "Not enough RAM space allocated in this implementation.");
 	static constexpr uint64_t PATTERN_SELECT_USED_BITS{ (1ull<<COUNT_USED_BITS) - 1 };
-	static_assert((1ull << 64) - 1 == 0xFFFFFFFFFFFFFFFF, "Arithmetic error: PATTERN_SELECT_USED_BITS has bad behavior.");
+	static_assert(((1ull << 32) << 32) - 1 == 0xFFFFFFFFFFFFFFFF, "Arithmetic error: PATTERN_SELECT_USED_BITS has bad behavior.");
 	// oder version: why was it 32 32 and not once 64?: static_assert( ((1ull<<32)<<32) - 1 == 0xFFFFFFFFFFFFFFFF, "ALL_USED_BITS_HIGH is not correct if this evaluates false.");
 	static constexpr uint64_t PATTERN_SELECT_PATCHES{ (1 << COUNT_PATCHES) + 1 };
 	static constexpr uint64_t PATTERN_SELECT_BULBS{ PATTERN_SELECT_USED_BITS - PATTERN_SELECT_PATCHES };
@@ -190,10 +167,11 @@ class shooting_star_blink : public flashing_pattern<uint16_t, count_bulbs> { // 
 
 template<uint8_t count_bulbs, uint16_t pause, bool one_direction = false>
 class toggle_run : public flashing_pattern<uint16_t, count_bulbs> { // is compliant with new design
+	using super = flashing_pattern<uint16_t, count_bulbs>;
 	static constexpr uint16_t PAUSE{ pause };
-	static_assert(COUNT_BULBS <= 16, "Too many bulbs for this implementation (bit_sequence type is uint16_t).");
-	static_assert(PAUSE + COUNT_BULBS< 0x8000, "Too large pause + bulbs. Use smaller pause.");
-	static_assert(one_direction || (2*(PAUSE + COUNT_BULBS) < 0x8000), "For using both directions, pause must be smaller.")
+	static_assert(toggle_run::COUNT_BULBS <= 16, "Too many bulbs for this implementation (bit_sequence type is uint16_t).");
+	static_assert(PAUSE + toggle_run::COUNT_BULBS< 0x8000, "Too large pause + bulbs. Use smaller pause.");
+	static_assert(one_direction || (2*(PAUSE + toggle_run::COUNT_BULBS) < 0x8000), "For using both directions, pause must be smaller.");
 	
 	static constexpr uint16_t INITIAL_STATE{ 0 };
 	static constexpr uint8_t INITIAL_CURRENT_REPEATING{ 1 };
@@ -224,26 +202,26 @@ class toggle_run : public flashing_pattern<uint16_t, count_bulbs> { // is compli
 	public:
 	toggle_run(int8_t repeatings) : state(0), repeatings(repeatings), current_repeating(1) { check_and_correct_repeatings(); }
 	
-	bit_sequence display() const override {
-		const bool IN_PHASE_1{ state < COUNT_BULBS };
+	typename flashing_pattern<uint16_t, count_bulbs>::BitSequence display() const override {
+		const bool IN_PHASE_1{ state < toggle_run::COUNT_BULBS };
 		// const bool IN_PHASE_2{ (COUNT_BULBS <= state) && (state < COUNT_BULBS + PAUSE) }; // unused
-		const bool IN_PHASE_3{ (COUNT_BULBS + PAUSE <= state) && (state < 2*COUNT_BULBS + PAUSE) };
-		const bool IN_PHASE_4{ (2*COUNT_BULBS + PAUSE < state) && (state < 2*(COUNT_BULBS + PAUSE)) };
+		const bool IN_PHASE_3{ (toggle_run::COUNT_BULBS + PAUSE <= state) && (state < 2*toggle_run::COUNT_BULBS + PAUSE) };
+		const bool IN_PHASE_4{ (2*toggle_run::COUNT_BULBS + PAUSE < state) && (state < 2*(toggle_run::COUNT_BULBS + PAUSE)) };
 		
 		// how many already got switched on (counted, even if they got switch off again afterwards):
 		const uint8_t on{
 			IN_PHASE_1 ? static_cast<uint8_t>(state) // in phase 1: as many as already turned on in this phase
-			: COUNT_BULBS // after phase 1 all were switched on
+			: toggle_run::COUNT_BULBS // after phase 1 all were switched on
 		};
 		// how many already got switched off (of course, some time after they got switched on):
 		const uint8_t off{
-			IN_PHASE_4 ? COUNT_BULBS // in phase 4 all were already switched off
-			: IN_PHASE_3 ? static_cast<uint8_t>(state - (PAUSE + COUNT_BULBS)) // in phase 3: as many as already turned off in this phase
+			IN_PHASE_4 ? toggle_run::COUNT_BULBS // in phase 4 all were already switched off
+			: IN_PHASE_3 ? static_cast<uint8_t>(state - (PAUSE + toggle_run::COUNT_BULBS)) // in phase 3: as many as already turned off in this phase
 			: 0 // otherwise, i.e. in phase 1 or 2 no bulb has ever been switched off.
 		};
 		
 		uint16_t bulb_config{ 0 };
-		for (uint8_t i = 0; i < COUNT_BULBS; ++i){
+		for (uint8_t i = 0; i < toggle_run::COUNT_BULBS; ++i){
 			bulb_config |= (uint16_t(1) << i) * (i < on) * (i >= off); // set a bit "1" if enough bulbs were turned on, and not enough were turned off
 		}
 		return bulb_config;
@@ -255,7 +233,7 @@ class toggle_run : public flashing_pattern<uint16_t, count_bulbs> { // is compli
 /*		if (one_direction){
 			++state;
 			if (state >= 2*(COUNT_BULBS + PAUSE)) { // behind the last state
-				if (current_repeating == repeatings) current_repeating = 0; /* finished  else ++current_repeating;
+				if (current_repeating == repeatings) current_repeating = 0; // finished  else ++current_repeating;
 				state = INITIAL_STATE; // sub loop reset to beginning.
 			}
 			return;
@@ -263,7 +241,7 @@ class toggle_run : public flashing_pattern<uint16_t, count_bulbs> { // is compli
 		*/ //can be deleted, it is just to keep this, if the implementation is not fine, we can look at this older implementation
 			
 		if (going_backwards()) --state; else ++state;
-		if (!(state % (2*(COUNT_BULBS + PAUSE)))){ // behind the last state or reached the first state
+		if (!(state % (2*(toggle_run::COUNT_BULBS + PAUSE)))){ // behind the last state or reached the first state
 			if (current_repeating == repeatings * (one_direction ? 1 : 2)) current_repeating = 0; /* finished */ else ++current_repeating;
 			if (!going_backwards()) state = INITIAL_STATE; // sub loop -> reset to beginning.
 		}
@@ -277,7 +255,7 @@ class toggle_run : public flashing_pattern<uint16_t, count_bulbs> { // is compli
 	
 };
 
-
+/*
 class linear_speed_increaser{
 	int16_t start_speed;
 	int16_t speed_limit;
@@ -308,7 +286,9 @@ class linear_speed_increaser{
 		}
 	}
 };
+*/
 
+/*
 class exponential_speed_increaser{
 	int16_t start_speed;
 	int16_t speed_limit;
@@ -341,7 +321,9 @@ class exponential_speed_increaser{
 	}
 	
 };
+*/
 
+/*
 class arch_mock
 {
 //functions
@@ -371,9 +353,9 @@ public:
 		hardware::delay(1000);
 	}
 	
-	inline void operator()() const /* no-return */ {
+	inline void operator()() const  { // no return
 		//linear_speed_increaser speed{ linear_speed_increaser(2000,400,-200) };
-		parallel_blink_up<HEIGHT> parallel{};
+		parallel_climber<HEIGHT> parallel{};
 		fill_bottle_blink<HEIGHT, false> positive_bottle{};
 		fill_bottle_blink<HEIGHT, true> negative_bottle{};
 		shooting_star_blink<9,9,false> positive_shot{};
@@ -385,7 +367,7 @@ public:
 		exponential_speed_increaser slow_exp_speed{ exponential_speed_increaser(1500,200, 0x100 * 7/10) };
 		exponential_speed_increaser fast_exp_speed{ exponential_speed_increaser(333,80, 0x100 *4/5) };
 		while(true){
-			/*begin of loop marker */
+			//begin of loop marker
 			for (uint8_t i = 0; i < 5; ++i){
 			arch::pushLineVisible(0b101010101);
 			hardware::delay(500);
@@ -417,7 +399,7 @@ public:
 			fast_exp_speed(negative_toggler);
 			display_number(11);
 			
-			/* end of loop marker */
+			// end of loop marker
 			arch::pushLineVisible(0);
 			hardware::delay(3000);
 		}
@@ -426,5 +408,5 @@ public:
 
 
 }; //arch_mock
-
+*/
 #endif //__ARCH_MOCK_H__
