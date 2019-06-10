@@ -211,6 +211,9 @@
     <Compile Include="arches\flashing_pattern\parallel_climber.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="arches\flashing_pattern\traffic_jam.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="arch_mock.cpp">
       <SubType>compile</SubType>
     </Compile>
