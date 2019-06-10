@@ -29,7 +29,7 @@ namespace fsl {
 			/** the height of the middle one [or two] bulb[s], that is considered the height of the arches */
 			static constexpr bit_sequence HEIGHT{ (COUNT_BULBS+1)/2 };
 			
-			/** Returns the bulbs' bit sequence of the current state. If in final state it should display ### */
+			/** Returns the bulbs' bit sequence of the current state. If in final state the returned bit_sequence may undefined. */
 			virtual bit_sequence display() const = 0;
 			
 			/** return true if and only if the final state is reached, i.e. the successor of the last state which should be displayed */
