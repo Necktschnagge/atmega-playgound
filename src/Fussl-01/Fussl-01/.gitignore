@@ -1,0 +1,6 @@
+# debug directory
+[Dd]ebug/
+Debug/
+Release/
+[Rr]elease/
+*Makefile

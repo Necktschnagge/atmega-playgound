@@ -1,0 +1,408 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="14.0">
+  <PropertyGroup>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectVersion>7.0</ProjectVersion>
+    <ToolchainName>com.Atmel.AVRGCC8.CPP</ToolchainName>
+    <ProjectGuid>dce6c7e3-ee26-4d79-826b-08594b9ad897</ProjectGuid>
+    <avrdevice>ATmega128</avrdevice>
+    <avrdeviceseries>none</avrdeviceseries>
+    <OutputType>Executable</OutputType>
+    <Language>CPP</Language>
+    <OutputFileName>$(MSBuildProjectName)</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
+    <AssemblyName>Fussl-01</AssemblyName>
+    <Name>Fussl-01</Name>
+    <RootNamespace>Fussl-01</RootNamespace>
+    <ToolchainFlavour>Native</ToolchainFlavour>
+    <KeepTimersRunning>true</KeepTimersRunning>
+    <OverrideVtor>false</OverrideVtor>
+    <CacheFlash>true</CacheFlash>
+    <ProgFlashFromRam>true</ProgFlashFromRam>
+    <RamSnippetAddress>0x20000000</RamSnippetAddress>
+    <UncachedRange />
+    <preserveEEPROM>true</preserveEEPROM>
+    <OverrideVtorValue>exception_table</OverrideVtorValue>
+    <BootSegment>2</BootSegment>
+    <eraseonlaunchrule>0</eraseonlaunchrule>
+    <AsfFrameworkConfig>
+      <framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.34.1" />
+        </dependencies>
+      </framework-data>
+    </AsfFrameworkConfig>
+    <avrtool>com.atmel.avrdbg.tool.stk500</avrtool>
+    <avrtoolserialnumber />
+    <avrdeviceexpectedsignature>0x1E9702</avrdeviceexpectedsignature>
+    <com_atmel_avrdbg_tool_simulator>
+      <ToolOptions>
+        <InterfaceProperties>
+        </InterfaceProperties>
+        <InterfaceName>
+        </InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.simulator</ToolType>
+      <ToolNumber>
+      </ToolNumber>
+      <ToolName>Simulator</ToolName>
+    </com_atmel_avrdbg_tool_simulator>
+    <avrtoolinterface>ISP</avrtoolinterface>
+    <custom>
+      <ToolOptions xmlns="">
+        <InterfaceProperties>
+        </InterfaceProperties>
+        <InterfaceName>
+        </InterfaceName>
+      </ToolOptions>
+      <ToolType xmlns="">custom</ToolType>
+      <ToolNumber xmlns="">
+      </ToolNumber>
+      <ToolName xmlns="">Custom Programming Tool</ToolName>
+    </custom>
+    <com_atmel_avrdbg_tool_stk500>
+      <ToolOptions>
+        <InterfaceProperties>
+          <IspClock>125000</IspClock>
+        </InterfaceProperties>
+        <InterfaceName>ISP</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.stk500</ToolType>
+      <ToolNumber>
+      </ToolNumber>
+      <ToolName>STK500</ToolName>
+    </com_atmel_avrdbg_tool_stk500>
+    <avrtoolinterfaceclock>125000</avrtoolinterfaceclock>
+    <ResetRule>0</ResetRule>
+    <EraseKey />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <ToolchainSettings>
+      <AvrGccCpp>
+        <avrgcc.common.Device>-mmcu=atmega128 -B "%24(PackRepoDir)\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128"</avrgcc.common.Device>
+        <avrgcc.common.optimization.RelaxBranches>True</avrgcc.common.optimization.RelaxBranches>
+        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+        <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
+        <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
+        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <avrgcc.compiler.symbols.DefSymbols>
+          <ListValues>
+            <Value>NDEBUG</Value>
+          </ListValues>
+        </avrgcc.compiler.symbols.DefSymbols>
+        <avrgcc.compiler.directories.IncludePaths>
+          <ListValues>
+            <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.2.209\include</Value>
+          </ListValues>
+        </avrgcc.compiler.directories.IncludePaths>
+        <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
+        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+        <avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <avrgcccpp.compiler.symbols.DefSymbols>
+          <ListValues>
+            <Value>NDEBUG</Value>
+          </ListValues>
+        </avrgcccpp.compiler.symbols.DefSymbols>
+        <avrgcccpp.compiler.directories.IncludePaths>
+          <ListValues>
+            <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.2.209\include</Value>
+          </ListValues>
+        </avrgcccpp.compiler.directories.IncludePaths>
+        <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
+        <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
+        <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
+        <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
+        <avrgcccpp.compiler.warnings.Pedantic>True</avrgcccpp.compiler.warnings.Pedantic>
+        <avrgcccpp.compiler.miscellaneous.OtherFlags>-std=c++17</avrgcccpp.compiler.miscellaneous.OtherFlags>
+        <avrgcccpp.linker.libraries.Libraries>
+          <ListValues>
+            <Value>libm</Value>
+          </ListValues>
+        </avrgcccpp.linker.libraries.Libraries>
+        <avrgcccpp.assembler.general.IncludePaths>
+          <ListValues>
+            <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.2.209\include</Value>
+          </ListValues>
+        </avrgcccpp.assembler.general.IncludePaths>
+      </AvrGccCpp>
+    </ToolchainSettings>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <ToolchainSettings>
+      <AvrGccCpp>
+  <avrgcc.common.Device>-mmcu=atmega128 -B "%24(PackRepoDir)\Atmel\ATmega_DFP\1.2.209\gcc\dev\atmega128"</avrgcc.common.Device>
+  <avrgcc.common.optimization.RelaxBranches>True</avrgcc.common.optimization.RelaxBranches>
+  <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+  <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+  <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+  <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
+  <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
+  <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+  <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+  <avrgcc.compiler.symbols.DefSymbols>
+    <ListValues>
+      <Value>DEBUG</Value>
+    </ListValues>
+  </avrgcc.compiler.symbols.DefSymbols>
+  <avrgcc.compiler.directories.IncludePaths>
+    <ListValues>
+      <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.2.209\include</Value>
+    </ListValues>
+  </avrgcc.compiler.directories.IncludePaths>
+  <avrgcc.compiler.optimization.level>Optimize (-O1)</avrgcc.compiler.optimization.level>
+  <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+  <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+  <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
+  <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+  <avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>
+  <avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>
+  <avrgcccpp.compiler.symbols.DefSymbols>
+    <ListValues>
+      <Value>DEBUG</Value>
+    </ListValues>
+  </avrgcccpp.compiler.symbols.DefSymbols>
+  <avrgcccpp.compiler.directories.IncludePaths>
+    <ListValues>
+      <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.2.209\include</Value>
+    </ListValues>
+  </avrgcccpp.compiler.directories.IncludePaths>
+  <avrgcccpp.compiler.optimization.level>Optimize (-O1)</avrgcccpp.compiler.optimization.level>
+  <avrgcccpp.compiler.optimization.OtherFlags>-fexceptions</avrgcccpp.compiler.optimization.OtherFlags>
+  <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
+  <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
+  <avrgcccpp.compiler.optimization.DebugLevel>Default (-g2)</avrgcccpp.compiler.optimization.DebugLevel>
+  <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
+  <avrgcccpp.compiler.miscellaneous.OtherFlags>-std=c++17</avrgcccpp.compiler.miscellaneous.OtherFlags>
+  <avrgcccpp.linker.libraries.Libraries>
+    <ListValues>
+      <Value>libm</Value>
+    </ListValues>
+  </avrgcccpp.linker.libraries.Libraries>
+  <avrgcccpp.assembler.general.IncludePaths>
+    <ListValues>
+      <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.2.209\include</Value>
+    </ListValues>
+  </avrgcccpp.assembler.general.IncludePaths>
+  <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
+</AvrGccCpp>
+    </ToolchainSettings>
+    <PreBuildEvent>
+    </PreBuildEvent>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="display_server.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="display_server.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="dummy_includer.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_arch.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_arch.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_buffer.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_bytewise.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_bytewise.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_callbacks.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_cmi.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_cmi.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_cmr.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_cmr.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_countdown.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_exceptional.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_flags.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_hacks.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_hardware.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_hardware.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_hcsr04.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_hcsr04.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_interrupt.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_iopin.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_iopin.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_item_manager.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_item_manager.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_item_selector.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_item_selector.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_ledline.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_ledline.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_list_item_manager.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_list_item_manager.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_macros.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_matrix_keyboard.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_maybe.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_ncrg.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_order.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_range_int.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++17</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_range_int.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_resettable.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_stack.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_system_time.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_system_time.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_task_runner.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_task_runner.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_time.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_time.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_istack.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_ui_concept.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_ui_concept.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_urgency.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="main.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_systime_old_alpha.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_systime_old_alpha.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_scheduler.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_scheduler.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="old_or_deprecated\f_gui.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="old_or_deprecated\f_gui.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="scheduler_test.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="scheduler_test.h">
+      <SubType>compile</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="old_or_deprecated" />
+  </ItemGroup>
+  <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
+</Project>
