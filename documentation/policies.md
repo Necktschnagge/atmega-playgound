@@ -8,8 +8,10 @@
 ## git usage
 
 * naming of branches
-  * feature-* _new features_
-  * fix-* _fixes for features already merged into master_
-  * docu-* _documentary stuff_
-  * structure-* _structural stuff for the repository_
-  * experimental-* _experimental releases_
+
+  | feature-* | _new features_ |
+  | ---------:|:-------------- |
+  | fix-* | _fixes for features already merged into master_ |
+  | docu-* | _documentary stuff_ |
+  | structure-* | _structural stuff for the repository_ |
+  | experimental-* | _experimental releases_ |
