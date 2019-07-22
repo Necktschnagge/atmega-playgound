@@ -9,8 +9,9 @@
 
 * naming of branches
 
+  | pattern | purpose |
+  | -------:|:------- |
   | feature-* | _new features_ |
-  | ---------:|:-------------- |
   | fix-* | _fixes for features already merged into master_ |
   | docu-* | _documentary stuff_ |
   | structure-* | _structural stuff for the repository_ |
