@@ -17,15 +17,17 @@ namespace fsl {
 	namespace lg {
 		
 		/// @brief Type for Integers in a range {0, ... , RANGE}
-		/// @details Stores a number x in {0, ... , RANGE} or OUT_OF_RANGE.
+		/// @details Stores a number x in {0, ... , RANGE} or #OUT_OF_RANGE.
 		/// @tparam _base_type The integer type that is used internally to store the number.
-		/// @tparam OVERFLOW_RESULTS_IN_OUT_OF_RANGE Defines whether some operation like #operator+ leading to an overflow will result in #fsl::lg::range_int::OUT_OF_RANGE or if it will believe like a ring in mathematics.
+		/// @tparam OVERFLOW_RESULTS_IN_OUT_OF_RANGE Defines whether some operation like #operator+ leading to an overflow will result in #OUT_OF_RANGE or if it will believe like a ring in mathematics.
 		template <typename _base_type, _base_type RANGE, bool OVERFLOW_RESULTS_IN_OUT_OF_RANGE = true, bool OUT_OF_RANGE_IS_ABSORBING = true>
 		class range_int {
 			public:
-
+			
+			/// The base integer type that is used internally.
 			using base_type = _base_type;
-
+			
+			/// A dedicated value of type #base_type that is interpreted as out of range.
 			static constexpr base_type OUT_OF_RANGE{ static_cast<_base_type>(-1) }; // better #include <limits> // but not possible for AVR
 			
 			private:
@@ -77,10 +79,10 @@ namespace fsl {
 			inline constexpr range_int<_base_type,RANGE> operator + (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,rop,0); }
 			/// Performs subtraction with a base_type integer
 			inline constexpr range_int<_base_type,RANGE> operator - (const _base_type& rop) const { return range_int<_base_type,RANGE>(value,0,rop); }
-			
-			/// Performs addition of a base_type integer.
+						
+			/// Performs addition of a #base_type integer.
 			inline constexpr range_int<base_type,RANGE>& operator += (base_type rop) { return *this = *this + rop; }
-			/// Performs subtraction of a base_type integer.
+			/// Performs subtraction of a #base_type integer.
 			inline constexpr range_int<base_type,RANGE>& operator -= (base_type rop) { return *this = *this - rop; }
 			
 			/// Performs a pre-increment on the value.
@@ -95,16 +97,5 @@ namespace fsl {
 		};
 	}
 }
-
-/*! It has an #My::xasd
-*/
-class My {
-	public:
-	int xasd;
-	/// Can usa an #xasd
-	void m(){
-		fsl::lg::range_int<int,6> x;
-	}
-	};
 
 #endif //__F_RANGE_INT_H__
