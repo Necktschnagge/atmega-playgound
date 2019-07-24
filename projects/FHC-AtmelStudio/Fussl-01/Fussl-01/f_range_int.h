@@ -30,6 +30,8 @@ namespace fsl {
 			/// A dedicated value of type #base_type that is interpreted as out of range.
 			static constexpr base_type OUT_OF_RANGE{ static_cast<_base_type>(-1) }; // better #include <limits> // but not possible for AVR
 			
+			//static constexpr range_int OUT_OF_RANGE()??
+			
 			private:
 			_base_type value;
 			
@@ -50,26 +52,30 @@ namespace fsl {
 			
 			public:
 			
-			/* c-tors */
+			/// Constructs a new #fsl::lg::range_int initialized with 0.
 			inline constexpr range_int(): value(0) {}
+			/// Constructs a new #fsl::lg::range_int initialized with given value.
+			/// @details If the given value is out of range, the constructed #fsl::lg::range_int will be ... .
 			inline constexpr range_int(const _base_type& value): value(in_range(value)) {}
+			/// Copy constructor. Constructs a new #fsl::lg::range_int as a copy of \a rhs.
 			inline constexpr range_int(const range_int& rhs) : value(rhs.value) {}
+			/// Copy constructor. Constructs a new #fsl::lg::range_int as a copy of \a rhs.
 			inline range_int(const volatile range_int& rhs) : value(rhs.value) {}
 			
-			/* conversion operator */
-			/// Converts the #fsl::lg::range_int into a integer of its #base_type
+			/// Converts *this into #base_type
 			/// \sa to_base_type().
 			inline constexpr operator _base_type() const {	return value;	}
-			/// Converts the #fsl::lg::range_int into a integer of its #base_type
+			/// Converts *this into #base_type
 			/// \sa to_base_type().
 			inline operator _base_type() const volatile {	return value;	}
 			
-			/// Converts the #fsl::lg::range_int into a integer of its #base_type.
+			/// Converts *this into #base_type
+			/// \sa @ref fsl::lg::range_int::operator _base_type()
 			inline constexpr base_type to_base_type() const {	return value;	}
-			/// Converts the #fsl::lg::range_int into a integer of its #base_type
+			/// Converts *this into #base_type
+			/// \sa @ref fsl::lg::range_int::operator _base_type()
 			inline _base_type to_base_type() const volatile {	return value;	}
 			
-			/* copy = operator */
 			inline range_int<_base_type,RANGE>& operator = (const range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
 			inline void operator = (const range_int<_base_type,RANGE>& another) volatile { value = another.value; }
 			inline range_int<_base_type,RANGE>& operator = (const volatile range_int<_base_type,RANGE>& another) { value = another.value; return *this; }
