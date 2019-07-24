@@ -1,0 +1,258 @@
+\hypertarget{classfsl_1_1os_1_1scheduler}{}\section{fsl\+::os\+::scheduler$<$ T\+A\+B\+L\+E\+\_\+\+S\+I\+ZE, index\+\_\+cache\+\_\+size $>$ Class Template Reference}
+\label{classfsl_1_1os_1_1scheduler}\index{fsl::os::scheduler$<$ TABLE\_SIZE, index\_cache\_size $>$@{fsl::os::scheduler$<$ TABLE\_SIZE, index\_cache\_size $>$}}
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a54b981f2536858ee3d6daedb7cb3f34f}\label{classfsl_1_1os_1_1scheduler_a54b981f2536858ee3d6daedb7cb3f34f}} 
+enum {\bfseries entry\+\_\+type} \+: uint8\+\_\+t \{ {\bfseries T\+A\+SK} = 0, 
+{\bfseries T\+I\+M\+ER} = 1, 
+{\bfseries I\+N\+T\+T\+I\+M\+ER} = 2, 
+{\bfseries I\+N\+V\+A\+L\+ID} = 255
+ \}
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a9da241dcd0a205cf08bd39c0d7802d4e}\label{classfsl_1_1os_1_1scheduler_a9da241dcd0a205cf08bd39c0d7802d4e}} 
+using {\bfseries handle\+\_\+type} = \mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{fsl\+::lg\+::range\+\_\+int}}$<$ uint8\+\_\+t, T\+A\+B\+L\+E\+\_\+\+S\+I\+ZE, true, true $>$
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_adc986c97fa6b3432e0d1836151cbfe05}\label{classfsl_1_1os_1_1scheduler_adc986c97fa6b3432e0d1836151cbfe05}} 
+uint8\+\_\+t {\bfseries get\+\_\+index} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a3507b791f7ed9ce74178a350c1b6dbbd}\label{classfsl_1_1os_1_1scheduler_a3507b791f7ed9ce74178a350c1b6dbbd}} 
+{\footnotesize template$<$bool cimota$>$ }\\void {\bfseries execute\+\_\+callback} (\mbox{\hyperlink{classfsl_1_1str_1_1union__callback}{fsl\+::str\+::standard\+\_\+union\+\_\+callback}} callback, bool is\+\_\+callable)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_adbbf8da8de0880c8c58d4e81de40a322}\label{classfsl_1_1os_1_1scheduler_adbbf8da8de0880c8c58d4e81de40a322}} 
+{\footnotesize template$<$bool cimota$>$ }\\void {\bfseries execute\+\_\+callback} (uint8\+\_\+t table\+\_\+index)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a2801bce2f6643fa3d9adc505fac61409}\label{classfsl_1_1os_1_1scheduler_a2801bce2f6643fa3d9adc505fac61409}} 
+bool {\bfseries execute\+\_\+interrupting\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a143bf58112b9189970c53e4763d598a2}\label{classfsl_1_1os_1_1scheduler_a143bf58112b9189970c53e4763d598a2}} 
+entry\+\_\+type {\bfseries get\+\_\+entry\+\_\+type\+\_\+unsave} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a7d9b2dd9e8a01cf2114653f4e9ff9535}\label{classfsl_1_1os_1_1scheduler_a7d9b2dd9e8a01cf2114653f4e9ff9535}} 
+uint8\+\_\+t {\bfseries new\+\_\+table\+\_\+line} (bool is\+\_\+task, bool is\+\_\+interrupting)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a60e62b5b5168ca25067271eb6fde685e}\label{classfsl_1_1os_1_1scheduler_a60e62b5b5168ca25067271eb6fde685e}} 
+void {\bfseries activate\+\_\+hardware\+\_\+watchdog} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a59a6da5aa45a565dec7d9613fb14f408}\label{classfsl_1_1os_1_1scheduler_a59a6da5aa45a565dec7d9613fb14f408}} 
+void {\bfseries deactivate\+\_\+hardware\+\_\+watchdog} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a230f744ddd2b6b01986118750e7acb73}\label{classfsl_1_1os_1_1scheduler_a230f744ddd2b6b01986118750e7acb73}} 
+{\bfseries scheduler} (bool software\+\_\+interrupt\+\_\+enable, uint8\+\_\+t hardware\+\_\+watchdog\+\_\+timeout, const \mbox{\hyperlink{classtime_1_1_extended_metric_time}{time\+::\+Extended\+Metric\+Time}} \&watchdog)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ac44463fc1db8cfb16afc064d6041afad}\label{classfsl_1_1os_1_1scheduler_ac44463fc1db8cfb16afc064d6041afad}} 
+void {\bfseries enable\+\_\+software\+\_\+interrupts} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a455e45cb1fa920318027bc1798c6844e}\label{classfsl_1_1os_1_1scheduler_a455e45cb1fa920318027bc1798c6844e}} 
+void {\bfseries disable\+\_\+software\+\_\+interrupts} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_abb221f5b722d445ebad8284b0052ec57}\label{classfsl_1_1os_1_1scheduler_abb221f5b722d445ebad8284b0052ec57}} 
+\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} {\bfseries my\+\_\+handle} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_aaa41705e6a098ea595f137461b2d21e6}\label{classfsl_1_1os_1_1scheduler_aaa41705e6a098ea595f137461b2d21e6}} 
+bool {\bfseries is\+\_\+running} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a36b06ae2abf2dcee0abe1f406d0b66a7}\label{classfsl_1_1os_1_1scheduler_a36b06ae2abf2dcee0abe1f406d0b66a7}} 
+bool {\bfseries was\+\_\+stop\+\_\+called} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a9a1475961f3f822d639895e47700e741}\label{classfsl_1_1os_1_1scheduler_a9a1475961f3f822d639895e47700e741}} 
+entry\+\_\+type {\bfseries get\+\_\+entry\+\_\+type} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_adee2512ce3d45e23a218b82085390c5c}\label{classfsl_1_1os_1_1scheduler_adee2512ce3d45e23a218b82085390c5c}} 
+uint8\+\_\+t {\bfseries push\+\_\+task\+\_\+to\+\_\+front} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a00edbdd6849b0944eca8606252c52571}\label{classfsl_1_1os_1_1scheduler_a00edbdd6849b0944eca8606252c52571}} 
+uint8\+\_\+t {\bfseries set\+\_\+task\+\_\+urgency} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle, \mbox{\hyperlink{classfsl_1_1os_1_1urgency}{urgency}} urg)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_aa7f4bedeeeff3e31d2dc9a3120749db7}\label{classfsl_1_1os_1_1scheduler_aa7f4bedeeeff3e31d2dc9a3120749db7}} 
+uint8\+\_\+t {\bfseries reset\+\_\+task\+\_\+urgency\+\_\+inverse} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_af317f5f0e515e874922a2df75bdaa087}\label{classfsl_1_1os_1_1scheduler_af317f5f0e515e874922a2df75bdaa087}} 
+uint8\+\_\+t {\bfseries increase\+\_\+task\+\_\+urgency} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a4865717251c8a58e81fe0ae62c4d3f28}\label{classfsl_1_1os_1_1scheduler_a4865717251c8a58e81fe0ae62c4d3f28}} 
+uint8\+\_\+t {\bfseries decrease\+\_\+task\+\_\+urgency} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a021357c07c8a9671cc4e44b066d55a46}\label{classfsl_1_1os_1_1scheduler_a021357c07c8a9671cc4e44b066d55a46}} 
+uint8\+\_\+t {\bfseries set\+\_\+callback} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle, decltype(nullptr) callback)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a52076ea287916cd2fe68f1e6b2f03336}\label{classfsl_1_1os_1_1scheduler_a52076ea287916cd2fe68f1e6b2f03336}} 
+uint8\+\_\+t {\bfseries set\+\_\+callback} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle, fsl\+::str\+::void\+\_\+function callback)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a9300e21e56bc8e091b3efecceedf410b}\label{classfsl_1_1os_1_1scheduler_a9300e21e56bc8e091b3efecceedf410b}} 
+uint8\+\_\+t {\bfseries set\+\_\+callback} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle, \mbox{\hyperlink{classfsl_1_1str_1_1callable}{fsl\+::str\+::callable}} $\ast$callback)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ad736993e4287e77963b0918b28f226be}\label{classfsl_1_1os_1_1scheduler_ad736993e4287e77963b0918b28f226be}} 
+uint8\+\_\+t {\bfseries reset\+\_\+callback} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a3d5df2c693c174e120b11cab6087c820}\label{classfsl_1_1os_1_1scheduler_a3d5df2c693c174e120b11cab6087c820}} 
+uint8\+\_\+t {\bfseries get\+\_\+callback} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle, \mbox{\hyperlink{classfsl_1_1str_1_1union__callback}{fsl\+::str\+::standard\+\_\+union\+\_\+callback}} \&callback, bool \&is\+\_\+callable)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a2674918c019a755b15d83df5c47b2477}\label{classfsl_1_1os_1_1scheduler_a2674918c019a755b15d83df5c47b2477}} 
+uint8\+\_\+t {\bfseries execute\+\_\+callback} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a7046ac58a0d54c206a56833efcfa389a}\label{classfsl_1_1os_1_1scheduler_a7046ac58a0d54c206a56833efcfa389a}} 
+uint8\+\_\+t {\bfseries clear\+\_\+entry} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a6e35cf7c18c6ae4b4738cef8364bf5c6}\label{classfsl_1_1os_1_1scheduler_a6e35cf7c18c6ae4b4738cef8364bf5c6}} 
+uint8\+\_\+t {\bfseries get\+\_\+entry\+\_\+enable} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a0f97130444b64cb044728305cb0642b3}\label{classfsl_1_1os_1_1scheduler_a0f97130444b64cb044728305cb0642b3}} 
+uint8\+\_\+t {\bfseries set\+\_\+entry\+\_\+enable} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle, bool enable)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_acf890d81da3bcb5a17e4054df005ec50}\label{classfsl_1_1os_1_1scheduler_acf890d81da3bcb5a17e4054df005ec50}} 
+uint8\+\_\+t {\bfseries enable\+\_\+entry} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a900a454c4d2ddf57228f7b9a143951e4}\label{classfsl_1_1os_1_1scheduler_a900a454c4d2ddf57228f7b9a143951e4}} 
+uint8\+\_\+t {\bfseries disable\+\_\+entry} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_af1fb1f0be3ad551be6a4a8e1e8cdd77f}\label{classfsl_1_1os_1_1scheduler_af1fb1f0be3ad551be6a4a8e1e8cdd77f}} 
+uint8\+\_\+t {\bfseries count\+\_\+int\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a7610d3660e0d648aa2baa45015e0e10f}\label{classfsl_1_1os_1_1scheduler_a7610d3660e0d648aa2baa45015e0e10f}} 
+uint8\+\_\+t {\bfseries count\+\_\+all\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_adda13720ba2675f8e15e1b43993d1a27}\label{classfsl_1_1os_1_1scheduler_adda13720ba2675f8e15e1b43993d1a27}} 
+uint8\+\_\+t {\bfseries count\+\_\+tasks} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a933a5e01b2523001831b0b9722598765}\label{classfsl_1_1os_1_1scheduler_a933a5e01b2523001831b0b9722598765}} 
+uint8\+\_\+t {\bfseries count\+\_\+non\+\_\+int\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_aadd5033633436a4977a3f504bddaea49}\label{classfsl_1_1os_1_1scheduler_aadd5033633436a4977a3f504bddaea49}} 
+uint8\+\_\+t {\bfseries count\+\_\+gaps} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a829f91876debd8a4ed5a60ec365f279b}\label{classfsl_1_1os_1_1scheduler_a829f91876debd8a4ed5a60ec365f279b}} 
+bool {\bfseries table\+\_\+full} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ab04e0b3c0a383e1f4241dae53b0f761e}\label{classfsl_1_1os_1_1scheduler_ab04e0b3c0a383e1f4241dae53b0f761e}} 
+bool {\bfseries table\+\_\+empty} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a2ef87c659e859c2b14d89b3ff967caf1}\label{classfsl_1_1os_1_1scheduler_a2ef87c659e859c2b14d89b3ff967caf1}} 
+uint8\+\_\+t {\bfseries convert\+\_\+to\+\_\+int\+\_\+timer} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a44032638f05875ca83599c08b613d921}\label{classfsl_1_1os_1_1scheduler_a44032638f05875ca83599c08b613d921}} 
+uint8\+\_\+t {\bfseries convert\+\_\+to\+\_\+normal\+\_\+timer} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_aeeede1308eebb6148fb0847720cbe882}\label{classfsl_1_1os_1_1scheduler_aeeede1308eebb6148fb0847720cbe882}} 
+uint8\+\_\+t {\bfseries set\+\_\+event\+\_\+time\+\_\+object} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle, volatile \mbox{\hyperlink{classtime_1_1_extended_metric_time}{time\+::\+Extended\+Metric\+Time}} \&time\+\_\+object)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a7428b8819784d347c92847463937456d}\label{classfsl_1_1os_1_1scheduler_a7428b8819784d347c92847463937456d}} 
+const volatile \mbox{\hyperlink{classtime_1_1_extended_metric_time}{time\+::\+Extended\+Metric\+Time}} $\ast$ {\bfseries get\+\_\+event\+\_\+time} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a3e9b155d4d62b1c4a7011293358c9ca7}\label{classfsl_1_1os_1_1scheduler_a3e9b155d4d62b1c4a7011293358c9ca7}} 
+uint8\+\_\+t {\bfseries set\+\_\+event\+\_\+time} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle, const \mbox{\hyperlink{classtime_1_1_extended_metric_time}{time\+::\+Extended\+Metric\+Time}} \&t)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a17025ec64682c111464d0e8bc7cc850a}\label{classfsl_1_1os_1_1scheduler_a17025ec64682c111464d0e8bc7cc850a}} 
+void {\bfseries reset\+\_\+int\+\_\+timer\+\_\+prefetcher} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a7d881f6c339e0da9feb668747d606e73}\label{classfsl_1_1os_1_1scheduler_a7d881f6c339e0da9feb668747d606e73}} 
+bool {\bfseries is\+\_\+task} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a9f4c0a4eb6caf35139af05e818c13310}\label{classfsl_1_1os_1_1scheduler_a9f4c0a4eb6caf35139af05e818c13310}} 
+bool {\bfseries is\+\_\+non\+\_\+int\+\_\+timer} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a4d18213ae23aded6dad07c955e08527e}\label{classfsl_1_1os_1_1scheduler_a4d18213ae23aded6dad07c955e08527e}} 
+bool {\bfseries is\+\_\+int\+\_\+timer} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a4046734e427d3a8da7e50008447f79f4}\label{classfsl_1_1os_1_1scheduler_a4046734e427d3a8da7e50008447f79f4}} 
+bool {\bfseries is\+\_\+any\+\_\+timer} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} handle)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ac63e2cc300b9eeaefe9232dc0fad58c1}\label{classfsl_1_1os_1_1scheduler_ac63e2cc300b9eeaefe9232dc0fad58c1}} 
+void {\bfseries clear\+\_\+table} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a4e4252cea09677d0dde5ffc31aa0fcb7}\label{classfsl_1_1os_1_1scheduler_a4e4252cea09677d0dde5ffc31aa0fcb7}} 
+void {\bfseries clear\+\_\+tasks} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a7e7ea009d2595ebe76d22bd3816e9235}\label{classfsl_1_1os_1_1scheduler_a7e7ea009d2595ebe76d22bd3816e9235}} 
+void {\bfseries clear\+\_\+all\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a303e0672a8e5e1fea36e4253ad6c1730}\label{classfsl_1_1os_1_1scheduler_a303e0672a8e5e1fea36e4253ad6c1730}} 
+void {\bfseries clear\+\_\+int\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ad1b9927c92325910873aac117b524a32}\label{classfsl_1_1os_1_1scheduler_ad1b9927c92325910873aac117b524a32}} 
+void {\bfseries clear\+\_\+non\+\_\+int\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a9f1a35bd8f23a42f003950d85ea7c7f4}\label{classfsl_1_1os_1_1scheduler_a9f1a35bd8f23a42f003950d85ea7c7f4}} 
+void {\bfseries disable\+\_\+table} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ab99e03dd63b533733bf9afa44a8cd15e}\label{classfsl_1_1os_1_1scheduler_ab99e03dd63b533733bf9afa44a8cd15e}} 
+void {\bfseries disable\+\_\+tasks} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a49249cd8adc62fb766d4a683f1ccfad8}\label{classfsl_1_1os_1_1scheduler_a49249cd8adc62fb766d4a683f1ccfad8}} 
+void {\bfseries disable\+\_\+all\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a672fd21c14a68f9ac2fbed29857d8d02}\label{classfsl_1_1os_1_1scheduler_a672fd21c14a68f9ac2fbed29857d8d02}} 
+void {\bfseries disable\+\_\+int\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ad18b9e97fc33021e90a60a94dbad85da}\label{classfsl_1_1os_1_1scheduler_ad18b9e97fc33021e90a60a94dbad85da}} 
+void {\bfseries disable\+\_\+non\+\_\+int\+\_\+timers} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a17939d4cdbba843f810ce5aa0d2d1d93}\label{classfsl_1_1os_1_1scheduler_a17939d4cdbba843f810ce5aa0d2d1d93}} 
+void {\bfseries enable\+\_\+tasks} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a44c750fe65f8729e6b16bc4af7bb90c0}\label{classfsl_1_1os_1_1scheduler_a44c750fe65f8729e6b16bc4af7bb90c0}} 
+void {\bfseries time\+\_\+update\+\_\+interrupt\+\_\+handler} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ac82e2622d681965a2d3078e9aae301b1}\label{classfsl_1_1os_1_1scheduler_ac82e2622d681965a2d3078e9aae301b1}} 
+void {\bfseries set\+\_\+hardware\+\_\+watchdog\+\_\+timeout} (uint8\+\_\+t value)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a733686bd21d0a256fae72aa8039622a5}\label{classfsl_1_1os_1_1scheduler_a733686bd21d0a256fae72aa8039622a5}} 
+void {\bfseries deactivate\+\_\+software\+\_\+watchdog} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a5b108fc61b31230bfc4caa8c7651609f}\label{classfsl_1_1os_1_1scheduler_a5b108fc61b31230bfc4caa8c7651609f}} 
+{\footnotesize template$<$bool round\+\_\+to\+\_\+ceiling = false, bool truncate = false, bool truncate\+\_\+and\+\_\+add\+\_\+one = true$>$ }\\void {\bfseries activate\+\_\+software\+\_\+watchdog} (const \mbox{\hyperlink{classtime_1_1_extended_metric_time}{time\+::\+Extended\+Metric\+Time}} \&watchdog)
+\item 
+uint8\+\_\+t \mbox{\hyperlink{classfsl_1_1os_1_1scheduler_ad707134d03e2028eb598bac3432564a0}{run}} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a7038d9fb21d10bbb2f4d69c96f540b95}\label{classfsl_1_1os_1_1scheduler_a7038d9fb21d10bbb2f4d69c96f540b95}} 
+void {\bfseries stop} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ab963de59e9610f0bcb2e08bc9591a2c2}\label{classfsl_1_1os_1_1scheduler_ab963de59e9610f0bcb2e08bc9591a2c2}} 
+\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} {\bfseries new\+\_\+task} (\mbox{\hyperlink{classfsl_1_1str_1_1callable}{fsl\+::str\+::callable}} $\ast$callable=nullptr, fsl\+::str\+::void\+\_\+function function=nullptr, \mbox{\hyperlink{classfsl_1_1os_1_1urgency}{urgency}} task\+\_\+urgency=D\+E\+F\+A\+U\+L\+T\+\_\+\+U\+R\+G\+E\+N\+CY, bool enable=true)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a4c536ace786851c65fa15dd2e7a8fe85}\label{classfsl_1_1os_1_1scheduler_a4c536ace786851c65fa15dd2e7a8fe85}} 
+\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} {\bfseries new\+\_\+timer} (volatile \mbox{\hyperlink{classtime_1_1_extended_metric_time}{time\+::\+Extended\+Metric\+Time}} \&time, \mbox{\hyperlink{classfsl_1_1str_1_1callable}{fsl\+::str\+::callable}} $\ast$callable=nullptr, fsl\+::str\+::void\+\_\+function function=nullptr, bool is\+\_\+interrupting=false, bool enable=true)
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a7594c7f7871cccb1b98877b1c8271ff1}\label{classfsl_1_1os_1_1scheduler_a7594c7f7871cccb1b98877b1c8271ff1}} 
+\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} {\bfseries get\+\_\+disabled\+\_\+entries} (uint8\+\_\+t \&count, \mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} $\ast$handle\+\_\+array=nullptr)
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a4131852481d5d070faeb8d661fcfeb3f}\label{classfsl_1_1os_1_1scheduler_a4131852481d5d070faeb8d661fcfeb3f}} 
+static constexpr uint8\+\_\+t {\bfseries table\+\_\+line\+\_\+size\+\_\+of} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ae404033b2b81486ad1952b718e75be7d}\label{classfsl_1_1os_1_1scheduler_ae404033b2b81486ad1952b718e75be7d}} 
+static constexpr uint16\+\_\+t {\bfseries table\+\_\+size\+\_\+of} ()
+\end{DoxyCompactItemize}
+\subsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_a3e51853983b8cfd3008c58850b31ab2a}\label{classfsl_1_1os_1_1scheduler_a3e51853983b8cfd3008c58850b31ab2a}} 
+static constexpr \mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{handle\+\_\+type}} {\bfseries N\+O\+\_\+\+H\+A\+N\+D\+LE} \{ handle\+\_\+type\+::\+O\+U\+T\+\_\+\+O\+F\+\_\+\+R\+A\+N\+GE \}
+\item 
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ab652e8e3c17ac0ebc1f1d85929e6223b}\label{classfsl_1_1os_1_1scheduler_ab652e8e3c17ac0ebc1f1d85929e6223b}} 
+static constexpr \mbox{\hyperlink{classfsl_1_1os_1_1urgency}{urgency}} {\bfseries D\+E\+F\+A\+U\+L\+T\+\_\+\+U\+R\+G\+E\+N\+CY} \{ urgency\+::normal\+\_\+urgency() \}
+\end{DoxyCompactItemize}
+
+
+\subsection{Member Function Documentation}
+\mbox{\Hypertarget{classfsl_1_1os_1_1scheduler_ad707134d03e2028eb598bac3432564a0}\label{classfsl_1_1os_1_1scheduler_ad707134d03e2028eb598bac3432564a0}} 
+\index{fsl::os::scheduler$<$ TABLE\_SIZE, index\_cache\_size $>$@{fsl::os::scheduler$<$ TABLE\_SIZE, index\_cache\_size $>$}!run@{run}}
+\index{run@{run}!fsl::os::scheduler$<$ TABLE\_SIZE, index\_cache\_size $>$@{fsl::os::scheduler$<$ TABLE\_SIZE, index\_cache\_size $>$}}
+\subsubsection{\texorpdfstring{run()}{run()}}
+{\footnotesize\ttfamily template$<$uint8\+\_\+t T\+A\+B\+L\+E\+\_\+\+S\+I\+ZE, uint8\+\_\+t index\+\_\+cache\+\_\+size = 2$>$ \\
+uint8\+\_\+t \mbox{\hyperlink{classfsl_1_1os_1_1scheduler}{fsl\+::os\+::scheduler}}$<$ T\+A\+B\+L\+E\+\_\+\+S\+I\+ZE, index\+\_\+cache\+\_\+size $>$\+::run (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+look for a task with task\+\_\+race\+\_\+countdown == 0
+
+end of looking for task with countdown == 0
+
+subtract minimum task\+\_\+race\+\_\+countdown from all count\+\_\+downs in task section and let the min-\/countdown task be executed afterwards 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+f\+\_\+scheduler.\+h\end{DoxyCompactItemize}

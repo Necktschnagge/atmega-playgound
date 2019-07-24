@@ -1,0 +1,153 @@
+\hypertarget{classfsl_1_1hw_1_1gpio__pin}{}\section{fsl\+::hw\+::gpio\+\_\+pin Class Reference}
+\label{classfsl_1_1hw_1_1gpio__pin}\index{fsl::hw::gpio\_pin@{fsl::hw::gpio\_pin}}
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ac3d1d12e22eda4b453175b5147662388}\label{classfsl_1_1hw_1_1gpio__pin_ac3d1d12e22eda4b453175b5147662388}} 
+enum {\bfseries Port} \+: uint8\+\_\+t \{ \newline
+{\bfseries A} = 0, 
+{\bfseries B} = 8, 
+{\bfseries C} = 16, 
+{\bfseries D} = 24, 
+\newline
+{\bfseries E} = 32, 
+{\bfseries F} = 40, 
+{\bfseries G} = 48
+ \}
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ab783e62e4786fa509bfc467af0245845}\label{classfsl_1_1hw_1_1gpio__pin_ab783e62e4786fa509bfc467af0245845}} 
+enum {\bfseries DD} \+: bool \{ {\bfseries IN} = false, 
+{\bfseries O\+UT} = true
+ \}
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a7b630bf402e6adc2f3b612dab8093435}\label{classfsl_1_1hw_1_1gpio__pin_a7b630bf402e6adc2f3b612dab8093435}} 
+using {\bfseries id} = \mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{fsl\+::lg\+::range\+\_\+int}}$<$ uint8\+\_\+t, M\+AX, true, true $>$
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ad54e5f33d0232ca59b512be84f6a28f8}\label{classfsl_1_1hw_1_1gpio__pin_ad54e5f33d0232ca59b512be84f6a28f8}} 
+constexpr {\bfseries gpio\+\_\+pin} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{id}} \+\_\+id)
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ac42269fb8a346f3eda29f68c4f67336c}\label{classfsl_1_1hw_1_1gpio__pin_ac42269fb8a346f3eda29f68c4f67336c}} 
+constexpr {\bfseries gpio\+\_\+pin} (Port port, uint8\+\_\+t bit\+\_\+of\+\_\+port)
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a5e1578fe33adaae392451bf20be4e8e7}\label{classfsl_1_1hw_1_1gpio__pin_a5e1578fe33adaae392451bf20be4e8e7}} 
+constexpr bool {\bfseries valid} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a40b84de46c8814cdb027f36e771a1f83}\label{classfsl_1_1hw_1_1gpio__pin_a40b84de46c8814cdb027f36e771a1f83}} 
+constexpr bool {\bfseries invalid} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_aab3da1d4afef5fb6550b5a4fbbb323ed}\label{classfsl_1_1hw_1_1gpio__pin_aab3da1d4afef5fb6550b5a4fbbb323ed}} 
+bool {\bfseries read\+\_\+\+P\+IN} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a8b35945fe76ca311941b94df6c3c3817}\label{classfsl_1_1hw_1_1gpio__pin_a8b35945fe76ca311941b94df6c3c3817}} 
+void {\bfseries write\+\_\+\+DD} (DD data\+\_\+direction) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a94b0d89a638c07fe23fb4dd1a5f86e41}\label{classfsl_1_1hw_1_1gpio__pin_a94b0d89a638c07fe23fb4dd1a5f86e41}} 
+DD {\bfseries read\+\_\+\+DD} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_aa6ecdb43a6e9320cf3903e0148a43a0b}\label{classfsl_1_1hw_1_1gpio__pin_aa6ecdb43a6e9320cf3903e0148a43a0b}} 
+void {\bfseries write\+\_\+\+P\+O\+RT} (bool value) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ab7904dca570aa1cceeb3ac3adc3ade0d}\label{classfsl_1_1hw_1_1gpio__pin_ab7904dca570aa1cceeb3ac3adc3ade0d}} 
+bool {\bfseries read\+\_\+\+P\+O\+RT} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_afbda8b838eb707c2e03b8ae55a8ba321}\label{classfsl_1_1hw_1_1gpio__pin_afbda8b838eb707c2e03b8ae55a8ba321}} 
+void {\bfseries set\+\_\+as\+\_\+output} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a535cbaee64f6019b31d811db5e3e0030}\label{classfsl_1_1hw_1_1gpio__pin_a535cbaee64f6019b31d811db5e3e0030}} 
+void {\bfseries set\+\_\+as\+\_\+input} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a7bc40ce4128da3b11968aa6bf30b7e7f}\label{classfsl_1_1hw_1_1gpio__pin_a7bc40ce4128da3b11968aa6bf30b7e7f}} 
+bool {\bfseries is\+\_\+input} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a8fc1c0fcabe25257cb172eead3c77852}\label{classfsl_1_1hw_1_1gpio__pin_a8fc1c0fcabe25257cb172eead3c77852}} 
+bool {\bfseries is\+\_\+output} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a343a41ae3005097dfdd8a235fbff3164}\label{classfsl_1_1hw_1_1gpio__pin_a343a41ae3005097dfdd8a235fbff3164}} 
+void {\bfseries set\+\_\+pull\+\_\+up} (bool is\+\_\+on) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a0b7005690fd3e499e10d6bc8ad1fe1a3}\label{classfsl_1_1hw_1_1gpio__pin_a0b7005690fd3e499e10d6bc8ad1fe1a3}} 
+bool {\bfseries read\+\_\+input} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ade48d18104bc2ba754fb17ef4d461157}\label{classfsl_1_1hw_1_1gpio__pin_ade48d18104bc2ba754fb17ef4d461157}} 
+void {\bfseries write\+\_\+output} (bool value) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a830331362a3c114a66c24e68b571899b}\label{classfsl_1_1hw_1_1gpio__pin_a830331362a3c114a66c24e68b571899b}} 
+{\bfseries operator bool} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_abdb0ddc5ab94ef68810ac1d530457d4c}\label{classfsl_1_1hw_1_1gpio__pin_abdb0ddc5ab94ef68810ac1d530457d4c}} 
+bool {\bfseries operator !} () const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a48551961981cd90990263ff51e3ae40b}\label{classfsl_1_1hw_1_1gpio__pin_a48551961981cd90990263ff51e3ae40b}} 
+void {\bfseries operator=} (bool value) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ab4703adf7e4fa116aa0099a9a085694c}\label{classfsl_1_1hw_1_1gpio__pin_ab4703adf7e4fa116aa0099a9a085694c}} 
+void {\bfseries operator$<$$<$} (bool value) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_acaa0c9154c62c5ff601f67e217cd9855}\label{classfsl_1_1hw_1_1gpio__pin_acaa0c9154c62c5ff601f67e217cd9855}} 
+void {\bfseries operator $>$$>$} (bool \&target) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a9a01da097c8e07d50a6f92f21130389a}\label{classfsl_1_1hw_1_1gpio__pin_a9a01da097c8e07d50a6f92f21130389a}} 
+constexpr \mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} {\bfseries operator+} (uint8\+\_\+t difference) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a8597dc1532515d0fef60cdbb9570e835}\label{classfsl_1_1hw_1_1gpio__pin_a8597dc1532515d0fef60cdbb9570e835}} 
+constexpr \mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} {\bfseries operator -\/} (uint8\+\_\+t difference) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a6e65037ab636e7f6223f90aee5f80fd3}\label{classfsl_1_1hw_1_1gpio__pin_a6e65037ab636e7f6223f90aee5f80fd3}} 
+\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} \& {\bfseries operator++} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a6e4e9b13b8be04de01fd5e0a25cd67bb}\label{classfsl_1_1hw_1_1gpio__pin_a6e4e9b13b8be04de01fd5e0a25cd67bb}} 
+\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} {\bfseries operator++} (int)
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ab63de63b1e55bf9afb3502ba0cd72ca9}\label{classfsl_1_1hw_1_1gpio__pin_ab63de63b1e55bf9afb3502ba0cd72ca9}} 
+\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} \& {\bfseries operator -\/-\/} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a8a6d5e76940900a92605f129114d9661}\label{classfsl_1_1hw_1_1gpio__pin_a8a6d5e76940900a92605f129114d9661}} 
+\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} {\bfseries operator -\/-\/} (int)
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_aca66c38840faefd506d53c5c1b64a1e3}\label{classfsl_1_1hw_1_1gpio__pin_aca66c38840faefd506d53c5c1b64a1e3}} 
+\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} \& {\bfseries operator=} (\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} rop)
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a0134231a446dce5a49d04bbde5e98ee2}\label{classfsl_1_1hw_1_1gpio__pin_a0134231a446dce5a49d04bbde5e98ee2}} 
+constexpr bool {\bfseries operator==} (\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} rop) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a2832f9a8eea0c3fee8f19939ca95c9e8}\label{classfsl_1_1hw_1_1gpio__pin_a2832f9a8eea0c3fee8f19939ca95c9e8}} 
+constexpr bool {\bfseries operator !=} (\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} rop) const
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_ac3842ec0c4d0becc1a15deff938eda8d}\label{classfsl_1_1hw_1_1gpio__pin_ac3842ec0c4d0becc1a15deff938eda8d}} 
+\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} \& {\bfseries operator+=} (uint8\+\_\+t difference)
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a22b66d4794872713d793a54ec324091e}\label{classfsl_1_1hw_1_1gpio__pin_a22b66d4794872713d793a54ec324091e}} 
+\mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} \& {\bfseries operator -\/=} (uint8\+\_\+t difference)
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a151a0e62b2527a209e1bed64685e50df}\label{classfsl_1_1hw_1_1gpio__pin_a151a0e62b2527a209e1bed64685e50df}} 
+static constexpr \mbox{\hyperlink{classfsl_1_1hw_1_1gpio__pin}{gpio\+\_\+pin}} {\bfseries N\+O\+\_\+\+I\+O\+P\+IN} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_aa2b8bd8c3006b65a235b6ac12fb8cb6e}\label{classfsl_1_1hw_1_1gpio__pin_aa2b8bd8c3006b65a235b6ac12fb8cb6e}} 
+static constexpr \mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{id}} {\bfseries pin\+\_\+id} (Port port, uint8\+\_\+t bit)
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_aae1b89651a4a9b1c57101349cfa24da5}\label{classfsl_1_1hw_1_1gpio__pin_aae1b89651a4a9b1c57101349cfa24da5}} 
+static constexpr Port {\bfseries port} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{id}} \+\_\+id)
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a970dd306b8f27277f1724c1513a5f525}\label{classfsl_1_1hw_1_1gpio__pin_a970dd306b8f27277f1724c1513a5f525}} 
+static constexpr uint8\+\_\+t {\bfseries bit\+\_\+inside\+\_\+port} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{id}} \+\_\+id)
+\end{DoxyCompactItemize}
+\subsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a58b00ddf8b758384ea0907cf8162cf43}\label{classfsl_1_1hw_1_1gpio__pin_a58b00ddf8b758384ea0907cf8162cf43}} 
+static constexpr uint8\+\_\+t {\bfseries M\+AX} \{8$\ast$6 + 5 -\/ 2\}
+\item 
+\mbox{\Hypertarget{classfsl_1_1hw_1_1gpio__pin_a9517fd07abf0d281000154bc65edaa06}\label{classfsl_1_1hw_1_1gpio__pin_a9517fd07abf0d281000154bc65edaa06}} 
+static constexpr \mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{id}} {\bfseries N\+O\+\_\+\+I\+O\+P\+I\+N\+\_\+\+ID} \{ id\+::\+O\+U\+T\+\_\+\+O\+F\+\_\+\+R\+A\+N\+GE \}
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+f\+\_\+iopin.\+h\end{DoxyCompactItemize}

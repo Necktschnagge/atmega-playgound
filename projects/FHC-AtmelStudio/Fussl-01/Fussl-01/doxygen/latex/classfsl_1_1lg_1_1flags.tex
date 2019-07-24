@@ -1,0 +1,88 @@
+\hypertarget{classfsl_1_1lg_1_1flags}{}\section{fsl\+::lg\+::flags$<$ bytes $>$ Class Template Reference}
+\label{classfsl_1_1lg_1_1flags}\index{fsl::lg::flags$<$ bytes $>$@{fsl::lg::flags$<$ bytes $>$}}
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a84c2aecbb7f7651624c9ec437d682d60}\label{classfsl_1_1lg_1_1flags_a84c2aecbb7f7651624c9ec437d682d60}} 
+using {\bfseries memory\+\_\+t} = uint8\+\_\+t\mbox{[}bytes\mbox{]}
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a56b025fbf1464b5c9c532b6f746c5f18}\label{classfsl_1_1lg_1_1flags_a56b025fbf1464b5c9c532b6f746c5f18}} 
+using {\bfseries flag\+\_\+id} = \mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{range\+\_\+int}}$<$ uint8\+\_\+t, bytes $\ast$8, true, true $>$
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a6ab423f3419547f4346226ccb3bbae3b}\label{classfsl_1_1lg_1_1flags_a6ab423f3419547f4346226ccb3bbae3b}} 
+{\bfseries flags} (memory\+\_\+t data)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a73c858cc825b58ec1c7459872cc848e5}\label{classfsl_1_1lg_1_1flags_a73c858cc825b58ec1c7459872cc848e5}} 
+bool {\bfseries get} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a7ec80c1d3ece3fc95ec7cd62ed594a38}\label{classfsl_1_1lg_1_1flags_a7ec80c1d3ece3fc95ec7cd62ed594a38}} 
+void {\bfseries set\+\_\+true} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a4dbb262892cbae0376ba60614b3d5b4a}\label{classfsl_1_1lg_1_1flags_a4dbb262892cbae0376ba60614b3d5b4a}} 
+void {\bfseries set\+\_\+false} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a692a284d574693cd7d7301848602f407}\label{classfsl_1_1lg_1_1flags_a692a284d574693cd7d7301848602f407}} 
+void {\bfseries set} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit, bool value)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a335ad87f4bdd45395ca7055018a1a3d8}\label{classfsl_1_1lg_1_1flags_a335ad87f4bdd45395ca7055018a1a3d8}} 
+{\bfseries operator const memory\+\_\+t \&} ()
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_abef931d30f75251e7ab62301b54bef18}\label{classfsl_1_1lg_1_1flags_abef931d30f75251e7ab62301b54bef18}} 
+bool {\bfseries get} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit) volatile
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a0a13a9ea1b06234673d2ab8b4b24e341}\label{classfsl_1_1lg_1_1flags_a0a13a9ea1b06234673d2ab8b4b24e341}} 
+void {\bfseries set\+\_\+true} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit) volatile
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_ae62c7fdbfd80f08489294b6f1d732f87}\label{classfsl_1_1lg_1_1flags_ae62c7fdbfd80f08489294b6f1d732f87}} 
+void {\bfseries set\+\_\+false} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit) volatile
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a8e91be95b2aec14f2dc0f53d08b70582}\label{classfsl_1_1lg_1_1flags_a8e91be95b2aec14f2dc0f53d08b70582}} 
+void {\bfseries set} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit, bool value) volatile
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_afe7afcc54d65a797fec2d926a5f2458d}\label{classfsl_1_1lg_1_1flags_afe7afcc54d65a797fec2d926a5f2458d}} 
+{\bfseries operator const memory\+\_\+t \&} () volatile
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_aed3945d31ba6ec340c545b378748e0df}\label{classfsl_1_1lg_1_1flags_aed3945d31ba6ec340c545b378748e0df}} 
+\mbox{\hyperlink{classfsl_1_1lg_1_1flags}{flags}}$<$ bytes $>$ \& {\bfseries operator=} (const \mbox{\hyperlink{classfsl_1_1lg_1_1flags}{flags}}$<$ bytes $>$ \&rhs)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_ae351f887177bdd2bdf0594fb9be2f0f0}\label{classfsl_1_1lg_1_1flags_ae351f887177bdd2bdf0594fb9be2f0f0}} 
+\mbox{\hyperlink{classfsl_1_1lg_1_1flags}{flags}}$<$ bytes $>$ \& {\bfseries operator=} (const volatile \mbox{\hyperlink{classfsl_1_1lg_1_1flags}{flags}}$<$ bytes $>$ \&rhs)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a811311852b3a74ff4f14e70df6a63f36}\label{classfsl_1_1lg_1_1flags_a811311852b3a74ff4f14e70df6a63f36}} 
+void {\bfseries operator=} (const volatile \mbox{\hyperlink{classfsl_1_1lg_1_1flags}{flags}}$<$ bytes $>$ \&rhs) volatile
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_ad80d14dfc2973c7b80553ad183c01a33}\label{classfsl_1_1lg_1_1flags_ad80d14dfc2973c7b80553ad183c01a33}} 
+{\footnotesize template$<$$>$ }\\{\bfseries flags} (memory\+\_\+t data)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a53b37d63305122e6a0df4d4b2f97382d}\label{classfsl_1_1lg_1_1flags_a53b37d63305122e6a0df4d4b2f97382d}} 
+{\footnotesize template$<$$>$ }\\bool {\bfseries get} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a6197dedb8567fd1f00304071a5650c77}\label{classfsl_1_1lg_1_1flags_a6197dedb8567fd1f00304071a5650c77}} 
+{\footnotesize template$<$$>$ }\\void {\bfseries set\+\_\+true} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a1aa809458d12c11994a88c482f886652}\label{classfsl_1_1lg_1_1flags_a1aa809458d12c11994a88c482f886652}} 
+{\footnotesize template$<$$>$ }\\void {\bfseries set\+\_\+false} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit)
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_ab0dd0433d42e765a45d669067e8aec04}\label{classfsl_1_1lg_1_1flags_ab0dd0433d42e765a45d669067e8aec04}} 
+{\footnotesize template$<$$>$ }\\bool {\bfseries get} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit) volatile
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_a7e8aab694d2ead2997a1941c03a7103b}\label{classfsl_1_1lg_1_1flags_a7e8aab694d2ead2997a1941c03a7103b}} 
+{\footnotesize template$<$$>$ }\\void {\bfseries set\+\_\+true} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit) volatile
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_aef070b797daad582aa247d179fa49ff1}\label{classfsl_1_1lg_1_1flags_aef070b797daad582aa247d179fa49ff1}} 
+{\footnotesize template$<$$>$ }\\void {\bfseries set\+\_\+false} (\mbox{\hyperlink{classfsl_1_1lg_1_1range__int}{flag\+\_\+id}} bit) volatile
+\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classfsl_1_1lg_1_1flags_ac01124c785ed1754a118498d3597a2f1}\label{classfsl_1_1lg_1_1flags_ac01124c785ed1754a118498d3597a2f1}} 
+memory\+\_\+t {\bfseries memory}
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+f\+\_\+flags.\+h\end{DoxyCompactItemize}

@@ -1,0 +1,62 @@
+\hypertarget{classui_1_1_item_manager}{}\section{ui\+::Item\+Manager Class Reference}
+\label{classui_1_1_item_manager}\index{ui::ItemManager@{ui::ItemManager}}
+Inheritance diagram for ui\+::Item\+Manager\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classui_1_1_item_manager}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_adde1fe4980ce62a484f6f710a292e951}\label{classui_1_1_item_manager_adde1fe4980ce62a484f6f710a292e951}} 
+virtual void {\bfseries init} (void($\ast$cancel\+Procedure)(), int16\+\_\+t std\+\_\+position=0)
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a9cbc492e3c7baef687a3e1017135336d}\label{classui_1_1_item_manager_a9cbc492e3c7baef687a3e1017135336d}} 
+bool {\bfseries empty} ()
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_ac762706e62b0b450123ee0ee178d055d}\label{classui_1_1_item_manager_ac762706e62b0b450123ee0ee178d055d}} 
+bool {\bfseries run\+\_\+cancel\+\_\+procedure} ()
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a8d91ec39f506ed461e2e32205632c571}\label{classui_1_1_item_manager_a8d91ec39f506ed461e2e32205632c571}} 
+\mbox{\hyperlink{classui_1_1_item_manager}{Item\+Manager}} \& {\bfseries operator++} ()
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_af6122a309715f0243441efc865e24581}\label{classui_1_1_item_manager_af6122a309715f0243441efc865e24581}} 
+\mbox{\hyperlink{classui_1_1_item_manager}{Item\+Manager}} \& {\bfseries operator-\/-\/} ()
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a257df52437a70472e4411a5f1288216c}\label{classui_1_1_item_manager_a257df52437a70472e4411a5f1288216c}} 
+void {\bfseries item\+\_\+label} (char $\ast$string\+\_\+8\+\_\+bytes)
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a8ad1725e755a4277b16b236894781b48}\label{classui_1_1_item_manager_a8ad1725e755a4277b16b236894781b48}} 
+void {\bfseries run\+\_\+item\+\_\+procedure} ()
+\end{DoxyCompactItemize}
+\subsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a3ca45c4b3e9a5a719dc17bee414a94d2}\label{classui_1_1_item_manager_a3ca45c4b3e9a5a719dc17bee414a94d2}} 
+static constexpr char {\bfseries C\+A\+N\+C\+E\+L\+\_\+\+L\+A\+B\+EL} \mbox{[}$\,$\mbox{]} = \char`\"{}-\/C\+A\+N\+C\+EL-\/\char`\"{}
+\end{DoxyCompactItemize}
+\subsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a5a78ac89f34d5494f68604158e8dad0b}\label{classui_1_1_item_manager_a5a78ac89f34d5494f68604158e8dad0b}} 
+virtual void {\bfseries item\+\_\+label\+\_\+virt} (char $\ast$string\+\_\+8\+\_\+chars)=0
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a56a8183daee120f854a8adb090d03365}\label{classui_1_1_item_manager_a56a8183daee120f854a8adb090d03365}} 
+virtual void {\bfseries run\+\_\+item\+\_\+procedure\+\_\+virt} ()=0
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a76e337fb404312d06cf6519f0ad85def}\label{classui_1_1_item_manager_a76e337fb404312d06cf6519f0ad85def}} 
+virtual uint16\+\_\+t {\bfseries size\+\_\+without\+\_\+cancel\+\_\+item} ()=0
+\end{DoxyCompactItemize}
+\subsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classui_1_1_item_manager_a024f1b3fb93ce2259240fd6a21abd701}\label{classui_1_1_item_manager_a024f1b3fb93ce2259240fd6a21abd701}} 
+int16\+\_\+t {\bfseries position}
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+f\+\_\+item\+\_\+manager.\+h\item 
+f\+\_\+item\+\_\+manager.\+cpp\end{DoxyCompactItemize}
