@@ -27,7 +27,13 @@ var menudata={children:[
 {text:"Class List",url:"annotated.html"},
 {text:"Class Index",url:"classes.html"},
 {text:"Class Members",url:"functions.html",children:[
-{text:"All",url:"functions.html"},
+{text:"All",url:"functions.html",children:[
+{text:"b",url:"functions.html#index_b"},
+{text:"m",url:"functions.html#index_m"},
+{text:"o",url:"functions.html#index_o"},
+{text:"r",url:"functions.html#index_r"},
+{text:"t",url:"functions.html#index_t"},
+{text:"z",url:"functions.html#index_z"}]},
 {text:"Functions",url:"functions_func.html"},
 {text:"Variables",url:"functions_vars.html"},
 {text:"Typedefs",url:"functions_type.html"}]}]},
