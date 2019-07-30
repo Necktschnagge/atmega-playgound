@@ -7,6 +7,8 @@ Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Fussl-01", "Fussl-01\Fussl-
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6F8832BF-AE3D-41A3-ACC3-F171C1DF0ECC}"
 EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "TestOnTargetDevice", "TestOnTargetDevice\TestOnTargetDevice.cppproj", "{5761EEE7-58BB-4632-8D6B-15ECA46EFB79}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -17,6 +19,10 @@ Global
 		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Debug|AVR.Build.0 = Debug|AVR
 		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.ActiveCfg = Release|AVR
 		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.Build.0 = Release|AVR
+		{5761EEE7-58BB-4632-8D6B-15ECA46EFB79}.Debug|AVR.ActiveCfg = Debug|AVR
+		{5761EEE7-58BB-4632-8D6B-15ECA46EFB79}.Debug|AVR.Build.0 = Debug|AVR
+		{5761EEE7-58BB-4632-8D6B-15ECA46EFB79}.Release|AVR.ActiveCfg = Release|AVR
+		{5761EEE7-58BB-4632-8D6B-15ECA46EFB79}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
