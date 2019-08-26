@@ -9,11 +9,11 @@
 #define F_CPU 100'000
 #include <util/delay.h>
 #include "test_f_range_int.h"
-#include "f_target_device_test.h"
+#include "f_test_runner.h"
 
 int main(void)
 {
-	f_target_device_test test_runner;
+	f_test_runner test_runner;
 	for (int i = 0; i < 2; ++ i){
 		DDRB = 7;
 		_delay_ms(1);

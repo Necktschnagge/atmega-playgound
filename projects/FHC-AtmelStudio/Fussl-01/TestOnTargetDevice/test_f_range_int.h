@@ -8,9 +8,9 @@
 
 #ifndef TEST_F_RANGE_INT_H_
 #define TEST_F_RANGE_INT_H_
-#include "f_target_device_test.h"
+#include "f_test_runner.h"
 
-void run_test_f_range_int(f_target_device_test& test_runner);
+void run_test_f_range_int(f_test_runner& test_runner);
 
 
 #endif /* TEST_F_RANGE_INT_H_ */

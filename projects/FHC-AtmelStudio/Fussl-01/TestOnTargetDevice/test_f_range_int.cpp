@@ -7,41 +7,49 @@
 
 #include "test_f_range_int.h"
 #include "f_range_int.h"
-#include "f_target_device_test.h"
+#include "f_test_runner.h"
 
 #include <inttypes.h>
 
 using namespace fsl::ver_1_0::lg;
 
-void test_base_type(f_target_device_test& test_runner){
-/*	test_runner.check("The base_type is defined as _base_type, using uint8_t.",  typeid(range_int<uint8_t ,1>::base_type) == typeid(uint8_t));
-	test_runner.check("The base_type is defined as _base_type, using uint16_t.", typeid(range_int<uint16_t,1>::base_type) == typeid(uint16_t));
-	test_runner.check("The base_type is defined as _base_type, using uint32_t.", typeid(range_int<uint32_t,1>::base_type) == typeid(uint32_t));
-	test_runner.check("The base_type is defined as _base_type, using uint64_t.", typeid(range_int<uint64_t,1>::base_type) == typeid(uint64_t));
-	test_runner.check("The base_type is defined as _base_type, using int8_t.",  typeid(range_int<int8_t ,1>::base_type) == typeid(int8_t));
-	test_runner.check("The base_type is defined as _base_type, using int16_t.", typeid(range_int<int16_t,1>::base_type) == typeid(int16_t));
-	test_runner.check("The base_type is defined as _base_type, using int32_t.", typeid(range_int<int32_t,1>::base_type) == typeid(int32_t));
-	test_runner.check("The base_type is defined as _base_type, using int64_t.", typeid(range_int<int64_t,1>::base_type) == typeid(int64_t));
-	*/
+template<class T, T RANGE>
+inline void test_base_type_constants_with(f_test_runner& test_runner){
+	test_runner.check("base_type_constants::ZERO"        , range_int<T,RANGE>::base_type_constants::ZERO == 0            );
+	test_runner.check("base_type_constants::ONE"         , range_int<T,RANGE>::base_type_constants::ONE == 1             );
+	test_runner.check("base_type_constants::MIN"         , range_int<T,RANGE>::base_type_constants::MIN == 0             );
+	test_runner.check("base_type_constants::MAX"         , range_int<T,RANGE>::base_type_constants::MAX + 1 == RANGE     );
+	test_runner.check("base_type_constants::RANGE"       , range_int<T,RANGE>::base_type_constants::RANGE == RANGE       );
+	test_runner.check("base_type_constants::OUT_OF_RANGE", range_int<T,RANGE>::base_type_constants::OUT_OF_RANGE + 1 == 0);
 }
 
-void test_standard_constructor(f_target_device_test& test_runner){
-	range_int<uint8_t ,1> a;
-	range_int<uint16_t,1> b;
-	range_int<uint32_t,1> c;
-	range_int<uint64_t,1> d;
-	range_int<int8_t ,1>  e;
-	range_int<int16_t,1>  f;
-	range_int<int32_t,1>  g;
-	range_int<int64_t,1>  h;
-	test_runner.check("The standard constructor creates a ZERO value, using uint8_t .", a == range_int<uint8_t ,1>::base_type_constants::ZERO);
-	test_runner.check("The standard constructor creates a ZERO value, using uint16_t.", b == range_int<uint16_t,1>::base_type_constants::ZERO);
-	test_runner.check("The standard constructor creates a ZERO value, using uint32_t.", c == range_int<uint32_t,1>::base_type_constants::ZERO);
-	test_runner.check("The standard constructor creates a ZERO value, using uint64_t.", d == range_int<uint64_t,1>::base_type_constants::ZERO);
+inline void test_base_type_constants(f_test_runner& test_runner){
+	test_base_type_constants_with<uint16_t,785>(test_runner);
+	test_base_type_constants_with<int32_t,1>(test_runner);
+	test_base_type_constants_with<uint8_t,255>(test_runner);
+	test_base_type_constants_with<int64_t,1'000'000'000'583LL>(test_runner);
 }
 
-void run_test_f_range_int(f_target_device_test& test_runner){
-	test_base_type(test_runner);
+
+template<class T>
+inline void test_standard_constructor_with(f_test_runner& test_runner){
+	range_int<T, 16> ri;
+	test_runner.check("The standard constructor creates a ZERO value.", range_int<T ,16>::base_type_constants::ZERO == ri.to_base_type());
+}
+
+inline void test_standard_constructor(f_test_runner& test_runner){
+	test_standard_constructor_with< int8_t>(test_runner);
+	test_standard_constructor_with< int16_t>(test_runner);
+	test_standard_constructor_with< int32_t>(test_runner);
+	test_standard_constructor_with<uint8_t>(test_runner);
+	test_standard_constructor_with<uint16_t>(test_runner);
+	test_standard_constructor_with<uint32_t>(test_runner);
+}
+
+
+
+void run_test_f_range_int(f_test_runner& test_runner){
+	test_base_type_constants(test_runner);
 	test_standard_constructor(test_runner);
 	range_int<uint8_t,1> r;
 	test_runner.check("Standard constructed range int equals zero.", r == 0 );
