@@ -43,9 +43,11 @@ class vector {
 	}
 	
 	bool extend_size(){ return resize(next_size(underlying_array_size)); }
-	bool shrink_to_fit(){ return resize(vector_size); }
 	
 	public:
+	bool shrink_to_fit(){ return resize(vector_size); }
+	
+	
 	vector() : array(nullptr), underlying_array_size(0), vector_size(0) {}
 	vector(vector&& another) : array(another.array), underlying_array_size(another.underlying_array_size), vector_size(another.vector_size) {
 		another.array = nullptr;
@@ -68,13 +70,22 @@ class vector {
 	bool push_back(const T& t){
 		if (vector_size == underlying_array_size) if (!extend_size()) return false;
 		if (!(vector_size < underlying_array_size)) return false;
-		new (&array[vector_size++]) T(t); // constructor must be called here not the assignment op check how this is done in the official std::vector.
+		new (&array[vector_size++]) T(t); // constructor must be called here not the assignment op check how this is done in the official std::vector. // check whether this is doing what I exspect
 		return true;
 	}
+	
 	bool push_back(T&& t){
 		if (vector_size == underlying_array_size) if (!extend_size()) return false;
 		if (!(vector_size < underlying_array_size)) return false;
-		new (&array[vector_size++]) T(static_cast<T&&>(t)); // constructor must be called here not the assignment op
+		new (&array[vector_size++]) T(static_cast<T&&>(t)); // constructor must be called here not the assignment op // check whether this is doing what I exspect 
+		return true;
+	}
+	
+	bool pop_back(){
+		if (vector_size <= 0) return false;
+		auto last = end() - 1;
+		last->T::~T();
+		--vector_size;
 		return true;
 	}
 	
@@ -83,9 +94,10 @@ class vector {
 	
 	iterator begin(){ return array; }
 	iterator end(){ return array + vector_size; }
-	const_iterator cbegin(){ return array; }
-	const_iterator cend(){ return array + vector_size; }
-
+	
+	const_iterator cbegin() const { return array; }
+	const_iterator cend() const { return array + vector_size; }
+	
 };
 
 class f_test_runner
@@ -93,7 +105,23 @@ class f_test_runner
 	bool any_fail{ false };
 	bool error_log_fail{ false };
 	vector<vector<char>> errors;
+	vector<vector<char>> scope;
 	const char* last_error{ nullptr };
+	
+	inline static void copy_raw_string_into_vector(const char* cstr, vector<char>& vec){
+		
+		for(auto it = cstr; *it != '\0'; ++it){
+			DDRB = 36;
+			vec.push_back(*it);
+			DDRB = 14;
+		}
+		DDRB = 11;
+		vec.shrink_to_fit();
+		DDRB = 99;
+	}
+	inline static void copy_vector_onto_end_of_vetor(const vector<char>& source, vector<char>& target){
+		for (auto iter = source.cbegin(); iter != source.cend(); ++iter){ target.push_back(*iter); }
+	}
 	
 public:
 	f_test_runner(){};
@@ -105,12 +133,42 @@ public:
 		if (!claim){
 			any_fail = true;
 			last_error = description;
+			
+			// Copy the error Message:
 			vector<char> d;
-			for(auto it = description; *it != '\0'; ++it) d.push_back(*it);
-			if (!errors.push_back(static_cast<vector<char>&&>(d))){ //not allowed, think about copy or move constructor for vector.
+			for(const auto& s : scope){
+				copy_vector_onto_end_of_vetor(s,d);
+				d.push_back('/');
+			}
+			copy_raw_string_into_vector(description, d);
+			
+			// Move copied error message into errors:
+			if (!errors.push_back(static_cast<vector<char>&&>(d))){
 				error_log_fail = true;
 			}
 		}
+	}
+	
+	void enter_scope(const char* scope_description){
+		DDRB = 7;
+		if (error_log_fail) return;
+		DDRB = 0;
+		vector<char> d;
+		DDRB = 6;
+		copy_raw_string_into_vector(scope_description, d); // error on 3 here
+		DDRB = 3;
+		if (!scope.push_back(static_cast<vector<char>&&>(d))){
+		DDRB = 2;
+			error_log_fail = true;
+		DDRB = 9;
+		}
+		DDRB = 0;
+	}
+	
+	inline void leave_scope(){ 
+		DDRB = 7;
+		if (!scope.pop_back()) error_log_fail = true;
+		DDRB = 0;
 	}
 
 }; //f_target_device_test
