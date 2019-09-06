@@ -13,6 +13,9 @@
 [Dd]ebug/
 [Rr]elease/
 
+#Doxygen Build
+doxygen/
+
 #Build Results
 *.o
 *.d
