@@ -77,7 +77,9 @@ class vector {
 	bool push_back(T&& t){
 		if (vector_size == underlying_array_size) if (!extend_size()) return false;
 		if (!(vector_size < underlying_array_size)) return false;
+		DDRB |= 27;
 		new (&array[vector_size++]) T(static_cast<T&&>(t)); // constructor must be called here not the assignment op // check whether this is doing what I exspect 
+		DDRB &= 0x7C;
 		return true;
 	}
 	
@@ -109,6 +111,7 @@ class f_test_runner
 	const char* last_error{ nullptr };
 	
 	inline static void copy_raw_string_into_vector(const char* cstr, vector<char>& vec){
+		vector<char>* pVec{ &vec };
 		
 		for(auto it = cstr; *it != '\0'; ++it){
 			DDRB = 36;

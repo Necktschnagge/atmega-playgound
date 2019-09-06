@@ -24,9 +24,10 @@ inline void test_base_type_constants_with(f_test_runner& test_runner){
 }
 
 inline void test_base_type_constants(f_test_runner& test_runner){
-	test_runner.enter_scope("base_type_constants");
+	//test_runner.enter_scope("base_type_constants");
 	
 		test_runner.enter_scope("1");
+		test_runner.check("False should be an error.", false);
 			test_base_type_constants_with<uint16_t,785>(test_runner);
 		test_runner.leave_scope();
 		
@@ -42,7 +43,7 @@ inline void test_base_type_constants(f_test_runner& test_runner){
 			test_base_type_constants_with<int64_t,1'000'000'000'583LL>(test_runner);
 		test_runner.leave_scope();
 		
-	test_runner.leave_scope();
+	//test_runner.leave_scope();
 }
 
 

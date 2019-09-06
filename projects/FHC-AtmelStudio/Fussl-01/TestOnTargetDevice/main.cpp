@@ -13,21 +13,19 @@
 
 int main(void)
 {
-	f_test_runner test_runner;
-	for (int i = 0; i < 2; ++ i){
-		DDRB = 7;
-		_delay_ms(1);
-		DDRB = 0;
-		_delay_ms(1);
-	}
+	f_test_runner test_runner; //0x10ec
+	DDRB = 7;
+	_delay_ms(1);
+	DDRB = 0;
+	_delay_ms(1);
 	
 	run_test_f_range_int(test_runner);
-	for (int i = 0; i < 2; ++ i){
-		DDRB = 7;
-		_delay_ms(1);
-		DDRB = 0;
-		_delay_ms(1);
-	}
+	
+	DDRB = 7;
+	_delay_ms(1);
+	DDRB = 0;
+	_delay_ms(1);
+	
 
 	/* ready */
     while (1)
