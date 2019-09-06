@@ -104,9 +104,9 @@ class vector {
 
 class f_test_runner
 {
-	bool any_fail{ false };
+	bool _any_fail{ false };
 	bool error_log_fail{ false };
-	vector<vector<char>> errors;
+	vector<vector<char>> _errors;
 	vector<vector<char>> scope;
 	const char* last_error{ nullptr };
 	
@@ -122,6 +122,7 @@ class f_test_runner
 		vec.shrink_to_fit();
 		DDRB = 99;
 	}
+	
 	inline static void copy_vector_onto_end_of_vetor(const vector<char>& source, vector<char>& target){
 		for (auto iter = source.cbegin(); iter != source.cend(); ++iter){ target.push_back(*iter); }
 	}
@@ -130,11 +131,15 @@ public:
 	f_test_runner(){};
 	f_test_runner( const f_test_runner &c ) = delete;
 	f_test_runner& operator=( const f_test_runner &c ) = delete;
-
+	
+	inline const vector<vector<char>>& errors() const { return _errors; }
+	
+	inline const bool any_fail() const { return _any_fail; }
+	
 	inline void check(const char* description, bool claim){
 		if (error_log_fail) return;
 		if (!claim){
-			any_fail = true;
+			_any_fail = true;
 			last_error = description;
 			
 			// Copy the error Message:
@@ -146,7 +151,7 @@ public:
 			copy_raw_string_into_vector(description, d);
 			
 			// Move copied error message into errors:
-			if (!errors.push_back(static_cast<vector<char>&&>(d))){
+			if (!_errors.push_back(static_cast<vector<char>&&>(d))){
 				error_log_fail = true;
 			}
 		}
