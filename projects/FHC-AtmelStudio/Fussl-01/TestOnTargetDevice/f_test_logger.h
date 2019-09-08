@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#define MAKE_SCOPED(scope, code)		{ test_logger.enter_scope((scope)); { code } test_logger.leave_scope(); }
 
 inline void* operator new (size_t n, void* ptr) {return ptr;}
 
@@ -102,7 +103,7 @@ class vector {
 	
 };
 
-class f_test_runner
+class f_test_logger
 {
 	bool _any_fail{ false };
 	bool error_log_fail{ false };
@@ -111,16 +112,10 @@ class f_test_runner
 	const char* last_error{ nullptr };
 	
 	inline static void copy_raw_string_into_vector(const char* cstr, vector<char>& vec){
-		vector<char>* pVec{ &vec };
-		
 		for(auto it = cstr; *it != '\0'; ++it){
-			DDRB = 36;
 			vec.push_back(*it);
-			DDRB = 14;
 		}
-		DDRB = 11;
 		vec.shrink_to_fit();
-		DDRB = 99;
 	}
 	
 	inline static void copy_vector_onto_end_of_vetor(const vector<char>& source, vector<char>& target){
@@ -128,9 +123,9 @@ class f_test_runner
 	}
 	
 public:
-	f_test_runner(){};
-	f_test_runner( const f_test_runner &c ) = delete;
-	f_test_runner& operator=( const f_test_runner &c ) = delete;
+	f_test_logger(){};
+	f_test_logger( const f_test_logger &c ) = delete;
+	f_test_logger& operator=( const f_test_logger &c ) = delete;
 	
 	inline const vector<vector<char>>& errors() const { return _errors; }
 	
@@ -177,6 +172,13 @@ public:
 		DDRB = 7;
 		if (!scope.pop_back()) error_log_fail = true;
 		DDRB = 0;
+	}
+	
+	template<class T>
+	inline void scoped(const char* scope_description, T callback){
+		enter_scope(scope_description);
+		callback();
+		leave_scope();
 	}
 
 }; //f_target_device_test
