@@ -24,8 +24,8 @@ namespace test {
 				namespace TEMPLATE {
 					template<class T, T RANGE>
 					inline void all(f_test_logger& test_logger){
-						test_logger.check("ZERO"        , static_cast<T>( range_int<T,RANGE>::base_type_constants::ZERO				) == 0		);
-						test_logger.check("ONE"         , static_cast<T>( range_int<T,RANGE>::base_type_constants::ONE				) == 1		);
+						test_logger.check("ZERO"        , static_cast<T>( range_int<T,RANGE>::base_type_constants::ZERO				) == 0      ); // replace tabs with spaces except begin of line!!!
+						test_logger.check("ONE"         , static_cast<T>( range_int<T,RANGE>::base_type_constants::ONE				) == 1      );
 						test_logger.check("RANGE"       , static_cast<T>( range_int<T,RANGE>::base_type_constants::RANGE			) == RANGE	);
 						test_logger.check("MIN"         , static_cast<T>( range_int<T,RANGE>::base_type_constants::MIN				) == 0		);
 						test_logger.check("MAX"         , static_cast<T>( range_int<T,RANGE>::base_type_constants::MAX + 1			) == RANGE	);
@@ -60,7 +60,8 @@ namespace test {
 		}
 		using runner = base_type::runner;
 	}
-	using runner = classes::runner::append_back<types::runner::First>;
+	using runner = concat<classes::runner, types::runner>;
+	
 }
 
 template<class T>

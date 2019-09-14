@@ -16,12 +16,14 @@ struct static_task_runner;
 template <class _Callback, _Callback first, _Callback... rest>
 struct static_task_runner{
 	static constexpr _Callback First = first;
+	using FIRST = static_task_runner<_Callback, first>;
 	using REST = static_task_runner<_Callback, rest...>;
+	using THIS_TYPE = static_task_runner<_Callback, first, rest...>;
 	
 	template<class... T>
 	inline static void run(T... args){
-		static_task_runner<_Callback, first>::run(args...);
-		static_task_runner<_Callback, rest...>::run(args...);
+		FIRST::run(args...);
+		REST::run(args...);
 	}
 	
 	template<_Callback c>
@@ -31,19 +33,15 @@ struct static_task_runner{
 	using append_back = static_task_runner<_Callback, first, rest..., c>;
 	
 	template<class T>
-	using concat = typename T::append_front; //<first>; //::concat(static_task_runner<_Callback, rest...>);
-	// static_task_runner<_Callback, first, rest..., T::First>;
-	
-	using rest_reordered = typename static_task_runner<_Callback, rest...>::reverse_ordered; // ???
-	
-	//using reverse_ordered = typename rest_reordered::append_back<first>; // ???
-	//using reverse_ordered = reverse_orderedp<first>;
+	using after = typename REST::template after<typename T::template append_back<first>>;
 	
 };
+
 
 template <class _Callback, _Callback first>
 struct static_task_runner<_Callback, first>{
 	static constexpr _Callback First = first;
+	using THIS_TYPE = static_task_runner<_Callback, first>;
 	template<class... T>
 	inline static void run(T... args){
 		first(args...);
@@ -55,9 +53,25 @@ struct static_task_runner<_Callback, first>{
 	template<_Callback c>
 	using append_back = static_task_runner<_Callback, first, c>;
 	
-	using reverse_ordered = static_task_runner<_Callback, first>;
+	template<class T>
+	using after = typename T::template append_back<First>; // error <;
+	
+	//using reverse_ordered = static_task_runner<_Callback, first>;
 	
 };
+
+template <class T, class... U>
+struct concatenation {
+	using type = typename concatenation<U...>::type::template after<T>;
+};
+
+template<class T>
+struct concatenation<T> {
+	using type = T;
+};
+
+template<class... T>
+using concat = typename concatenation<T...>::type;
 
 template<class _Callback>
 struct callback_traits {

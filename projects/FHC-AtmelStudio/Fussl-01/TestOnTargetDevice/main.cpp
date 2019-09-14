@@ -11,9 +11,40 @@
 #include "test_f_range_int.h"
 #include "f_test_logger.h"
 
+#include "f_static_task_runner.h"
+
+void f1(){
+	bool a;
+}
+void f2(){
+	bool a;
+}
+void g1(){
+	bool a;
+}
+void g2(){
+	bool a;
+}
+
+void h1(){
+	bool a;
+}
+
+void h2(){
+	bool a;
+}
+
+using c1 = static_task_runner<void(*)(),f1,f2>;
+using c2 = static_task_runner<void(*)(),g1,g2>;
+using c3 = callback_traits<void(*)()>::static_task_runner<h1,h2>;
+
+using t = concat<c1,c3,c2>;
+
 
 int main(void)
 {
+	
+	t::run();
 	
 	f_test_logger test_logger;
 	
