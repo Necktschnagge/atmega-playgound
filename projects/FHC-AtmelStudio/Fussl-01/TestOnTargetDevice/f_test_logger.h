@@ -152,31 +152,22 @@ public:
 		}
 	}
 	
-	void enter_scope(const char* scope_description){
-		DDRB = 7;
+	void enterScope(const char* scope_description){
 		if (error_log_fail) return;
-		DDRB = 0;
 		vector<char> d;
-		DDRB = 6;
 		copy_raw_string_into_vector(scope_description, d); // error on 3 here
-		DDRB = 3;
 		if (!scope.push_back(static_cast<vector<char>&&>(d))){
-		DDRB = 2;
 			error_log_fail = true;
-		DDRB = 9;
 		}
-		DDRB = 0;
 	}
 	
 	inline void leave_scope(){ 
-		DDRB = 7;
 		if (!scope.pop_back()) error_log_fail = true;
-		DDRB = 0;
 	}
 	
 	template<class T>
 	inline void scoped(const char* scope_description, T callback){
-		enter_scope(scope_description);
+		enterScope(scope_description);
 		callback();
 		leave_scope();
 	}

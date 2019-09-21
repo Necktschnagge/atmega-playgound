@@ -181,11 +181,16 @@
     <Compile Include="f_test_logger.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="f_type_traits.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="main.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="test_f_range_int.cpp">
       <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
     </Compile>
     <Compile Include="test_f_range_int.h">
       <SubType>compile</SubType>
