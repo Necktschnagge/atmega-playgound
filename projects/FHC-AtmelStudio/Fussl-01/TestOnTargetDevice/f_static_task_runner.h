@@ -9,6 +9,8 @@
 #ifndef F_STATIC_TASK_RUNNER_H_
 #define F_STATIC_TASK_RUNNER_H_
 
+#include "f_type_traits.h"
+
 // idea:
 template <class _Callback, _Callback first, _Callback... rest>
 struct static_task_runner;
@@ -22,8 +24,8 @@ struct static_task_runner{
 	
 	template<class... T>
 	inline static void run(T... args){
-		FIRST::run(args...);
-		REST::run(args...);
+		FIRST::template run<T...>(fsl::ver_1_0::forward<T>(args)...);
+		REST::template run<T...>(fsl::ver_1_0::forward<T>(args)...);
 	}
 	
 	template<_Callback c>
@@ -44,7 +46,7 @@ struct static_task_runner<_Callback, first>{
 	using THIS_TYPE = static_task_runner<_Callback, first>;
 	template<class... T>
 	inline static void run(T... args){
-		first(args...);
+		first(fsl::ver_1_0::forward<T>(args)...);
 	}
 	
 	template<_Callback c>
@@ -54,9 +56,7 @@ struct static_task_runner<_Callback, first>{
 	using append_back = static_task_runner<_Callback, first, c>;
 	
 	template<class T>
-	using after = typename T::template append_back<First>; // error <;
-	
-	//using reverse_ordered = static_task_runner<_Callback, first>;
+	using after = typename T::template append_back<First>;
 	
 };
 
@@ -78,6 +78,10 @@ struct callback_traits {
 	template <_Callback first, _Callback... rest>
 	using static_task_runner = ::static_task_runner<_Callback, first, rest...>;
 };
+
+
+
+
 
 
 
