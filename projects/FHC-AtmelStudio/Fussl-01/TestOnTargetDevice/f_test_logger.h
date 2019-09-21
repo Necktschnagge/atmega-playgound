@@ -31,7 +31,7 @@ class vector {
 		if (narray == nullptr) return false;
 		
 		auto raw_bytes_begin = reinterpret_cast<uint8_t*>(this->array);
-		auto raw_bytes_end = reinterpret_cast<uint8_t*>(this->array + underlying_array_size);
+		auto raw_bytes_end = reinterpret_cast<uint8_t*>(this->array + vector_size);
 		if (raw_bytes_end < raw_bytes_begin) { free(narray); return false; }
 		
 		auto niter = reinterpret_cast<uint8_t*>(narray);
