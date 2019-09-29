@@ -3,7 +3,6 @@
 *
 * Created: 13.03.2018 17:52:31
 * @author Maximilian Starke
-
 */
 
 #ifndef __F_RANGE_INT_H__
@@ -12,7 +11,7 @@ namespace fsl {
 	namespace ver_1_0 {
 		namespace lg {
 			
-			/*! @brief Type for Integers in a range {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX}
+			/*! @brief Type for Integers in a range {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX} \uname \uuname kk \asd alles klar
 			@details Stores a number x in {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX} or #OUT_OF_RANGE.
 			@tparam _base_type The base integer type that is used internally. !add description, what this type must bring with it. Must provide a total order with comparison operator < and operator ==. ??It must provide constructors for _base_type(0), _base_type(1), _base_type(-1)
 			@tparam _RANGE The maximum value that a #fsl::ver_1_0::lg::range_int can have + 1. Must be positive.
