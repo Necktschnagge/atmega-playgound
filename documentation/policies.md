@@ -7,7 +7,10 @@
 
 ## git usage
 
-* naming of branches
+### naming of branches
+
+#### Names of branches should follow the following style:
+`<kind>-<description>[-<description>]*[-<version/etc>]`
 
   | pattern | purpose |
   | -------:|:------- |
@@ -16,3 +19,12 @@
   | docu-* | _documentary stuff_ |
   | structure-* | _structural stuff for the repository_ |
   | experimental-* | _experimental releases_ |
+  | release-* | _productive releases_ |
+
+#### For example name feature branches this way:
+* `feature-scheduler-v2`
+* `feature-iopin`
+* `release-1.0`
+* `experimental-scheduler-demo`
+* `fix-scheduler-compiler-errors`
+* `fix-scheduler-runtime-behavior`
