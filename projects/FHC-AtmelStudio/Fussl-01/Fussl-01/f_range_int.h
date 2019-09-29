@@ -11,10 +11,10 @@ namespace fsl {
 	namespace ver_1_0 {
 		namespace lg {
 			
-			/*! @brief Type for Integers in a range {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX} \uname \uuname kk \asd alles klar
-			@details Stores a number x in {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX} or #OUT_OF_RANGE.
+			/*! @brief Type for Integers in a range {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX}
+			@details Stores a number in {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX} or #OUT_OF_RANGE.
 			@tparam _base_type The base integer type that is used internally. !add description, what this type must bring with it. Must provide a total order with comparison operator < and operator ==. ??It must provide constructors for _base_type(0), _base_type(1), _base_type(-1)
-			@tparam _RANGE The maximum value that a #fsl::ver_1_0::lg::range_int can have + 1. Must be positive.
+			@tparam _RANGE The maximum value that a #fsl::ver_1_0::lg::range_int can take + 1. Must be positive.
 			@tparam _OVERFLOW_RESULTS_IN_OUT_OF_RANGE Defines whether some arithmetic operation (e.g. #operator+) leading to an overflow will result in #OUT_OF_RANGE or if it will behave like a ring in mathematics.
 			@tparam _OUT_OF_RANGE_IS_ABSORBING If it is set true any arithmetical operation will result in #OUT_OF_RANGE if one of the operands is #OUT_OF_RANGE.
 			*/
@@ -34,7 +34,7 @@ namespace fsl {
 					/// @brief One in base_type.
 					static constexpr base_type ONE{ base_type(1) };
 					
-					/// @brief The maximum value that a #fsl::ver_1_0::lg::range_int can have + 1. Avoid duplicates in doc strings.
+					/// @brief The maximum value that a #fsl::ver_1_0::lg::range_int can take + 1. Avoid duplicates in doc strings.
 					/// @details Number of pairwise distinct values that the #fsl::ver_1_0::lg::range_int can have, not counting #OUT_OF_RANGE.
 					static constexpr base_type RANGE{ _RANGE };
 					static_assert(ZERO < RANGE, "Invalid template argument: Range limit must be a positive value.");
@@ -114,31 +114,17 @@ namespace fsl {
 				inline constexpr range_int(const base_type& value): value(contract_out_of_range(value)) {}
 				/// Copy constructor. Constructs a new #fsl::ver_1_0::lg::range_int as a copy of \a another.
 				inline constexpr range_int(const range_int& another) : value(another.value) {}
-				/// Copy constructor. Constructs a new #fsl::ver_1_0::lg::range_int as a copy of \a another.
-				inline range_int(const volatile range_int& another) : value(another.value) {}
 				
 				/// @brief Converts \a *this into #base_type
 				/// \sa to_base_type().
 				inline constexpr operator base_type() const {	return value;	}
-				/// @brief Converts \a *this into #base_type
-				/// \sa to_base_type().
-				inline operator base_type() const volatile {	return value;	}
 				
 				/// @brief Converts \a *this into #base_type
 				/// \sa @ref fsl::ver_1_0::lg::range_int::operator base_type()
 				inline constexpr base_type to_base_type() const {	return value;	}
-				/// @brief Converts \a *this into #base_type
-				/// \sa @ref fsl::ver_1_0::lg::range_int::operator base_type()
-				inline base_type to_base_type() const volatile {	return value;	}
 				
 				/// @brief Copy assignment operator.
 				inline range_int& operator = (const range_int<base_type,RANGE>& another) { value = another.value; return *this; }
-				/// @brief Copy assignment operator.
-				inline void operator = (const range_int<base_type,RANGE>& another) volatile { value = another.value; }
-				/// @brief Copy assignment operator.
-				inline range_int& operator = (const volatile range_int<base_type,RANGE>& another) { value = another.value; return *this; }
-				/// @brief Copy assignment operator.
-				inline void operator = (const volatile range_int<base_type,RANGE>& another) volatile { value = another.value; }
 				
 				/// Performs
 				inline constexpr range_int<base_type,RANGE> operator + (const base_type& rop) const { return range_int<base_type,RANGE>(value,rop,0); }
