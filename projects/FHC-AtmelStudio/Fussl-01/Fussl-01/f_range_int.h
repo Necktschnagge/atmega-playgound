@@ -22,7 +22,7 @@ namespace fsl {
 			class range_int {
 				public:
 				
-				/// @brief The base integer type that is used internally. Avoid duplicates in doc strings.
+				/// @brief \range_int__base_type
 				using base_type = _base_type;
 				
 				/// @brief Contains all constants of type #base_type.

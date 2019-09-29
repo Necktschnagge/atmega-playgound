@@ -1,0 +1,1 @@
+ALIASES += "range_int__base_type=The base integer type that is used internally."

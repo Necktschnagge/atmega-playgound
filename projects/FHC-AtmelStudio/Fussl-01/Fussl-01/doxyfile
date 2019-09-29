@@ -2159,7 +2159,7 @@ INCLUDE_PATH           =
 @INCLUDE_PATH           = ./reused_documentary_stuff/
 @INCLUDE = doc_range_int.txt
 @INCLUDE = doc_2_.txt
-@INCLUDE = range_int.txt
+@INCLUDE = range_int.docs
 
 # You can use the INCLUDE_FILE_PATTERNS tag to specify one or more wildcard
 # patterns (like *.h and *.hpp) to filter out the header-files in the
