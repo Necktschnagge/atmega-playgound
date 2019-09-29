@@ -34,15 +34,14 @@ namespace fsl {
 					/// @brief One in base_type.
 					static constexpr base_type ONE{ base_type(1) };
 					
-					/// @brief The maximum value that a #fsl::ver_1_0::lg::range_int can take + 1. Avoid duplicates in doc strings.
-					/// @details Number of pairwise distinct values that the #fsl::ver_1_0::lg::range_int can have, not counting #OUT_OF_RANGE.
+					/// \range_int__RANGE
 					static constexpr base_type RANGE{ _RANGE };
 					static_assert(ZERO < RANGE, "Invalid template argument: Range limit must be a positive value.");
 					
-					/// @brief Minimum value that a #fsl::ver_1_0::lg::range_int can have.
+					/// @brief Minimum value that a #fsl::ver_1_0::lg::range_int can take.
 					static constexpr base_type MIN{ ZERO };
 					
-					/// @brief Maximum value that a #fsl::ver_1_0::lg::range_int can have.
+					/// @brief Maximum value that a #fsl::ver_1_0::lg::range_int can take.
 					static constexpr base_type MAX{ RANGE - 1 };
 					
 					/// @brief A dedicated value of type #base_type that is interpreted as out of range.
@@ -50,8 +49,7 @@ namespace fsl {
 					static_assert(!(ZERO < OUT_OF_RANGE && OUT_OF_RANGE < RANGE), "Internal error: The base_type value for OUT_OF_RANGE must not be part of the range.");
 				};
 				
-				/// @brief The maximum value that a #fsl::ver_1_0::lg::range_int can have + 1. Avoid duplicates in doc strings.
-				/// @details Number of pairwise distinct values that the #fsl::ver_1_0::lg::range_int can have, not counting #OUT_OF_RANGE. Avoid duplicates in doc strings.
+				/// \range_int__RANGE
 				static constexpr base_type RANGE{ base_type_constants::RANGE };
 				
 				/// @brief Defines whether some arithmetic operation (e.g. #operator+) leading to an overflow will result in #OUT_OF_RANGE or if it will behave like a ring in mathematics. avoid duplicates.
