@@ -18,9 +18,6 @@ int main(void)
 	
 	run_test_f_range_int(test_logger);
 
-//test::range_int::runner::run(test_logger);
-
-
 	while (true){
 		DDRB = 7;
 		_delay_ms(1);
@@ -34,10 +31,9 @@ int main(void)
 			}
 		}
 	}
-
+	
 	/* ready */
     while (1)
     {
     }
 }
-

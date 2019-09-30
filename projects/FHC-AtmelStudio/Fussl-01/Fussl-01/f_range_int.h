@@ -1,8 +1,6 @@
 /*
 * f_range_int.h
-*
 * Created: 13.03.2018 17:52:31
-* @author Maximilian Starke
 */
 
 #ifndef __F_RANGE_INT_H__
@@ -11,12 +9,17 @@ namespace fsl {
 	namespace ver_1_0 {
 		namespace lg {
 			
-			/*! @brief Type for Integers in a range {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX}
-			@details Stores a number in {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX} or #OUT_OF_RANGE.
+			/*!
+			@author Maximilian Starke
+			@date 2019
+			@copyright All rights reserved.
+			
+			@brief Type for Integers in a range {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX}.
+			@details Stores a number in {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX} or #OUT_OF_RANGE but no other value.
 			@tparam _base_type The base integer type that is used internally. !add description, what this type must bring with it. Must provide a total order with comparison operator < and operator ==. ??It must provide constructors for _base_type(0), _base_type(1), _base_type(-1)
 			@tparam _RANGE The maximum value that a #fsl::ver_1_0::lg::range_int can take + 1. Must be positive.
-			@tparam _OVERFLOW_RESULTS_IN_OUT_OF_RANGE Defines whether some arithmetic operation (e.g. #operator+) leading to an overflow will result in #OUT_OF_RANGE or if it will behave like a ring in mathematics.
-			@tparam _OUT_OF_RANGE_IS_ABSORBING If it is set true any arithmetical operation will result in #OUT_OF_RANGE if one of the operands is #OUT_OF_RANGE.
+			@tparam _OVERFLOW_RESULTS_IN_OUT_OF_RANGE Defines whether some arithmetic operation (e.g. #operator+) leading to an overflow or underflow will result in #OUT_OF_RANGE or if it will behave like a ring in mathematics.
+			@tparam _OUT_OF_RANGE_IS_ABSORBING If it is set to true any arithmetical operation will result in #OUT_OF_RANGE if one of the operands is #OUT_OF_RANGE. Otherwise the result of any arithmetical operation where at least one operand is #OUT_OF_RANGE will be undefined. Set this true only if this feature is really needed, since hat will have bad impact on performance.
 			*/
 			template <typename _base_type, _base_type _RANGE, bool _OVERFLOW_RESULTS_IN_OUT_OF_RANGE = true, bool _OUT_OF_RANGE_IS_ABSORBING = true>
 			class range_int {
@@ -69,14 +72,11 @@ namespace fsl {
 				/// @brief The internal value.
 				base_type value;
 				
-				inline static constexpr base_type contract_out_of_range(base_type value){ return value < RANGE ? value : base_type_constants::OUT_OF_RANGE; }
+				inline static constexpr base_type contract_out_of_range_base_type(base_type value){ return value < RANGE ? value : base_type_constants::OUT_OF_RANGE; }
 				
-				inline void check_out_of_range(){
-					if (!(value < RANGE)){
-						value = base_type_constants::OUT_OF_RANGE;
-					}
-				}
+				inline void contract_out_of_range(){ value = contract_out_of_range_base_type(value); }
 				
+#if false // this c-tor should be deleted, addition and subtraction should get own static member functions.
 				/* private c-tor for addition and subtraction */
 				// only addition and subtraction will be executed after each other max +2 -4 is out of range!
 				inline range_int(base_type value, base_type summand, base_type minus) : value(value + summand - minus) { // maybe constexpr ???<<<<<
@@ -84,13 +84,16 @@ namespace fsl {
 						if (value == base_type_constants::OUT_OF_RANGE || summand == base_type_constants::OUT_OF_RANGE || minus == base_type_constants::OUT_OF_RANGE)
 							this->value = base_type_constants::OUT_OF_RANGE;
 					
-					check_out_of_range();
+					contract_out_of_range();
 					if (OVERFLOW_RESULTS_IN_OUT_OF_RANGE) if (value + summand < value - minus) value = base_type_constants::OUT_OF_RANGE;
+					// by the way...     ring behaviour is missing here val +summand > RANGE -> need %-operator.
 				}
+				
+#endif
 				
 				
 				inline static base_type addition(base_type summand0, base_type summand1){
-					// restructure as soon as if constexpr is supported.
+					// restructure as soon as if constexpr is supported. // do this via template specialization!!!
 					if (summand0 == base_type_constants::OUT_OF_RANGE) return OUT_OF_RANGE_IS_ABSORBING ? base_type_constants::OUT_OF_RANGE : summand1;
 					if (summand1 == base_type_constants::OUT_OF_RANGE) return OUT_OF_RANGE_IS_ABSORBING ? base_type_constants::OUT_OF_RANGE : summand0;
 					const base_type raw_sum{ summand0 + summand1 };
@@ -105,12 +108,15 @@ namespace fsl {
 				
 				public:
 				
-				/// @brief Constructs a new #fsl::ver_1_0::lg::range_int initialized with \a base_type_constants::ZERO.
+				/// @brief Returns true if and only if the given value is element of { \a base_type_constants::ZERO, ... , \a base_type_constants::MAX}
+				inline static bool in_range(base_type value){ return base_type_constants::MIN <= value && value <=base_type_constants::MAX; }
+				
+				/// @brief Constructs a #fsl::ver_1_0::lg::range_int initialized with \a base_type_constants::ZERO.
 				inline constexpr range_int(): value(0) {}
-				/// @brief Constructs a new #fsl::ver_1_0::lg::range_int initialized with given \a value.
-				/// @details If the given \a value is not in the range { \a base_type_constants::ZERO, ... , \a base_type_constants::MAX}, the constructed #fsl::ver_1_0::lg::range_int is equal to #OUT_OF_RANGE.
-				inline constexpr range_int(const base_type& value): value(contract_out_of_range(value)) {}
-				/// Copy constructor. Constructs a new #fsl::ver_1_0::lg::range_int as a copy of \a another.
+				/// @brief Constructs a #fsl::ver_1_0::lg::range_int initialized with given \a value.
+				/// @details If not #in_range(\a value) the constructed #fsl::ver_1_0::lg::range_int is equal to #OUT_OF_RANGE.
+				inline constexpr range_int(const base_type& value): value(contract_out_of_range_base_type(value)) {}
+				/// Copy constructor. Constructs a #fsl::ver_1_0::lg::range_int as a copy of \a another.
 				inline constexpr range_int(const range_int& another) : value(another.value) {}
 				
 				/// @brief Converts \a *this into #base_type
@@ -125,7 +131,7 @@ namespace fsl {
 				inline range_int& operator = (const range_int<base_type,RANGE>& another) { value = another.value; return *this; }
 				
 				/// Performs
-				inline constexpr range_int<base_type,RANGE> operator + (const base_type& rop) const { return range_int<base_type,RANGE>(value,rop,0); }
+				inline constexpr range_int<base_type,RANGE> operator + (const base_type& rop) const { return addition(value,rop); }
 				/// Performs subtraction with a base_type integer
 				inline constexpr range_int<base_type,RANGE> operator - (const base_type& rop) const { return range_int<base_type,RANGE>(value,0,rop); }
 							
