@@ -57,7 +57,7 @@ namespace test {
 		namespace types {
 			template<class _BASE_TYPE>
 			inline void test_base_type(f_test_logger& test_logger){
-				test_logger.check("base_type",fsl::ver_1_0::is_same<   typename range_int<_BASE_TYPE,10,false,false>::base_type,   _BASE_TYPE   >::value);
+				test_logger.check("base_type",fsl::ver_1_0::is_same<   typename range_int<_BASE_TYPE,10>::base_type,   _BASE_TYPE   >::value);
 			}
 			inline void all(f_test_logger& test_logger){
 				test_logger.scoped("types",[&]{
@@ -67,7 +67,7 @@ namespace test {
 					test_base_type<int32_t>(test_logger);
 				});
 			}
-			using runner = typename task_runner::static_task_runner<all>;
+			using runner = task_runner::static_task_runner<all>;
 		} // namespace types
 		namespace public_member_functions {
 			namespace constructors {
