@@ -71,10 +71,102 @@ namespace test {
 		} // namespace types
 		namespace public_member_functions {
 			namespace constructors {
-				
-			}
-		}
-		using runner = concat<classes::runner, types::runner>;
+				namespace test_templates {
+					template<typename T, T RANGE>
+					inline void test_standard_constructor(f_test_logger& test_logger){
+						test_logger.scoped("standard-ctor",[&]{
+							range_int<T,RANGE> x;
+							test_logger.check("std-ctor zero",x.to_base_type() == T(0));
+						});
+					}
+					template<class T, T RANGE>
+					inline void test_conversion_constructor(f_test_logger& test_logger, T TEST_END, T TEST_INC){
+						test_logger.scoped("conv-ctor",[&]{
+							using tt = range_int<T,RANGE>;
+							tt x(0);
+							test_logger.check("convert\"0\"",x.to_base_type()==0);
+							T last{ 0 };
+							for (T input = 1; input < TEST_END; input += TEST_INC){
+								if (input <= last) break;
+								last = input;
+								tt y(input);
+								if (input < RANGE){
+									test_logger.check("in range", y.to_base_type() == input);
+								} else {
+									test_logger.check("out of range", y.to_base_type() == tt::base_type_constants::OUT_OF_RANGE);
+								}
+							}
+						});
+					}
+					inline bool raw_compare(void const * l, void const* r, size_t size){
+						const uint8_t* ll = static_cast<const uint8_t*>(l);
+						const uint8_t* rr = static_cast<const uint8_t*>(r);
+						for(size_t i = 0; i < size; ++i) if (ll[i] != rr[i]) return false;
+						return true;
+					}
+					//##test conversion between different raneg_int's
+					template<class T, T RANGE>
+					inline void test_copy_constructor(f_test_logger& test_logger, T TEST_END, T TEST_INC){
+						test_logger.scoped("copy-ctor",[&]{
+							using tt = range_int<T,RANGE>;
+							T last{ 0 };
+							for (T input = 1; input < TEST_END; input += TEST_INC){
+								if (input <= last) break;
+								last = input;
+								tt original(input);
+								typename tt::base_type o_value = original;
+								tt copy(original);
+								typename tt::base_type c_value = copy;
+								test_logger.check("int",o_value == c_value);
+								test_logger.check("raw",raw_compare(&original,&copy,sizeof(tt)));
+							}
+						});
+					}
+					template<class T, T RANGE>
+					inline void all(f_test_logger& test_logger, T MAX){
+						auto inc = MAX / 14;
+						auto end = MAX;
+						test_standard_constructor<T,RANGE>(test_logger);
+						test_conversion_constructor<T,RANGE>(test_logger,end,inc);
+						test_copy_constructor<T,RANGE>(test_logger,end, inc);
+					}
+				} // namespace test_templates
+				inline void all(f_test_logger& test_logger){
+						test_logger.scoped("constructors",[&]{
+						test_templates::all<uint8_t,46>(test_logger,100);
+						test_templates::all<uint16_t,340>(test_logger,874);
+						test_templates::all<uint32_t,0x7D'C5'73'11>(test_logger,0xFFFF'FFFF);
+						test_templates::all<uint64_t,0x4231'DE81'0AC9>(test_logger,0xBB31'BC97'0AC3);
+						test_templates::all<int8_t,127>(test_logger,127);
+						test_templates::all<int32_t,30'111>(test_logger,32'431);
+					});
+				}
+				using runner = task_runner::static_task_runner<all>;
+			} // namespace constructors
+			namespace non_constructors {
+				/*
+				template<class T>
+				using conversion = T (*)();
+				template<class T, T RANGE>
+				inline void generic_test_to_base_type_conversion(f_test_logger& test_logger, conversion<T> T::* function, T value){
+					
+					range_int<T,RANGE> o(value);
+					//test_logger.check("c2b", value == o.)
+					o.to_base_type();
+					
+				}
+				inline void test_operator_base_type(f_test_logger& test_logger){
+					
+				}*/
+				inline void all(f_test_logger& test_logger){
+					
+				}
+				using runner = task_runner::static_task_runner<all>;
+			} // namespace non_constructors
+			using unwrapped_runner = concat<constructors::runner,non_constructors::runner>;
+			WRAP_RUNNER("public member functions", unwrapped_runner);
+		} // namespace public_member_functions
+		using runner = concat<classes::runner, types::runner, public_member_functions::runner>;
 	}
 }
 
@@ -108,4 +200,6 @@ void run_test_f_range_int(f_test_logger& test_logger){
 	#endif
 	});
 }
+
+/// ### make doxygen document also private stuff for an "internal doc"
 
