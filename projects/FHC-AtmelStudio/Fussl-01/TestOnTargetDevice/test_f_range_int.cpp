@@ -1,9 +1,8 @@
 /*
- * test_f_range_int.cpp
- *
- * Created: 28.07.2019 20:26:42
- *  Author: F-NET-ADMIN
- */ 
+@file test_f_range_int.cpp
+@author Maximilian Starke
+@brief Contains all tests for f_range_int.h
+*/
 
 #include "f_type_traits.h"
 
@@ -82,18 +81,18 @@ namespace test {
 					template<class T, T RANGE>
 					inline void test_conversion_constructor(f_test_logger& test_logger, T TEST_END, T TEST_INC){
 						test_logger.scoped("conv-ctor",[&]{
-							using tt = range_int<T,RANGE>;
-							tt x(0);
+							using range_int_type = range_int<T,RANGE>;
+							range_int_type x(0);
 							test_logger.check("convert\"0\"",x.to_base_type()==0);
 							T last{ 0 };
 							for (T input = 1; input < TEST_END; input += TEST_INC){
-								if (input <= last) break;
+								if (input <= last) break; // prevent infinite loops caused by overflow
 								last = input;
-								tt y(input);
+								range_int_type y(input);
 								if (input < RANGE){
 									test_logger.check("in range", y.to_base_type() == input);
-								} else {
-									test_logger.check("out of range", y.to_base_type() == tt::base_type_constants::OUT_OF_RANGE);
+									} else {
+									test_logger.check("out of range", y.to_base_type() == range_int_type::base_type_constants::OUT_OF_RANGE);
 								}
 							}
 						});
@@ -104,7 +103,6 @@ namespace test {
 						for(size_t i = 0; i < size; ++i) if (ll[i] != rr[i]) return false;
 						return true;
 					}
-					//##test conversion between different raneg_int's
 					template<class T, T RANGE>
 					inline void test_copy_constructor(f_test_logger& test_logger, T TEST_END, T TEST_INC){
 						test_logger.scoped("copy-ctor",[&]{
@@ -132,7 +130,7 @@ namespace test {
 					}
 				} // namespace test_templates
 				inline void all(f_test_logger& test_logger){
-						test_logger.scoped("constructors",[&]{
+					test_logger.scoped("constructors",[&]{
 						test_templates::all<uint8_t,46>(test_logger,100);
 						test_templates::all<uint16_t,340>(test_logger,874);
 						test_templates::all<uint32_t,0x7D'C5'73'11>(test_logger,0xFFFF'FFFF);
@@ -144,22 +142,36 @@ namespace test {
 				using runner = task_runner::static_task_runner<all>;
 			} // namespace constructors
 			namespace non_constructors {
-				/*
-				template<class T>
-				using conversion = T (*)();
-				template<class T, T RANGE>
-				inline void generic_test_to_base_type_conversion(f_test_logger& test_logger, conversion<T> T::* function, T value){
+				namespace test_templates {
+					template<class T>
+					using ptr_to_conversion_member_function = typename T::base_type (T::*)() const;
 					
-					range_int<T,RANGE> o(value);
-					//test_logger.check("c2b", value == o.)
-					o.to_base_type();
-					
+					template<class T, T RANGE>
+					inline void test_base_type_conversion(f_test_logger& test_logger, ptr_to_conversion_member_function<range_int<T,RANGE>> function, const T& value){
+						range_int<T,RANGE> my_range_int(value);
+						const T normalized_value{ value < RANGE ? value : decltype(my_range_int)::base_type_constants::OUT_OF_RANGE };
+						test_logger.check("conv2base_t", normalized_value == (my_range_int.*function)());
+					}
+					template<class T, T RANGE>
+					inline void all(f_test_logger& test_logger, T MAX){
+						auto inc = MAX / 14;
+						auto end = MAX;
+						T last = 0;
+						for (T number = 1; number < end && last < number; last = number, number += inc){
+							test_logger.scoped("operator base_type",[&]{ test_base_type_conversion(test_logger, &range_int<T,RANGE>::operator T, number); });
+							test_logger.scoped("to_base_type",[&]{ test_base_type_conversion(test_logger, &range_int<T,RANGE>::to_base_type,number); });
+						}
+					}
 				}
-				inline void test_operator_base_type(f_test_logger& test_logger){
-					
-				}*/
 				inline void all(f_test_logger& test_logger){
-					
+					test_logger.scoped("conversion",[&]{
+						test_templates::all<uint8_t,46>(test_logger,100);
+						test_templates::all<uint16_t,340>(test_logger,874);
+						test_templates::all<uint32_t,0x7D'C5'73'11>(test_logger,0xFFFF'FFFF);
+						test_templates::all<uint64_t,0x4231'DE81'0AC9>(test_logger,0xBB31'BC97'0AC3);
+						test_templates::all<int8_t,127>(test_logger,127);
+						test_templates::all<int32_t,30'111>(test_logger,32'431);
+					});
 				}
 				using runner = task_runner::static_task_runner<all>;
 			} // namespace non_constructors
@@ -193,11 +205,11 @@ inline void test_standard_constructor(f_test_logger& test_runner){
 void run_test_f_range_int(f_test_logger& test_logger){
 	return test_logger.scoped("range_int",[&]{
 		test::class_range_int::runner::run<f_test_logger&>(test_logger); // review comment: check if we can add a std::ref to our standard lib and call run(fsl::ver_1_0::ref(test_logger)) instead of specifiying function template.
-	#if false //debug
+		#if false //debug
 		test_standard_constructor(test_logger);
 		range_int<uint8_t,1> r;
 		test_logger.check("Standard constructed range int equals zero.", r == 0 );
-	#endif
+		#endif
 	});
 }
 

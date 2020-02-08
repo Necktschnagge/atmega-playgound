@@ -203,10 +203,6 @@
     </PreBuildEvent>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="f_range_int.cpp">
-      <SubType>compile</SubType>
-      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++17</CustomCompilationSetting>
-    </Compile>
     <Compile Include="f_range_int.h">
       <SubType>compile</SubType>
     </Compile>
