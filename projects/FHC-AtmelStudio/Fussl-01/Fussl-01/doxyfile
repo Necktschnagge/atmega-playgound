@@ -2159,9 +2159,6 @@ INCLUDE_PATH           =
 #@INCLUDE_PATH           = ./reused_documentary_stuff/ # we can use this two lines to place duplicated doc strings into a separate file.
 #@INCLUDE = range_int.docs
 
-@INCLUDE = doc_range_int.txt
-@INCLUDE = doc_2_.txt
-
 # You can use the INCLUDE_FILE_PATTERNS tag to specify one or more wildcard
 # patterns (like *.h and *.hpp) to filter out the header-files in the
 # directories. If left blank, the patterns specified with FILE_PATTERNS will be

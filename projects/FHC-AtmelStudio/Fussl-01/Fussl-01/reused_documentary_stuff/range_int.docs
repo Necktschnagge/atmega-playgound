@@ -1,2 +1,0 @@
-ALIASES += "range_int__base_type=The base integer type that is used internally."
-ALIASES += "range_int__RANGE=@brief The maximum value that a #fsl::ver_1_0::lg::range_int can take + 1.\n Number of pairwise distinct values that the #fsl::ver_1_0::lg::range_int can take, not counting #OUT_OF_RANGE."
