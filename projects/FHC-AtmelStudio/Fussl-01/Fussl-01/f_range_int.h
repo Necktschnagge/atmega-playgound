@@ -1,41 +1,45 @@
-/*
-* f_range_int.h
-* Created: 13.03.2018 17:52:31
+/**
+@file  f_range_int.h
+@author Maximilian Starke
+@date 2019
+@copyright All rights reserved. For any license please contact the author.
 */
 
 #ifndef __F_RANGE_INT_H__
 #define __F_RANGE_INT_H__
+
+#include <stdint.h>
+
 namespace fsl {
 	namespace ver_1_0 {
 		namespace lg {
 			
 			/*!
 			@author Maximilian Starke
-			@date 2019
-			@copyright All rights reserved.
 			
 			@brief Type for Integers in a range {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX}.
 			@details Stores a number in {\a base_type_constants::ZERO, ... , \a base_type_constants::MAX} or #OUT_OF_RANGE but no other value. Note that #OUT_OF_RANGE is absorbing: Any operation will result in #OUT_OF_RANGE if one of the operands is #OUT_OF_RANGE. Any overflowing or underflowing operation will also result in #OUT_OF_RANGE.
-			@tparam _base_type The base integer type that is used internally. It must provide a total order over operator< and operator == and must be constructible from int.
+			@tparam _base_type The base integer type that is used internally. It must provide a total order over operator< and operator == and must be constructible from int8_t. It must provide binary operator + and binary operator - for addition and subtraction as well as unary operator - for additive inversion.
 			@tparam _RANGE The maximum value that a #fsl::ver_1_0::lg::range_int can take + 1. Must be positive.
 			*/
 			template <typename _base_type, _base_type _RANGE>
 			class range_int {
 				public:
 				
-				/// @brief \range_int__base_type
+				/// @brief The base integer type that is used internally.
 				using base_type = _base_type;
 				
 				/// @brief Contains all constants of type #base_type.
 				struct base_type_constants {
 					
 					/// @brief Zero in base_type.
-					static constexpr base_type ZERO{ base_type(0) };
+					static constexpr base_type ZERO{ base_type(static_cast<int8_t>(0)) };
 					
 					/// @brief One in base_type.
-					static constexpr base_type ONE{ base_type(1) };
+					static constexpr base_type ONE{ base_type(static_cast<int8_t>(1)) };
 					
-					/// \range_int__RANGE
+					/// @brief The maximum value that a #fsl::ver_1_0::lg::range_int can take + 1.
+					/// Number of pairwise distinct values that the #fsl::ver_1_0::lg::range_int can take, not counting #OUT_OF_RANGE.
 					static constexpr base_type RANGE{ _RANGE };
 					static_assert(ZERO < RANGE, "Invalid template argument: Range limit must be a positive value.");
 					
@@ -43,13 +47,14 @@ namespace fsl {
 					static constexpr base_type MIN{ ZERO };
 					
 					/// @brief Maximum value that a #fsl::ver_1_0::lg::range_int can take.
-					static constexpr base_type MAX{ RANGE - 1 };
+					static constexpr base_type MAX{ RANGE - ONE };
 					
 					/// @brief A dedicated value of type #base_type that is interpreted as out of range.
-					static constexpr base_type OUT_OF_RANGE{ base_type(-1) };
+					static constexpr base_type OUT_OF_RANGE{ base_type(static_cast<int8_t>(-1)) };
 				};
 				
-				/// \range_int__RANGE
+				/// @brief The maximum value that a #fsl::ver_1_0::lg::range_int can take + 1.
+				/// Number of pairwise distinct values that the #fsl::ver_1_0::lg::range_int can take, not counting #OUT_OF_RANGE.
 				static constexpr base_type RANGE{ base_type_constants::RANGE };
 				
 				/// @brief A dedicated value of #fsl::ver_1_0::lg::range_int that represents the out of range case.
@@ -58,9 +63,10 @@ namespace fsl {
 				/// @brief Returns true if and only if the given value is element of { \a base_type_constants::ZERO, ... , \a base_type_constants::MAX}
 				inline static constexpr bool in_range(const base_type& value){ return base_type_constants::MIN == value || (base_type_constants::MIN < value && value < base_type_constants::RANGE); }
 				static_assert(!in_range(base_type_constants::OUT_OF_RANGE), "Internal error: The base_type value for OUT_OF_RANGE must not be part of the range.");
+				static_assert(!(base_type_constants::RANGE < base_type_constants::MIN), "Invalid template argument: Range must not be negative.")
 				
 				private:
-				/// @brief The internal value.
+				/// @brief The internal value. Must be #in_range or #OUT_OF_RANGE.
 				base_type value;
 				
 				/// @brief The identity on all #base_type values that are #in_range. Maps all other values to #OUT_OF_RANGE.
@@ -116,51 +122,61 @@ namespace fsl {
 				inline range_int& operator = (const base_type& value){ this->value = contract_out_of_range_base_type(value); }
 				
 				/// @brief Copy assignment operator.
-				inline range_int& operator = (const range_int<base_type,RANGE>& another) { value = another.value; return *this; }
+				inline range_int& operator = (const range_int& another) { value = another.value; return *this; }
 				
 				/// @brief Performs addition with a #base_type integer.
 				/// @details In case of an overflow or underflow the result will be #OUT_OF_RANGE.
-				inline constexpr range_int<base_type,RANGE> operator + (const base_type& rop) const {
-					if (rop < 0) return range_int<base_type,RANGE>(subtraction(value,contract_out_of_range_base_type(-rop)), nullptr); // use unchecked constructor
-					return range_int<base_type,RANGE>(addition(value,contract_out_of_range_base_type(rop)), nullptr); // use unchecked constructor
+				inline constexpr range_int operator + (const base_type& rop) const {
+					if (rop < 0) return range_int(subtraction(value,contract_out_of_range_base_type(-rop)), nullptr); // use unchecked constructor
+					return range_int(addition(value,contract_out_of_range_base_type(rop)), nullptr); // use unchecked constructor
 				}
 				
 				/// @brief Performs subtraction with a #base_type integer.
 				/// @details In case of an overflow or underflow the result will be #OUT_OF_RANGE.
-				inline constexpr range_int<base_type,RANGE> operator - (const base_type& rop) const {
-					if (rop < 0) return range_int<base_type,RANGE>(addition(value, contract_out_of_range_base_type(-rop)), nullptr); // use unchecked constructor
-					return range_int<base_type,RANGE>(subtraction(value, contract_out_of_range_base_type(rop)), nullptr); // use unchecked constructor
+				inline constexpr range_int operator - (const base_type& rop) const {
+					if (rop < 0) return range_int(addition(value, contract_out_of_range_base_type(-rop)), nullptr); // use unchecked constructor
+					return range_int(subtraction(value, contract_out_of_range_base_type(rop)), nullptr); // use unchecked constructor
 				}
 				
 				/// @brief Performs addition with another #fsl::ver_1_0::lg::range_int.
 				/// @details In case of an overflow or underflow the result will be #OUT_OF_RANGE.
-				inline constexpr range_int<base_type,RANGE> operator + (const range_int& rop) const {
-					return range_int<base_type,RANGE>(addition(value, rop.to_base_type()), nullptr); // use unchecked constructor
+				inline constexpr range_int operator + (const range_int& rop) const {
+					return range_int(addition(value, rop.to_base_type()), nullptr); // use unchecked constructor
 				}
 				
 				/// @brief Performs subtraction with another #fsl::ver_1_0::lg::range_int.
 				/// @details In case of an overflow or underflow the result will be #OUT_OF_RANGE.
-				inline constexpr range_int<base_type,RANGE> operator - (const range_int& rop) const {
-					return range_int<base_type,RANGE>(subtraction(value, rop.to_base_type()), nullptr); // use unchecked constructor
+				inline constexpr range_int operator - (const range_int& rop) const {
+					return range_int(subtraction(value, rop.to_base_type()), nullptr); // use unchecked constructor
 				}
 				
 				/// @brief Performs addition of a #base_type integer.
-				inline constexpr range_int<base_type,RANGE>& operator += (const base_type& rop) { return *this = *this + rop; }
+				inline constexpr range_int& operator += (const base_type& rop) { return *this = *this + rop; }
 				
 				/// @brief Performs subtraction of a #base_type integer.
-				inline constexpr range_int<base_type,RANGE>& operator -= (const base_type& rop) { return *this = *this - rop; }
+				inline constexpr range_int& operator -= (const base_type& rop) { return *this = *this - rop; }
 				
 				/// @brief Performs a pre-increment.
-				inline range_int<base_type,RANGE>& operator ++ (){ return *this = this->to_base_type() + 1; }
+				inline range_int& operator ++ (){ return *this = this->to_base_type() + 1; }
 				
 				/// @brief Performs a post-increment.
-				inline range_int<base_type,RANGE> operator ++ (int){ range_int<base_type,RANGE> copy{ *this }; this->operator ++(); return copy; }
+				inline range_int operator ++ (int){ range_int copy{ *this }; this->operator ++(); return copy; }
 				
 				/// @brief Performs a pre-decrement.
-				inline range_int<base_type,RANGE>& operator -- (){ return *this = this->to_base_type() - 1; }
+				inline range_int& operator -- (){
+					return *this = this->to_base_type() - 1;
+					/*
+						well defined since
+							- for signed types the first value out of range in negative direction, that is -1, indeed exists.
+							- for unsigned types the first value out of range is per standard guaranteed to be 2^N - 1:
+								- since unsigned int types support correct modulo behavior and
+								- 2^N - 1 must therefore equal the maximum representable value,
+								- and therefore is greater than or equal to RANGE, which is OUT_OF_RANGE
+					*/
+					}
 				
 				/// @brief Performs a post-decrement.
-				inline range_int<base_type,RANGE> operator -- (int){ range_int<base_type,RANGE> copy{ *this }; this->operator --(); return copy; }
+				inline range_int operator -- (int){ range_int copy{ *this }; this->operator --(); return copy; }
 			};
 		}
 	}
