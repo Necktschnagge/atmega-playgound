@@ -63,7 +63,7 @@ namespace fsl {
 				/// @brief Returns true if and only if the given value is element of { \a base_type_constants::ZERO, ... , \a base_type_constants::MAX}
 				inline static constexpr bool in_range(const base_type& value){ return base_type_constants::MIN == value || (base_type_constants::MIN < value && value < base_type_constants::RANGE); }
 				static_assert(!in_range(base_type_constants::OUT_OF_RANGE), "Internal error: The base_type value for OUT_OF_RANGE must not be part of the range.");
-				static_assert(!(base_type_constants::RANGE < base_type_constants::MIN), "Invalid template argument: Range must not be negative.")
+				static_assert(!(base_type_constants::RANGE < base_type_constants::MIN), "Invalid template argument: Range must not be negative.");
 				
 				private:
 				/// @brief The internal value. Must be #in_range or #OUT_OF_RANGE.

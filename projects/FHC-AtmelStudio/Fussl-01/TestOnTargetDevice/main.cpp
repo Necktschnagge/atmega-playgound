@@ -26,7 +26,7 @@ int main(void)
 		// "output test results"
 		if (test_logger.any_fail()){
 			for (auto it = test_logger.errors().cbegin(); it != test_logger.errors().cend(); ++it){
-				const char* const error_message{ it->cbegin() }; // pint to first character of single error message.
+				const char* const error_message{ it->cbegin() }; // point to first character of single error message.
 				const char* cc{ error_message + 1 };
 			}
 		}
