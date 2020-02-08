@@ -1,20 +1,20 @@
-/*
- * f_static_task_runner.h
- *
- * Created: 07.09.2019 11:23:17
- *  Author: F-NET-ADMIN
- */ 
-
+/**
+@file f_static_task_runner.h
+@author Maximilian Starke
+@date 2019
+@copyright All rights reserved. For any license please contact the author.
+*/
 
 #ifndef F_STATIC_TASK_RUNNER_H_
 #define F_STATIC_TASK_RUNNER_H_
 
 #include "f_type_traits.h"
 
-// idea:
-template <class _Callback, _Callback first, _Callback... rest>
-struct static_task_runner;
-
+/*!
+	@brief A non-empty tuple of callbacks of the same type.
+	@details Provides calling all callbacks with same arguments in given order.
+	Provides concatenating such tuples and appending callbacks, all by using meta programming and variadic templates.
+*/
 template <class _Callback, _Callback first, _Callback... rest>
 struct static_task_runner{
 	static constexpr _Callback First = first;
@@ -36,9 +36,7 @@ struct static_task_runner{
 	
 	template<class T>
 	using after = typename REST::template after<typename T::template append_back<first>>;
-	
 };
-
 
 template <class _Callback, _Callback first>
 struct static_task_runner<_Callback, first>{
@@ -60,21 +58,30 @@ struct static_task_runner<_Callback, first>{
 	
 };
 
+/*!
+	@brief Represents concatenation of multiple #static_task_runner types
+*/
 template <class T, class... U>
 struct concatenation {
-	using type = typename concatenation<U...>::type::template after<T>;
+	using result = typename concatenation<U...>::result::template after<T>;
 };
 
 template<class T>
 struct concatenation<T> {
-	using type = T;
+	using result = T;
 };
 
+/*!
+	@brief Performs concat. (Wrapper for #concatenation::result)
+*/
 template<class... T>
-using concat = typename concatenation<T...>::type;
+using concat = typename concatenation<T...>::result;
 
+/*!
+	@brief Allows partial template specification for #static_task_runner with fixed @ref _Callback.
+*/
 template<class _Callback>
-struct callback_traits {
+struct static_task_runners {
 	template <_Callback first, _Callback... rest>
 	using static_task_runner = ::static_task_runner<_Callback, first, rest...>;
 };

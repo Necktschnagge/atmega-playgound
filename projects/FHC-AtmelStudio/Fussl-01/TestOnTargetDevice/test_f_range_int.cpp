@@ -16,7 +16,7 @@
 
 using namespace fsl::ver_1_0::lg;
 
-using task_runner = callback_traits<void(*)(f_test_logger&)>;
+using task_runner = static_task_runners<void(*)(f_test_logger&)>;
 
 
 #define WRAP_FUNCTION(SCOPE_NAME, CALLBACK) inline void __all(f_test_logger& test_logger){ return test_logger.scoped(SCOPE_NAME,[&]{ CALLBACK(test_logger); }); } using runner = task_runner::static_task_runner<__all>
