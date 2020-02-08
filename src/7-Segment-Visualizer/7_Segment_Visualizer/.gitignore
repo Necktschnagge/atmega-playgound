@@ -1,0 +1,9 @@
+# debug directory
+[Dd]ebug/
+debug/
+Debug/
+
+# other stuff
+*.suo
+*.VC.db
+*.svg
