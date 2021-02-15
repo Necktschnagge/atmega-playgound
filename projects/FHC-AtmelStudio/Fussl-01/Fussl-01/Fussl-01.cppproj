@@ -202,10 +202,207 @@
     </PreBuildEvent>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="display_server.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="display_server.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="dummy_includer.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_arch.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_arch.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_buffer.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_bytewise.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_bytewise.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_callbacks.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_cmi.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_cmi.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_cmr.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_cmr.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_countdown.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_exceptional.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_flags.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_hacks.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_hardware.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_hardware.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_hcsr04.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_hcsr04.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_interrupt.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_iopin.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_iopin.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_item_manager.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_item_manager.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_item_selector.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_item_selector.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_ledline.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_ledline.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_list_item_manager.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_list_item_manager.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_macros.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_matrix_keyboard.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_maybe.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_ncrg.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_order.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_range_int.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++17</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_range_int.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_resettable.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_stack.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_system_time.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_system_time.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">
+      </CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_task_runner.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_task_runner.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_time.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_time.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_istack.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_ui_concept.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_ui_concept.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_urgency.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="main.cpp">
       <SubType>compile</SubType>
       <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
     </Compile>
+    <Compile Include="f_systime_old_alpha.cpp">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_systime_old_alpha.h">
+      <SubType>compile</SubType>
+      <CustomCompilationSetting Condition="'$(Configuration)' == 'Debug'">-std=c++11</CustomCompilationSetting>
+    </Compile>
+    <Compile Include="f_scheduler.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="f_scheduler.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="old_or_deprecated\f_gui.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="old_or_deprecated\f_gui.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="scheduler_test.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="scheduler_test.h">
+      <SubType>compile</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="old_or_deprecated" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>
